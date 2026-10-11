@@ -264,6 +264,11 @@ function showUndoToast(message, onUndo) {
   undo.addEventListener("click", () => { clearTimeout(timer); el.remove(); onUndo(); });
 }
 
+// Boost post (paid): the steps live in boost.js and load only when needed
+function boostPost(post) {
+  import("./boost.js").then((m) => m.openBoost({ post })).catch(() => showToast("Could not open Boost. Try again."));
+}
+
 function postActions() {
   return {
     onOpen: openPostDetail,
@@ -274,6 +279,7 @@ function postActions() {
     onBlock: blockPost,
     onDelete: deletePost,
     onEdit: editPost,
+    onBoost: boostPost,
     onAudience: setAudience,
     onHashtag: openHashtag,
     onVote: votePoll,
@@ -814,6 +820,7 @@ function listenPosts() {
           onBlock: blockPost,
           onDelete: deletePost,
           onEdit: editPost,
+          onBoost: boostPost,
           onAudience: setAudience,
           onHashtag: openHashtag,
           onVote: votePoll,
