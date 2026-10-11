@@ -118,7 +118,7 @@ onAuthStateChanged(auth, async (user) => {
 
   navAvatar.innerHTML = currentProfile.photoURL
     ? `<img class="w-full h-full object-cover" src="${escapeHtml(currentProfile.photoURL)}" alt="avatar" />`
-    : `<span class="material-symbols-outlined text-[16px] text-slate-subtle">person</span>`;
+    : `<svg class="fz-svg" aria-hidden="true"><use href="#i-person"/></svg>`;
 
   // One-time cleanup of data saved in older versions of the app (safe to run every time)
   try {
