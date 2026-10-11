@@ -5,11 +5,19 @@
 export const APP_NAME = "FreeZone BD";
 export const APP_TAGLINE = "Connect. Share. Chat.";
 export const APP_VERSION = "1.0.0";
-export const LEGAL_UPDATED = "October 4, 2026";
+export const LEGAL_UPDATED = "October 11, 2026";
+export const LEGAL_UPDATED_BN = "১১ অক্টোবর ২০২৬";
+
+// The minimum age to use FreeZone BD (shown in the Terms and the Privacy Policy). Under 18 means a child under the Personal Data Protection Ordinance 2025.
+export const MIN_AGE = 18;
+
+// WHO runs the app. These three lines are printed in the Terms, Privacy Policy and Guidelines. Fill them in before release.
+export const OPERATOR_NAME = "Abdul Rohim"; // your full name (or the company name, if you register one later)
+export const OPERATOR_ADDRESS = "বরিশাল সদর, বরিশাল, বাংলাদেশ (Barishal Sadar, Barishal, Bangladesh)"; // your postal address in Bangladesh (leave "" to hide the line)
 
 // Put your real support email here (for example "support@yourdomain.com").
 // While it is empty, the app shows "Settings > Report a problem" as the way to reach you instead.
-export const SUPPORT_EMAIL = "";
+export const SUPPORT_EMAIL = "abdulrohimrire@gmail.com";
 
 // The link people receive when they are invited
 export function getInviteLink() {
