@@ -27,3 +27,23 @@ a { color:var(--primary); }
 .note { border-left:4px solid var(--primary); background:var(--card); border-radius:0 12px 12px 0; padding:10px 14px; color:var(--muted); font-size:14px; }
 footer { border-top:1px solid var(--line); margin-top:36px; padding-top:16px; color:var(--muted); font-size:13px; display:flex; flex-wrap:wrap; gap:6px 16px; }
 footer a { color:var(--muted); }
+
+/* ---- Bangla / English switch (privacy.html, terms.html, guidelines.html) ---- */
+.lg { display: none; }
+html[data-lang="bn"] .lg[lang="bn"], html[data-lang="en"] .lg[lang="en"] { display: block; }
+html[data-lang="bn"] body { font-family: "Noto Sans Bengali", "Hind Siliguri", "Kalpurush", Inter, system-ui, sans-serif; line-height: 1.8; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 9999px; overflow: hidden; }
+.lang button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--primary); color: #fff; }
+.lang button:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+h1 { overflow-wrap: anywhere; }
+li, p { overflow-wrap: anywhere; }
+.toc ol { columns: 1; }
+@media (min-width: 640px) { .toc ol { columns: 2; column-gap: 28px; } .toc li { break-inside: avoid; } }
+@media print {
+  .bar, .toc, .lang { display: none !important; }
+  body { background: #fff; color: #000; font-size: 12pt; }
+  .lead, .note { border: 0; background: none; padding-left: 0; }
+  a { color: #000; text-decoration: underline; }
+  section { break-inside: avoid-page; }
+}
