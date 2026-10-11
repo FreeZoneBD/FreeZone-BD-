@@ -940,7 +940,7 @@ const ACT_BTN =
   "flex items-center gap-1.5 h-11 px-2 rounded-full text-on-surface font-semibold text-[14px] tabular-nums active:bg-surface-container transition-colors";
 
 export function createPostCard(post, options = {}) {
-  const { onNotInterested, currentUserUid, savedPostIds, followingIds, onOpen, onComments, onLike, onShare, onDelete, onEdit, onAudience, onHashtag, onVote, watchVotes, onReport, onSave, onFollow, onProfile, onBlock, isBlocked: isBlockedUid, showFollowChip = true } = options;
+  const { onNotInterested, currentUserUid, savedPostIds, followingIds, onOpen, onComments, onLike, onShare, onDelete, onEdit, onBoost, onAudience, onHashtag, onVote, watchVotes, onReport, onSave, onFollow, onProfile, onBlock, isBlocked: isBlockedUid, showFollowChip = true } = options;
 
   const likedByMe = !!(post.likes && currentUserUid && post.likes[currentUserUid]);
   const likesCount = post.likesCount || 0;
@@ -1026,6 +1026,9 @@ export function createPostCard(post, options = {}) {
               ? `<button class="edit-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
                    <span class="material-symbols-outlined text-[18px]">edit</span> Edit post
                  </button>
+                 ${onBoost ? `<button class="boost-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
+                   <span class="material-symbols-outlined text-[18px]">campaign</span> Boost post
+                 </button>` : ""}
                  ${onAudience ? `<button class="audience-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
                    <span class="material-symbols-outlined text-[18px]">${post.audience === "me" ? "lock" : post.audience === "followers" ? "group" : "public"}</span> Who can see this
                  </button>` : ""}
@@ -1284,6 +1287,15 @@ export function createPostCard(post, options = {}) {
       menuDropdown.hidden = true;
       const result = await openReportDialog();
       if (result) onReport?.(post, result);
+    });
+  }
+
+  const boostBtn = article.querySelector(".boost-btn");
+  if (boostBtn) {
+    boostBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      menuDropdown.hidden = true;
+      onBoost?.(post);
     });
   }
 
