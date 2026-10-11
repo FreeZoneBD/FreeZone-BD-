@@ -591,7 +591,7 @@ export async function mount(container, ctx = {}) {
         user.bio
           ? `<p class="mt-4 text-[16px] leading-6 text-on-surface whitespace-pre-wrap break-words">${linkify(user.bio)}</p>`
           : isMe
-            ? `<button type="button" class="add-bio mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container text-on-surface text-[16px] font-semibold active:scale-95 transition-all"><span class="material-symbols-outlined text-[22px]">add</span>Add bio</button>`
+            ? `<button type="button" class="add-bio mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface text-[13px] font-semibold active:scale-95 transition-all"><span class="material-symbols-outlined text-[17px]">add</span>Add bio</button>`
             : ""
       }
       ${!isMe && !blocked && (ctx.followingIds || {})[uid] ? `<p class="presence-line flex items-center gap-1.5 mt-2 text-[14px] text-slate-muted" style="display:none"></p>` : ""}
