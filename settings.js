@@ -1037,6 +1037,7 @@ async function deleteAccountData({ db, user, onStep }) {
   await run("Clearing your saved posts and settings...", async () => ({
     [`savedPosts/${uid}`]: null,
     [`storySeen/${uid}`]: null,
+    [`userInterests/${uid}`]: null, // what the feed learned about my taste
     [`blocks/${uid}`]: null,
     [`userSettings/${uid}`]: null,
     [`presence/${uid}`]: null
