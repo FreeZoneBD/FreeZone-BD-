@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<meta name="theme-color" content="#004ac6"/>
+<meta name="description" content="FreeZone BD — Connect, Share & Chat with friends in Bangladesh."/>
+<title>FreeZone BD - Connect. Share. Chat.</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script>
+    /* apply the saved theme before the page is drawn (no white flash in dark mode) */
+    (function () {
+      try {
+        var m = localStorage.getItem("fz-theme");
+        if (m === "dark" || (m !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="theme.css"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-tertiary-fixed-variant": "rgb(var(--c-on-tertiary-fixed-variant) / <alpha-value>)", "on-secondary-fixed": "rgb(var(--c-on-secondary-fixed) / <alpha-value>)", "slate-dark": "rgb(var(--c-slate-dark) / <alpha-value>)",
+            "slate-surface": "rgb(var(--c-slate-surface) / <alpha-value>)", "on-secondary": "rgb(var(--c-on-secondary) / <alpha-value>)", "secondary-container": "rgb(var(--c-secondary-container) / <alpha-value>)",
+            "slate-border": "rgb(var(--c-slate-border) / <alpha-value>)", "on-background": "rgb(var(--c-on-background) / <alpha-value>)", "on-surface-variant": "rgb(var(--c-on-surface-variant) / <alpha-value>)",
+            "tertiary-fixed": "rgb(var(--c-tertiary-fixed) / <alpha-value>)", "tertiary-container": "rgb(var(--c-tertiary-container) / <alpha-value>)", "on-tertiary": "rgb(var(--c-on-tertiary) / <alpha-value>)",
+            "notification-rose": "rgb(var(--c-notification-rose) / <alpha-value>)", "surface-dim": "rgb(var(--c-surface-dim) / <alpha-value>)", "secondary": "rgb(var(--c-secondary) / <alpha-value>)",
+            "surface-container-highest": "rgb(var(--c-surface-container-highest) / <alpha-value>)", "error-container": "rgb(var(--c-error-container) / <alpha-value>)", "inverse-surface": "rgb(var(--c-inverse-surface) / <alpha-value>)",
+            "secondary-fixed": "rgb(var(--c-secondary-fixed) / <alpha-value>)", "error": "rgb(var(--c-error) / <alpha-value>)", "surface-bright": "rgb(var(--c-surface-bright) / <alpha-value>)",
+            "surface-container-high": "rgb(var(--c-surface-container-high) / <alpha-value>)", "on-secondary-container": "rgb(var(--c-on-secondary-container) / <alpha-value>)", "outline": "rgb(var(--c-outline) / <alpha-value>)",
+            "on-primary-fixed-variant": "rgb(var(--c-on-primary-fixed-variant) / <alpha-value>)", "inverse-primary": "rgb(var(--c-inverse-primary) / <alpha-value>)", "on-surface": "rgb(var(--c-on-surface) / <alpha-value>)",
+            "on-primary": "rgb(var(--c-on-primary) / <alpha-value>)", "slate-subtle": "rgb(var(--c-slate-subtle) / <alpha-value>)", "surface": "rgb(var(--c-surface) / <alpha-value>)",
+            "on-tertiary-fixed": "rgb(var(--c-on-tertiary-fixed) / <alpha-value>)", "on-error-container": "rgb(var(--c-on-error-container) / <alpha-value>)", "tertiary": "rgb(var(--c-tertiary) / <alpha-value>)",
+            "surface-tint": "rgb(var(--c-surface-tint) / <alpha-value>)", "on-primary-fixed": "rgb(var(--c-on-primary-fixed) / <alpha-value>)", "secondary-fixed-dim": "rgb(var(--c-secondary-fixed-dim) / <alpha-value>)",
+            "background": "rgb(var(--c-background) / <alpha-value>)", "surface-variant": "rgb(var(--c-surface-variant) / <alpha-value>)", "on-secondary-fixed-variant": "rgb(var(--c-on-secondary-fixed-variant) / <alpha-value>)",
+            "slate-muted": "rgb(var(--c-slate-muted) / <alpha-value>)", "primary-fixed-dim": "rgb(var(--c-primary-fixed-dim) / <alpha-value>)", "surface-container-lowest": "rgb(var(--c-surface-container-lowest) / <alpha-value>)",
+            "on-error": "rgb(var(--c-on-error) / <alpha-value>)", "primary-container": "rgb(var(--c-primary-container) / <alpha-value>)", "surface-container-low": "rgb(var(--c-surface-container-low) / <alpha-value>)",
+            "online-emerald": "rgb(var(--c-online-emerald) / <alpha-value>)", "surface-container": "rgb(var(--c-surface-container) / <alpha-value>)", "primary-fixed": "rgb(var(--c-primary-fixed) / <alpha-value>)",
+            "tertiary-fixed-dim": "rgb(var(--c-tertiary-fixed-dim) / <alpha-value>)", "inverse-on-surface": "rgb(var(--c-inverse-on-surface) / <alpha-value>)", "primary": "rgb(var(--c-primary) / <alpha-value>)",
+            "on-tertiary-container": "rgb(var(--c-on-tertiary-container) / <alpha-value>)", "outline-variant": "rgb(var(--c-outline-variant) / <alpha-value>)", "on-primary-container": "rgb(var(--c-on-primary-container) / <alpha-value>)"
+          },
+          "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+          "fontFamily": {
+            "headline-lg-mobile": ["Inter"], "label-lg": ["Inter"], "headline-md": ["Inter"], "display-lg": ["Inter"],
+            "label-sm": ["Inter"], "body-lg": ["Inter"], "headline-sm": ["Inter"], "body-sm": ["Inter"],
+            "headline-lg": ["Inter"], "body-md": ["Inter"], "label-md": ["Inter"]
+          },
+          "fontSize": {
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.005em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.025em", "fontWeight": "800" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.015em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal;
+      font-size: 22px; line-height: 1; display: inline-block; text-transform: none;
+      letter-spacing: normal; word-wrap: normal; white-space: nowrap; direction: ltr;
+      -webkit-font-smoothing: antialiased;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    body { min-height: max(884px, 100dvh); }
+    [hidden] { display: none !important; }
+        .liked .like-icon { font-variation-settings: 'FILL' 1; }
+    /* feed post card: heart that pops up on a double tap, and the pop of the like button */
+    .fz-burst { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; opacity: 0; }
+    .fz-burst svg { width: 96px; height: 96px; filter: drop-shadow(0 4px 14px rgba(0,0,0,.35)); }
+    .fz-burst.go { animation: fzBurst .75s ease-out; }
+    @keyframes fzBurst {
+      0% { opacity: 0; transform: scale(.4); }
+      25% { opacity: 1; transform: scale(1.15); }
+      60% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.05); }
+    }
+    .like-btn.pop svg { animation: fzPop .35s ease; }
+    @keyframes fzPop { 0% { transform: scale(.7); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) {
+      .fz-burst.go, .like-btn.pop svg { animation: none; }
+      .fz-burst.go { opacity: 1; }
+    }
+    /* Posts sit directly on each other, separated by one thin black line (light grey-white in dark mode) */
+    #postsContainer { --fz-sep: #000; }
+    html.dark #postsContainer { --fz-sep: rgba(255,255,255,.4); }
+    #postsContainer > * { border-top-width: 0 !important; border-bottom: 1px solid var(--fz-sep) !important; }
+    #postsContainer .fz-ad-slot:not(.fz-open) { border-bottom-width: 0 !important; }
+    #postsContainer .fz-ad-slot article { border-width: 0 !important; }
+    /* ===== X-style top bar & bottom nav (black; white in dark mode) ===== */
+    .fz-topbar, .fz-bottomnav { --fz-ink: #0f1419; --fz-on-ink: #fff; }
+    html.dark .fz-topbar, html.dark .fz-bottomnav { --fz-ink: #e7e9ea; --fz-on-ink: #0f1419; }
+    .fz-topbar {
+      background: rgb(var(--c-slate-surface) / .88);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgb(var(--c-slate-border) / .7);
+    }
+    .fz-brand-text { font-size: 21px; line-height: 1; font-weight: 800; letter-spacing: -0.03em; color: var(--fz-ink); }
+    .fz-brand-bd { font-weight: 800; }
+    .fz-avatar-btn { width: 34px; height: 34px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; transition: opacity .15s, transform .15s; }
+    .fz-avatar-btn:active { transform: scale(.92); opacity: .8; }
+    .fz-avatar { width: 34px; height: 34px; border-radius: 9999px; background: rgb(var(--c-surface-container)); }
+    .fz-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .fz-create-btn { width: 40px; height: 40px; border-radius: 9999px; color: var(--fz-ink); display: flex; align-items: center; justify-content: center; transition: background .15s, transform .15s; }
+    .fz-create-btn .material-symbols-outlined { font-size: 30px; font-variation-settings: 'FILL' 0, 'wght' 400; }
+    .fz-create-btn:hover { background: rgb(var(--c-surface-container)); }
+    .fz-create-btn:active { transform: scale(.9); }
+    /* Create button: X-style floating blue round button, bottom right above the nav */
+    .fz-fab { position: fixed; z-index: 55; width: 56px; height: 56px; border-radius: 9999px; background: #1d9bf0; color: #fff; display: flex; align-items: center; justify-content: center;
+      right: max(16px, calc((100vw - 512px) / 2 + 16px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 16px);
+      box-shadow: 0 4px 14px rgba(29,155,240,.45), 0 2px 5px rgba(0,0,0,.25); -webkit-tap-highlight-color: transparent; transition: background .15s, transform .15s; }
+    .fz-fab .material-symbols-outlined { font-size: 32px; color: #fff; font-variation-settings: 'FILL' 0, 'wght' 500; }
+    .fz-fab:hover { background: #1a8cd8; }
+    .fz-fab:active { background: #1a8cd8; transform: scale(.92); }
+    /* bottom nav: plain bold outline icons, active one filled, no labels */
+    .fz-bottomnav {
+      height: calc(52px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: rgb(var(--c-slate-surface)); border-top: 1px solid rgb(var(--c-slate-border) / .8);
+    }
+    .fz-nav-item { justify-self: stretch; height: 52px; display: flex; align-items: center; justify-content: center; color: var(--fz-ink); -webkit-tap-highlight-color: transparent; transition: transform .12s ease, opacity .12s; }
+    .fz-nav-item:active { transform: scale(.88); opacity: .7; }
+    .fz-nav-item .material-symbols-outlined { font-size: 28px; font-variation-settings: 'FILL' 0, 'wght' 500; }
+    .fz-nav-item.fz-active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500; }
+    .skeleton {
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite linear;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .fade-in {
+      animation: fadeIn 0.35s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col justify-between selection:bg-primary-fixed selection:text-on-primary-fixed">
+
+<header class="fz-topbar sticky top-0 z-50 w-full">
+  <div class="max-w-lg mx-auto h-[52px] px-4 grid grid-cols-[88px_1fr_88px] items-center">
+    <!-- left: user profile -->
+    <button aria-label="Profile" class="nav-link fz-avatar-btn justify-self-start" data-page="profile" data-title="Profile">
+      <span id="navAvatar" class="fz-avatar overflow-hidden flex items-center justify-center">
+        <span class="material-symbols-outlined text-[20px] text-slate-subtle">person</span>
+      </span>
+    </button>
+    <!-- center: brand -->
+    <div class="fz-brand justify-self-center text-center select-none">
+      <span class="fz-brand-text">FreeZone <span class="fz-brand-bd">BD</span></span>
+    </div>
+    <!-- right: friends -->
+    <div class="justify-self-end flex items-center gap-0.5">
+      <button aria-label="Friends" class="nav-link fz-create-btn" data-page="friends" data-title="Friends">
+        <span class="material-symbols-outlined">group</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="w-full max-w-lg mx-auto flex-1 px-3 sm:px-4 pt-0 pb-24">
+
+  <!-- Stories: the bar, the viewer and adding a story are all built by story.js -->
+  <section id="storiesBar" aria-label="Stories"></section>
+
+  <!-- Loading skeleton -->
+  <div id="postsSkeleton" class="space-y-4 pt-3" hidden>
+    <div class="bg-slate-surface border border-slate-border rounded-2xl p-4 space-y-3">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-full skeleton"></div>
+        <div class="space-y-2 flex-1">
+          <div class="h-3.5 w-32 rounded skeleton"></div>
+          <div class="h-3 w-20 rounded skeleton"></div>
+        </div>
+      </div>
+      <div class="h-4 w-full rounded skeleton"></div>
+      <div class="h-4 w-4/5 rounded skeleton"></div>
+      <div class="h-40 w-full rounded-xl skeleton"></div>
+    </div>
+    <div class="bg-slate-surface border border-slate-border rounded-2xl p-4 space-y-3">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-full skeleton"></div>
+        <div class="space-y-2 flex-1">
+          <div class="h-3.5 w-28 rounded skeleton"></div>
+          <div class="h-3 w-16 rounded skeleton"></div>
+        </div>
+      </div>
+      <div class="h-4 w-full rounded skeleton"></div>
+      <div class="h-4 w-3/5 rounded skeleton"></div>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="emptyState" class="text-center py-14 px-6" hidden>
+    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-primary-fixed/50 flex items-center justify-center">
+      <span class="material-symbols-outlined text-[32px] text-primary">forum</span>
+    </div>
+    <p class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-1">No posts yet</p>
+    <p class="text-slate-muted font-body-sm text-body-sm">Be the first to share something with the community!</p>
+  </div>
+
+  <!-- Real-time posts -->
+  <!-- full-width posts: the container reaches the screen edges, 8px between posts -->
+  <div id="postsContainer" class="-mx-3 sm:-mx-4 flex flex-col"></div>
+
+</main>
+
+<!-- Create button: floating, bottom right (X style) -->
+<button type="button" aria-label="Create Post" class="nav-link fz-fab" data-page="create" data-title="Create Post">
+  <span class="material-symbols-outlined">add</span>
+</button>
+
+<nav class="fz-bottomnav fixed bottom-0 left-0 right-0 z-50 max-w-lg mx-auto grid grid-cols-5 items-center">
+  <a aria-label="Feed" class="fz-nav-item fz-active" href="#">
+    <span class="material-symbols-outlined">home</span>
+  </a>
+  <button aria-label="Search" class="nav-link fz-nav-item" data-page="search" data-title="Search">
+    <span class="material-symbols-outlined">search</span>
+  </button>
+  <button type="button" aria-label="Video" class="fz-nav-item" data-feature="reels">
+    <span class="material-symbols-outlined">smart_display</span>
+  </button>
+  <button aria-label="Chat" class="nav-link fz-nav-item" data-page="chat" data-title="Chat">
+    <span class="material-symbols-outlined">chat_bubble</span>
+  </button>
+  <button aria-label="Notifications" class="nav-link fz-nav-item relative" data-page="notifications" data-title="Notifications">
+    <span class="material-symbols-outlined">notifications</span>
+  </button>
+</nav>
+
+<!-- Full-screen Post Detail -->
+<div id="postDetail" class="fixed inset-0 z-[80] bg-background flex flex-col" hidden>
+  <header class="w-full h-14 px-2 bg-slate-surface sticky top-0 flex items-center gap-2 shadow-sm flex-shrink-0 border-b border-slate-border/50">
+    <button id="postDetailBack" aria-label="Back" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[22px]">arrow_back</span>
+    </button>
+    <span class="font-headline-sm text-headline-sm font-semibold">Post</span>
+  </header>
+  <div id="postDetailBody" class="flex-1 overflow-y-auto px-3 sm:px-4 py-4 space-y-4"></div>
+  <form id="postDetailCommentForm" class="flex items-center gap-2.5 p-3 border-t border-slate-border bg-slate-surface flex-shrink-0">
+    <input id="postDetailCommentInput" type="text" class="flex-1 bg-surface-container-low border border-transparent focus:border-primary-container focus:ring-2 focus:ring-primary-container/15 rounded-full px-4 py-2.5 text-body-sm text-body-sm outline-none transition-all" placeholder="Write a comment..." maxlength="300" />
+    <button type="submit" class="text-primary-container font-label-sm text-label-sm font-semibold px-3 py-2 rounded-full hover:bg-primary-fixed/40 active:scale-95 transition-all">Send</button>
+  </form>
+</div>
+
+<!-- Shared full-screen view -->
+<div id="pageView" class="fixed inset-0 z-[70] bg-background flex flex-col" hidden>
+  <header class="w-full h-14 px-2 bg-slate-surface sticky top-0 flex items-center gap-2 shadow-sm flex-shrink-0 border-b border-slate-border/50">
+    <button id="pageViewBack" aria-label="Back" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[22px]">arrow_back</span>
+    </button>
+    <span id="pageViewTitle" class="font-headline-sm text-headline-sm font-semibold"></span>
+    <div id="pageViewActions" class="ml-auto flex items-center gap-1"></div>
+  </header>
+  <div id="pageViewBody" class="flex-1 overflow-y-auto flex flex-col"></div>
+</div>
+
+<script type="module" src="./features.js"></script>
+<script type="module" src="./feed.js"></script>
+</body>
+</html>

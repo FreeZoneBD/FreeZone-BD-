@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Feed lab</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#111827; --mute:#6b7280; --line:#e5e7eb; --accent:#2563eb; --good:#047857; --bad:#b91c1c; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b21; --text:#e5e7eb; --mute:#9ca3af; --line:#2a2e37; --accent:#60a5fa; --good:#34d399; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; } p.sub { margin: 0 0 16px; color: var(--mute); }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:12px 18px; }
+  label.row { display:block; } label.row span { display:flex; justify-content:space-between; color:var(--mute); font-size:12px; }
+  label.row b { color:var(--text); font-weight:600; } input[type=range] { width:100%; accent-color: var(--accent); }
+  .checks { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; } .checks label { display:flex; gap:6px; align-items:center; }
+  button { font:inherit; padding:7px 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .scroll { overflow-x:auto; } table { border-collapse:collapse; width:100%; min-width:720px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; } th { color:var(--mute); font-weight:500; font-size:12px; }
+  td.num { text-align:right; font-variant-numeric: tabular-nums; } .tag { color:var(--accent); } .fol { color:var(--good); } .seen { color:var(--mute); text-decoration: line-through; }
+  .problem { color:var(--bad); } .ok { color:var(--good); } pre { margin:8px 0 0; padding:10px; background:var(--bg); border-radius:8px; overflow:auto; font-size:12px; }
+  .move { font-size:11px; } .up { color:var(--good); } .down { color:var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Feed lab</h1>
+  <p class="sub">Try the "Top" ranking with made-up posts. Move a slider and watch the order change. Nothing here touches the database.</p>
+
+  <section class="box">
+    <div class="grid" id="sliders"></div>
+    <div class="checks">
+      <label><input type="checkbox" id="cold"> I am a new person (no taste learned yet)</label>
+      <label><input type="checkbox" id="likeCats" checked> I like #cats</label>
+      <label><input type="checkbox" id="seenTop"> I already saw the first 3 posts</label>
+      <button id="reshuffle" type="button">New sample posts</button>
+      <button id="reset" type="button">Reset numbers</button>
+    </div>
+    <div id="problems" style="margin-top:10px"></div>
+  </section>
+
+  <section class="box">
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>Post</th><th>Age</th><th>Likes / Comments / Shares</th><th>Quality</th><th>Fresh</th><th>Boost</th><th>Penalty</th><th>Score</th><th>vs newest</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </section>
+
+  <section class="box">
+    <b>Changed numbers</b> <span style="color:var(--mute)">(copy into <code>makeConfig({...})</code> or into DEFAULT_CONFIG in feed-algorithm.js)</span>
+    <pre id="out">nothing changed</pre>
+    <div style="margin-top:8px"><button id="copy" class="primary" type="button">Copy</button> <span id="copied" style="color:var(--mute)"></span></div>
+  </section>
+</main>
+
+<script type="module">
+import { rankPosts, makeConfig, validateConfig, DEFAULT_CONFIG, emptyInterests, learnInterest } from "./feed-algorithm.js";
+
+const H = 3600000;
+const SLIDERS = [
+  ["freshness.halfLifeHours", "Post life (half-life, hours)", 3, 72, 1],
+  ["quality.comment", "A comment is worth (likes)", 0, 8, 0.5],
+  ["quality.share", "A share is worth (likes)", 0, 10, 0.5],
+  ["relationship.following", "Bonus for people I follow", 0, 1.5, 0.05],
+  ["interest.tag", "Bonus for a hashtag I like", 0, 1.5, 0.05],
+  ["reorder.seenPenalty", "A post I saw keeps (×)", 0.05, 1, 0.05],
+  ["reorder.sameAuthorGap", "Same author again after (posts)", 0, 5, 1],
+  ["coldStart.popularWeight", "New person: popular boost (power)", 1, 3, 0.1]
+];
+const get = (obj, path) => path.split(".").reduce((o, k) => o[k], obj);
+const set = (obj, path, v) => { const k = path.split("."); const last = k.pop(); k.reduce((o, x) => o[x], obj)[last] = v; };
+
+let seed = 7;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const FOLLOWING = { f1: 1, f2: 1, f3: 1 }, FOLLOWERS = { f1: 1 };
+let posts = [];
+function makePosts() {
+  const now = Date.now(); posts = [];
+  const authors = ["f1", "f2", "f3", ...Array.from({ length: 9 }, (_, i) => "s" + (i + 1))];
+  for (let i = 0; i < 30; i++) {
+    const uid = authors[Math.floor(rnd() * authors.length)];
+    const age = Math.pow(rnd(), 1.8) * 72 + 0.1;
+    const hot = rnd() < 0.15 ? 12 : 1;
+    const likes = Math.floor(Math.pow(rnd(), 3) * 30 * hot);
+    posts.push({
+      id: "P" + (i + 1), uid, createdAt: now - age * H, likesCount: likes,
+      commentsCount: Math.floor(likes * rnd() * 0.4), sharesCount: Math.floor(likes * rnd() * 0.15),
+      text: ["Morning walk", "New phone review", "Dhaka traffic again", "Cooking tonight", "Match day!"][i % 5] + (rnd() < 0.3 ? " #cats" : rnd() < 0.3 ? " #cars" : ""),
+      imageURL: rnd() < 0.4 ? "x" : undefined
+    });
+  }
+}
+
+const base = DEFAULT_CONFIG;
+const cfg = makeConfig({});
+const sliders = document.getElementById("sliders");
+SLIDERS.forEach(([path, label, min, max, step]) => {
+  const wrap = document.createElement("label"); wrap.className = "row";
+  wrap.innerHTML = `<span>${label}<b id="v_${path}"></b></span><input type="range" min="${min}" max="${max}" step="${step}" data-path="${path}">`;
+  sliders.appendChild(wrap);
+  wrap.querySelector("input").addEventListener("input", (e) => { set(cfg, path, Number(e.target.value)); draw(); });
+});
+const sync = () => SLIDERS.forEach(([path]) => {
+  sliders.querySelector(`[data-path="${path}"]`).value = get(cfg, path);
+});
+
+const $ = (id) => document.getElementById(id);
+function draw() {
+  const now = Date.now();
+  const me = emptyInterests();
+  if (!$("cold").checked) {
+    for (let i = 0; i < 12; i++) learnInterest(me, { id: "w", uid: "zz", text: "x" }, "like", cfg, now);
+    if ($("likeCats").checked) for (let i = 0; i < 6; i++) learnInterest(me, { id: "c", uid: "zz", text: "#cats" }, "like", cfg, now);
+  }
+  const newest = posts.slice().sort((a, b) => b.createdAt - a.createdAt).map((p) => p.id);
+  const seen = {};
+  if ($("seenTop").checked) newest.slice(0, 3).forEach((id) => { seen[id] = now; });
+  const ctx = { me: "me", now, followingIds: FOLLOWING, followerIds: FOLLOWERS, chattedIds: {}, seen, interests: me };
+  const ranked = rankPosts(posts, ctx, cfg, { explain: true });
+
+  $("rows").innerHTML = ranked.map((r, i) => {
+    const p = r.post, age = (now - p.createdAt) / H, was = newest.indexOf(p.id), move = was - i;
+    const who = FOLLOWING[p.uid] ? `<span class="fol">${p.uid} ✓</span>` : p.uid;
+    const text = p.text.replace(/#\w+/g, (m) => `<span class="tag">${m}</span>`);
+    return `<tr><td>${i + 1}</td><td class="${seen[p.id] ? "seen" : ""}">${p.id} · ${who} · ${text}${p.imageURL ? " 🖼" : ""}</td>
+      <td class="num">${age < 1 ? Math.round(age * 60) + "m" : age.toFixed(1) + "h"}</td>
+      <td class="num">${p.likesCount} / ${p.commentsCount} / ${p.sharesCount}</td>
+      <td class="num">${r.quality.toFixed(2)}</td><td class="num">${r.freshness.toFixed(2)}</td><td class="num">+${r.affinity.toFixed(2)}</td>
+      <td class="num">×${(r.penalty ?? 1).toFixed(2)}</td><td class="num"><b>${r.score.toFixed(2)}</b></td>
+      <td class="num move ${move > 0 ? "up" : move < 0 ? "down" : ""}">${move > 0 ? "▲" + move : move < 0 ? "▼" + -move : "–"}</td></tr>`;
+  }).join("");
+
+  SLIDERS.forEach(([path]) => { $("v_" + path).textContent = get(cfg, path); });
+  const problems = validateConfig(cfg);
+  $("problems").innerHTML = problems.length
+    ? problems.map((x) => `<div class="problem">⚠ ${x}</div>`).join("")
+    : `<div class="ok">Config check: all numbers are fine.</div>`;
+
+  const changed = {};
+  SLIDERS.forEach(([path]) => {
+    if (get(cfg, path) !== get(base, path)) {
+      const keys = path.split("."); let o = changed;
+      keys.slice(0, -1).forEach((k) => { o = o[k] = o[k] || {}; });
+      o[keys[keys.length - 1]] = get(cfg, path);
+    }
+  });
+  $("out").textContent = Object.keys(changed).length ? JSON.stringify(changed, null, 2) : "nothing changed";
+}
+
+["cold", "likeCats", "seenTop"].forEach((id) => $(id).addEventListener("change", draw));
+$("reshuffle").addEventListener("click", () => { seed = Math.floor(Math.random() * 1e6) + 1; makePosts(); draw(); });
+$("reset").addEventListener("click", () => { SLIDERS.forEach(([path]) => set(cfg, path, get(base, path))); sync(); draw(); });
+$("copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("out").textContent); $("copied").textContent = "Copied"; } catch (e) { $("copied").textContent = "Select the text and copy"; }
+});
+makePosts(); sync(); draw();
+</script>
+</body>
+</html>

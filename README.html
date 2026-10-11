@@ -1,0 +1,99 @@
+# FreeZone BD
+
+**Connect. Share. Chat.** সাধারণ JavaScript (ES modules), Firebase Authentication, Firebase Realtime Database ও Tailwind CSS (CDN) দিয়ে বানানো একটি সোশ্যাল অ্যাপ। ছবি imgbb তে আপলোড হয়, ডেটাবেসে শুধু ছবির লিংক থাকে। কোনো বিল্ড ধাপ নেই: ফাইলগুলো যেকোনো HTTPS স্ট্যাটিক হোস্টে রেখে `login.html` খুললেই চলে।
+
+## ফিচার
+
+- **ফিড**: ১ থেকে ৪টি ছবির পোস্ট, লাইক (ছবিতে ডাবল ট্যাপ), সেভ করা পোস্ট, শেয়ার ও রিপোর্ট
+- **ছবি ভিউয়ার** (ফেসবুক স্টাইল): সোয়াইপ, লাইক, কমেন্ট, শেয়ার ও মেনু
+- **কমেন্ট**: নিচ থেকে ওঠা শিটে, কমেন্টে লাইক, রিপ্লাই ও নোটিফিকেশনসহ
+- **প্রোফাইল**: ১৫০০×৫০০ ব্যানার (অ্যাডমিন বসায়), ছবি, বায়ো, ফলোয়ার সংখ্যা, Posts ও Saved ট্যাব
+- **বন্ধু**: ফলোয়ার, ফলোয়িং, সাজেশন, নাম বা @ইউজারনেম দিয়ে খোঁজা
+- **চ্যাট**: এক-একজনের মেসেজ, এডিট ও ডিলিট, "Seen", অ্যাক্টিভ স্ট্যাটাস এবং **অডিও ও ভিডিও কল** (WebRTC)
+- **স্টোরি**: পুরো স্ক্রিন ছবি, কারা দেখেছে তার তালিকা, রিপ্লাই ও রিঅ্যাকশন
+- **নোটিফিকেশন**: লাইক, কমেন্ট, রিপ্লাই, কমেন্টে লাইক, ফলো
+- **বিজ্ঞাপন**: পোস্টের মাঝে স্পনসর্ড কার্ড
+- **ব্লক** করা
+- **সেটিংস**: প্রোফাইল এডিট (নাম ৬০ দিনে একবার বদলানো যায়, @ইউজারনেম কখনো বদলায় না), পাসওয়ার্ড বদল, অ্যাকাউন্ট ডিলিট, ডার্ক মোড, Help center, সমস্যা জানানো, About, Terms, Privacy, Community guidelines, বন্ধুদের আমন্ত্রণ
+
+## ফাইলের তালিকা
+
+| ফাইল | কাজ |
+|---|---|
+| `login.html`, `login.js` | সাইন আপ, লগইন, পাসওয়ার্ড রিসেট |
+| `feed.html`, `feed.js` | মূল পেজ: ফিড, নিচের বার, পোস্ট পেজ। বাকি মডিউল দরকার মতো লোড করে |
+| `post.js` | পোস্ট কার্ড, ছবি ভিউয়ার, রিপোর্ট ডায়ালগ, শেয়ার ও সাধারণ সহায়ক ফাংশন |
+| `comments.js` | কমেন্ট তালিকা ও কমেন্ট শিট |
+| `create.js` | পোস্ট তৈরি (৪টি পর্যন্ত ছবি, আপলোড প্রগ্রেস) |
+| `profile.js` | প্রোফাইল পেজ (নিজের ও অন্যের) |
+| `friends.js` | সাজেশন, ফলোয়ার, ফলোয়িং, মানুষ খোঁজা |
+| `chat.js` | ইনবক্স, কথোপকথন, অনলাইন স্ট্যাটাস |
+| `call.js`, `call-config.js` | অডিও ও ভিডিও কল, STUN ও TURN সেটিংস |
+| `story.js` | স্টোরি |
+| `notification.js` | নোটিফিকেশন বেল ও নোটিফিকেশন লেখা |
+| `block.js` | ব্লক ও আনব্লক |
+| `ads.js` | বিজ্ঞাপন |
+| `settings.js`, `help.js`, `feedback.js`, `about.js` | সেটিংস ও তার উপ-পেজ |
+| `app-info.js` | অ্যাপের নাম, ভার্সন, সাপোর্ট ইমেইল, আমন্ত্রণ লিংক (এক জায়গায়) |
+| `terms.html`, `privacy.html`, `guidelines.html`, `legal.css` | আইনি পেজ |
+| `theme.css`, `theme.js` | লাইট ও ডার্ক রং (CSS ভেরিয়েবল) ও থিম বদল |
+| `imgbb.js` | imgbb তে ছবি আপলোড |
+| `config.js` | আপনার Firebase কনফিগ (বাকি ফাইলের সঙ্গে একই ফোল্ডারে রাখুন) |
+| `database.rules.json` | Realtime Database এর নিরাপত্তা নিয়ম (rules) |
+| `feed-demo.html` | শুধু ডিজাইন ডেমো, অ্যাপের অংশ নয় |
+
+সব ফাইল `feed.html` এর ফোল্ডারেই থাকতে হবে।
+
+## সেটআপ
+
+1. **Firebase প্রজেক্ট**: একটি প্রজেক্ট খুলুন, Web অ্যাপ যোগ করুন, **Authentication > Email/Password** চালু করুন এবং একটি **Realtime Database** বানান।
+2. **`config.js`**: এখান থেকে `auth` ও `db` এক্সপোর্ট করতে হবে (আপনার Firebase web config দিয়ে তৈরি)। বাকি ফাইলগুলো `./config.js` থেকে এ দুটো নেয়।
+3. **Rules**: Realtime Database > Rules এ `database.rules.json` এর লেখা পেস্ট করে **Publish** করুন। এই ফাইল বদলালে প্রতিবার আবার Publish করতে হবে। না করলে নতুন ফিচারে (কল, ব্যানার, কমেন্ট ইত্যাদি) "permission denied" আসবে।
+4. **imgbb**: `imgbb.js` এ `IMGBB_API_KEY` এ আপনার কী বসান।
+5. **সাপোর্ট ইমেইল**: `app-info.js` এ `SUPPORT_EMAIL` বসান।
+6. **হোস্টিং**: HTTPS ব্যবহার করুন (Firebase Hosting, Netlify, GitHub Pages ইত্যাদি)। কলে ক্যামেরা ও মাইক্রোফোন শুধু HTTPS এ চলে।
+7. **অনুমোদিত ডোমেইন**: Authentication > Settings > Authorised domains এ আপনার ডোমেইন যোগ করুন।
+
+## অ্যাডমিনের কাজ
+
+- **প্রোফাইল ব্যানার**: শুধু অ্যাডমিন বসাতে পারে। ছবির লিংক `users/{uid}/bannerURL` এ লিখুন (Firebase Console থেকে বা আপনার অ্যাডমিন প্যানেল থেকে)। ছবি ১৫০০×৫০০ (৩:১) মাপের হবে। ইউজার নিজে বদলাতে পারে না।
+- **অ্যাডমিন অ্যাকাউন্ট**: Console এ `admins/{অ্যাডমিনের uid}: true` বসান। এতে অ্যাপ থেকে `bannerURL` লেখা যাবে।
+- **বিজ্ঞাপন**: বিজ্ঞাপনের তথ্য `ads.js` পড়ে। কোন কোন ফিল্ড লাগে তা ওই ফাইলের উপরের কমেন্টে আছে।
+
+## কল
+
+কল WebRTC দিয়ে চলে। Firebase শুধু সংযোগের তথ্য বহন করে (`calls/{calleeUid}/{callId}`)। শব্দ ও ছবি দুই ফোনের মধ্যে সরাসরি যায়।
+
+- অন্য জনের ফোনে রিং হয় শুধু অ্যাপ খোলা থাকলে। অ্যাপ বন্ধ থাকলে রিং করতে পুশ নোটিফিকেশন লাগবে (এখনকার কোডে নেই)।
+- STUN দেওয়া আছে। মোবাইল ডেটায় কল না লাগলে `call-config.js` এ একটি **TURN** সার্ভার যোগ করুন।
+- একসঙ্গে একটি কল চলে, এবং শুধু ১-এর সঙ্গে ১।
+
+## ডেটার কাঠামো
+
+```
+users/{uid}                  name, nameLower, username, bio, photoURL, bannerURL, nameChangedAt, createdAt
+posts/{postId}               uid, name, username, photoURL, text, images, likesCount, commentsCount, likes, comments, createdAt
+followers/{uid}, following/{uid}, savedPosts/{uid}, blocks/{uid}
+notifications/{uid}/{id}     type: like | comment | reply | commentLike | follow
+chats/{chatId}               members, messages, reads        (chatId = দুই uid সাজিয়ে "_" দিয়ে জোড়া)
+userChats/{uid}/{chatId}     ইনবক্সের এন্ট্রি
+presence/{uid}               online, lastSeen
+stories, storyViews, storyReactions, storySeen
+calls/{calleeUid}/{callId}   offer, answer, status, callerIce, calleeIce
+feedback/{uid}/{id}          "Report a problem" এর বার্তা
+admins/{uid}                 true
+```
+
+## নিরাপত্তার কথা
+
+- imgbb এর কী ফ্রন্ট-এন্ড কোডে থাকে, তাই সাইট খুললে যে কেউ দেখতে পারে। বদলে নেওয়া যায় এমন কী ব্যবহার করুন। অ্যাপ বড় হলে ছবি আপলোডের জন্য ছোট একটি সার্ভার বা Cloud Function নেওয়ার কথা ভাবুন।
+- Firebase web config গোপন নয়। ডেটা বাঁচায় **rules**, তাই `database.rules.json` সবসময় পাবলিশ করা ও হালনাগাদ রাখুন।
+- এই ফাইলগুলোতে কখনো service-account কী বা অ্যাডমিন পাসওয়ার্ড রাখবেন না।
+
+## লোকালি টেস্ট
+
+ফোল্ডারটি যেকোনো লোকাল স্ট্যাটিক সার্ভার দিয়ে খুলুন (যেমন `python3 -m http.server`) এবং `http://localhost:8000/login.html` এ যান। ক্যামেরা ও মাইক্রোফোনের জন্য `localhost` নিরাপদ ঠিকানা হিসেবে ধরা হয়।
+
+## ভার্সন
+
+`app-info.js` এ `APP_VERSION` দেখুন। আইনি পেজে `LEGAL_UPDATED` এর তারিখ দেখায়।
