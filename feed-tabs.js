@@ -12,6 +12,7 @@ const readSaved = () => {
 };
 
 const readSort = () => {
+  return "top"; // no Top/Latest button any more: always Top
   try { return localStorage.getItem(SORT_KEY) === "latest" ? "latest" : "top"; } catch (error) { return "top"; }
 };
 
@@ -24,9 +25,10 @@ export function createFeedTabs({ before, onChange, onSortChange = () => {} }) {
   el.setAttribute("role", "tablist");
   el.innerHTML = [["foryou", "For you"], ["following", "Following"]]
     .map(([id, label]) => `<button type="button" role="tab" class="fz-feed-tab flex-1 relative h-11 font-label-lg text-label-lg font-semibold transition-colors" data-tab="${id}">${label}</button>`)
-    .join("") + `<button type="button" class="fz-sort shrink-0 ml-1 h-11 px-2 rounded-full flex items-center gap-1 font-label-md text-label-md font-semibold text-slate-muted hover:bg-surface-container transition-all" aria-label="Sort the feed"><span class="material-symbols-outlined text-[18px] fz-sort-icon"></span><span class="fz-sort-label"></span></button>`;
+    .join("");
   const paintSort = () => {
     const btn = el.querySelector(".fz-sort");
+    if (!btn) return; // the Top/Latest button was removed
     btn.querySelector(".fz-sort-icon").textContent = sort === "top" ? "auto_awesome" : "schedule";
     btn.querySelector(".fz-sort-label").textContent = sort === "top" ? "Top" : "Latest";
     btn.setAttribute("aria-label", sort === "top" ? "Sorted by Top. Tap to show the latest posts first" : "Sorted by Latest. Tap to show Top posts");
