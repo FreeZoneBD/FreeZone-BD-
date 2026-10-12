@@ -1,4 +1,4 @@
-// FreeZone BD - Login / Sign up / Forgot password
+// FreeZone BD - Login / Sign up (page by page) / Forgot password
 import { auth, db } from "./config.js";
 import { initTheme } from "./theme.js";
 initTheme();
@@ -15,15 +15,7 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 
-import {
-  ref,
-  get,
-  set,
-  query,
-  orderByChild,
-  equalTo,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+import { ref, get, set, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
 /* ---------------------------------------------------------------
    Settings
@@ -31,6 +23,8 @@ import {
 const DEFAULT_PAGE = "./feed.html";
 const USERNAME_RE = /^[a-z0-9_.]{3,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RESERVED = ["admin", "administrator", "support", "help", "freezone", "freezonebd", "official", "moderator", "root", "system", "staff", "team", "null", "undefined"];
+const SIGNUP_STEPS = ["name", "username", "email", "password", "terms"];
 
 /* ---------------------------------------------------------------
    Messages (Bangla first, English below)
@@ -55,7 +49,9 @@ const CUSTOM = {
   "need-password": ["পাসওয়ার্ড লিখুন।", "Please enter your password."],
   "need-name": ["নাম কমপক্ষে ২ অক্ষরের হতে হবে।", "Name must be at least 2 characters."],
   "bad-username": ["ইউজারনেম ৩–২০ অক্ষরের হতে হবে। শুধু ছোট হাতের ইংরেজি অক্ষর, সংখ্যা, _ এবং . চলবে।", "Username must be 3–20 characters: small letters, numbers, _ and . only."],
-  "username-taken": ["এই ইউজারনেম আগে থেকেই আছে। অন্যটি চেষ্টা করুন।", "This username is already taken. Try another one."],
+  "username-taken": ["এই ইউজারনেম আগে থেকেই আছে। অন্যটি বেছে নিন।", "This username is already taken. Pick another one."],
+  "username-reserved": ["এই ইউজারনেম ব্যবহার করা যাবে না।", "This username is reserved. Pick another one."],
+  "username-check-failed": ["ইউজারনেম যাচাই করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।", "Could not check the username. Check your connection and try again."],
   "need-terms": ["চালিয়ে যেতে শর্তাবলী ও গোপনীয়তা নীতিতে সম্মতি দিন।", "Please accept the Terms and Privacy Policy to continue."],
   "profile-failed": ["প্রোফাইল তৈরি করা যায়নি। আবার চেষ্টা করুন।", "Could not create your profile. Please try again."],
   "reset-sent": ["পাসওয়ার্ড রিসেটের লিংক পাঠানো হয়েছে। ইনবক্স (এবং স্প্যাম) দেখুন।", "If an account exists for this email, a reset link has been sent."],
@@ -66,23 +62,17 @@ const CUSTOM = {
    Elements
 ---------------------------------------------------------------- */
 const $ = (selector) => document.querySelector(selector);
-
 const bootEl = $("#boot");
 const pageEl = $("#page");
-const tabsEl = $("#tabs");
-const alertEl = $("#alert");
-
-const forms = {
-  login: $("#loginForm"),
-  signup: $("#signupForm"),
-  reset: $("#resetForm")
-};
+const steps = {};
+document.querySelectorAll("[data-step]").forEach((el) => { steps[el.dataset.step] = el; });
 
 const loginEmail = $("#loginEmail");
 const loginPassword = $("#loginPassword");
 const rememberMe = $("#rememberMe");
 const loginBtn = $("#loginBtn");
-
+const resetEmail = $("#resetEmail");
+const resetBtn = $("#resetBtn");
 const signupName = $("#signupName");
 const signupUsername = $("#signupUsername");
 const signupEmail = $("#signupEmail");
@@ -90,9 +80,9 @@ const signupPassword = $("#signupPassword");
 const agreeTerms = $("#agreeTerms");
 const signupBtn = $("#signupBtn");
 const usernameHint = $("#usernameHint");
+const unNext = $("#unNext");
 
-const resetEmail = $("#resetEmail");
-const resetBtn = $("#resetBtn");
+const firstInput = { login: loginEmail, reset: resetEmail, name: signupName, username: signupUsername, email: signupEmail, password: signupPassword, terms: null };
 
 /* ---------------------------------------------------------------
    Redirect helpers
@@ -101,7 +91,6 @@ const resetBtn = $("#resetBtn");
 function getNextUrl() {
   const next = new URLSearchParams(window.location.search).get("next");
   if (!next) return DEFAULT_PAGE;
-
   try {
     const url = new URL(next, window.location.href);
     const sameSite = url.origin === window.location.origin;
@@ -112,70 +101,77 @@ function getNextUrl() {
     return DEFAULT_PAGE;
   }
 }
-
-function goNext() {
-  window.location.replace(getNextUrl());
-}
+const goNext = () => window.location.replace(getNextUrl());
 
 /* ---------------------------------------------------------------
    UI helpers
 ---------------------------------------------------------------- */
-function showAlert(type, key) {
+let current = "login";
+
+function showMsg(step, key, kind = "error") {
+  const box = steps[step]?.querySelector(".msg");
+  if (!box) return;
   const pair = MESSAGES[key] || CUSTOM[key] || CUSTOM.unknown;
-  const styles = {
-    error: { box: "bg-error-container text-on-error-container", icon: "error" },
-    success: { box: "bg-emerald-50 text-emerald-800", icon: "check_circle" }
-  }[type];
-
-  alertEl.className = `mb-4 rounded-xl px-3.5 py-3 flex items-start gap-2.5 text-[14px] ${styles.box}`;
-  $("#alertIcon").textContent = styles.icon;
-  $("#alertBn").textContent = pair[0];
-  $("#alertEn").textContent = pair[1];
-  alertEl.hidden = false;
+  box.className = "msg mt-3 rounded-xl px-3.5 py-2.5 text-[14px] " + (kind === "success" ? "bg-emerald-50 text-emerald-800" : "bg-error-container text-on-error-container");
+  box.querySelector(".bn").textContent = pair[0];
+  box.querySelector(".en").textContent = pair[1];
+  box.hidden = false;
 }
-
-function clearAlert() {
-  alertEl.hidden = true;
-  document.querySelectorAll(".field[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+function clearMsg(step = current) {
+  const form = steps[step];
+  if (!form) return;
+  const box = form.querySelector(".msg");
+  if (box) box.hidden = true;
+  form.querySelectorAll(".field[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
 }
-
-function fail(input, key) {
-  showAlert("error", key);
-  if (input) {
-    input.setAttribute("aria-invalid", "true");
-    input.focus();
-  }
+function fail(step, input, key) {
+  showMsg(step, key);
+  if (input) { input.setAttribute("aria-invalid", "true"); input.focus(); }
+  return false;
 }
-
 function setLoading(button, loading, label) {
   button.disabled = loading;
   button.innerHTML = loading ? `<span class="spinner"></span><span>${label}</span>` : label;
 }
+const friendlyKey = (error) => (MESSAGES[error?.code] ? error.code : "unknown");
 
-function showView(view, { focus = true } = {}) {
-  clearAlert();
-  Object.entries(forms).forEach(([name, form]) => (form.hidden = name !== view));
-  tabsEl.hidden = view === "reset";
-
-  [["login", $("#tabLogin")], ["signup", $("#tabSignup")]].forEach(([name, btn]) => {
-    const active = name === view;
-    btn.setAttribute("aria-selected", String(active));
-    btn.className =
-      "flex-1 py-2.5 rounded-lg text-[14px] font-semibold transition-all " +
-      (active ? "bg-slate-surface text-primary shadow-sm" : "text-slate-muted");
-  });
-
-  const firstField = { login: loginEmail, signup: signupName, reset: resetEmail }[view];
-  if (focus) firstField.focus();
+// the page you see: one full screen at a time
+let navCount = 0;
+function showStep(name, { dir = "fwd", focus = true } = {}) {
+  if (!steps[name]) name = "login";
+  Object.entries(steps).forEach(([key, el]) => { el.hidden = key !== name; });
+  const el = steps[name];
+  el.classList.remove("step-in-fwd", "step-in-back");
+  void el.offsetWidth;
+  el.classList.add(dir === "back" ? "step-in-back" : "step-in-fwd");
+  current = name;
+  window.scrollTo(0, 0);
+  if (name === "terms") fillSummary();
+  if (name === "username") onEnterUsername();
+  if (focus && firstInput[name]) setTimeout(() => firstInput[name].focus(), 60);
 }
-
-function friendlyKey(error) {
-  return MESSAGES[error?.code] ? error.code : "unknown";
+function goStep(name) {
+  navCount++;
+  history.pushState({ step: name, n: navCount }, "");
+  showStep(name, { dir: "fwd" });
 }
+function goBack(fallback) {
+  if (history.state && history.state.n > 0) history.back();
+  else { history.replaceState({ step: fallback, n: 0 }, ""); navCount = 0; showStep(fallback, { dir: "back" }); }
+}
+window.addEventListener("popstate", (event) => {
+  const st = event.state;
+  if (!st) { showStep("login", { dir: "back", focus: false }); return; }
+  const dir = (st.n || 0) < navCount ? "back" : "fwd";
+  navCount = st.n || 0;
+  showStep(st.step, { dir });
+});
 
-/* ---------------------------------------------------------------
-   Show / hide password
----------------------------------------------------------------- */
+document.querySelectorAll("[data-back]").forEach((btn) => btn.addEventListener("click", () => goBack(btn.dataset.back)));
+document.querySelectorAll("[data-go]").forEach((btn) => btn.addEventListener("click", () => goStep(btn.dataset.go)));
+$("#forgotBtn").addEventListener("click", () => { resetEmail.value = loginEmail.value.trim(); goStep("reset"); });
+
+// show / hide password
 document.querySelectorAll("[data-toggle-password]").forEach((button) => {
   button.addEventListener("click", () => {
     const input = button.parentElement.querySelector("input");
@@ -187,46 +183,31 @@ document.querySelectorAll("[data-toggle-password]").forEach((button) => {
   });
 });
 
-/* ---------------------------------------------------------------
-   View switching
----------------------------------------------------------------- */
-document.querySelectorAll("[data-view]").forEach((el) => {
-  el.addEventListener("click", () => showView(el.dataset.view));
-});
-
-$("#forgotBtn").addEventListener("click", () => {
-  resetEmail.value = loginEmail.value.trim();
-  showView("reset");
-});
-
-// Clear the red border as soon as the user edits a field
+// clear the red border as soon as the user edits a field
 document.addEventListener("input", (event) => {
-  if (event.target.matches(".field")) event.target.removeAttribute("aria-invalid");
+  if (event.target.matches(".field")) { event.target.removeAttribute("aria-invalid"); clearMsg(current); }
 });
 
 /* ---------------------------------------------------------------
    LOGIN
 ---------------------------------------------------------------- */
-forms.login.addEventListener("submit", async (event) => {
+steps.login.addEventListener("submit", async (event) => {
   event.preventDefault();
-  clearAlert();
-
+  clearMsg("login");
   const email = loginEmail.value.trim();
   const password = loginPassword.value;
-
-  if (!email) return fail(loginEmail, "need-email");
-  if (!EMAIL_RE.test(email)) return fail(loginEmail, "auth/invalid-email");
-  if (!password) return fail(loginPassword, "need-password");
+  if (!email) return fail("login", loginEmail, "need-email");
+  if (!EMAIL_RE.test(email)) return fail("login", loginEmail, "auth/invalid-email");
+  if (!password) return fail("login", loginPassword, "need-password");
 
   setLoading(loginBtn, true, "Logging in...");
   try {
-    // Remember me: stay logged in, or only until the browser/tab is closed
     await setPersistence(auth, rememberMe.checked ? browserLocalPersistence : browserSessionPersistence);
     await signInWithEmailAndPassword(auth, email, password);
     goNext();
   } catch (error) {
     console.error(error);
-    showAlert("error", friendlyKey(error));
+    showMsg("login", friendlyKey(error));
     setLoading(loginBtn, false, "Login");
   }
 });
@@ -234,74 +215,155 @@ forms.login.addEventListener("submit", async (event) => {
 /* ---------------------------------------------------------------
    FORGOT PASSWORD
 ---------------------------------------------------------------- */
-forms.reset.addEventListener("submit", async (event) => {
+steps.reset.addEventListener("submit", async (event) => {
   event.preventDefault();
-  clearAlert();
-
+  clearMsg("reset");
   const email = resetEmail.value.trim();
-  if (!email) return fail(resetEmail, "need-email");
-  if (!EMAIL_RE.test(email)) return fail(resetEmail, "auth/invalid-email");
+  if (!email) return fail("reset", resetEmail, "need-email");
+  if (!EMAIL_RE.test(email)) return fail("reset", resetEmail, "auth/invalid-email");
 
   setLoading(resetBtn, true, "Sending...");
   try {
     await sendPasswordResetEmail(auth, email);
-    showAlert("success", "reset-sent");
+    showMsg("reset", "reset-sent", "success");
   } catch (error) {
     console.error(error);
     // For privacy we do not reveal whether the email exists
-    if (error.code === "auth/user-not-found") showAlert("success", "reset-sent");
-    else showAlert("error", friendlyKey(error));
+    if (error.code === "auth/user-not-found") showMsg("reset", "reset-sent", "success");
+    else showMsg("reset", friendlyKey(error));
   }
   setLoading(resetBtn, false, "Send reset link");
 });
 
 /* ---------------------------------------------------------------
-   SIGN UP: username check + password strength
+   USERNAME: one registry node per name (usernames/{name} = uid)
+   so two people can never own the same name, even at the same moment.
 ---------------------------------------------------------------- */
-async function isUsernameTaken(username, ownUid) {
-  const snap = await get(query(ref(db, "users"), orderByChild("username"), equalTo(username)));
-  let taken = false;
-  snap.forEach((child) => {
-    if (child.key !== ownUid) taken = true;
-  });
-  return taken;
+const availCache = new Map(); // name -> true (free) / false (taken)
+
+// true = free, false = taken, throws when it could not be checked
+async function isFree(name) {
+  if (availCache.has(name)) return availCache.get(name);
+  const snap = await get(ref(db, `usernames/${name}`));
+  const free = !snap.exists();
+  availCache.set(name, free);
+  return free;
 }
 
-let usernameTimer = null;
-let usernameRun = 0;
+function validateUsername(name) {
+  if (!USERNAME_RE.test(name) || /^\.|\.$|\.\./.test(name)) return "bad-username";
+  if (RESERVED.includes(name)) return "username-reserved";
+  return null;
+}
 
-function setUsernameHint(text, tone) {
+let unState = "idle"; // idle | checking | free | taken | bad | unknown
+let unRun = 0;
+let unTimer = null;
+
+function setUnState(state, text, tone) {
+  unState = state;
   const tones = { neutral: "text-slate-subtle", good: "text-online-emerald", bad: "text-error" };
   usernameHint.textContent = text;
-  usernameHint.className = `text-[12.5px] mt-1 ${tones[tone]}`;
+  usernameHint.className = `text-[13.5px] mt-2 min-h-[20px] ${tones[tone]}`;
+  const icon = {
+    checking: `<span class="spinner dark"></span>`,
+    free: `<span class="material-symbols-outlined text-online-emerald" style="font-variation-settings:'FILL' 1;">check_circle</span>`,
+    taken: `<span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">cancel</span>`,
+    bad: `<span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1;">cancel</span>`
+  }[state] || "";
+  $("#unState").innerHTML = icon;
+  unNext.disabled = state === "checking" || state === "taken" || state === "bad" || !signupUsername.value;
+}
+
+function normalizeUsername(value) {
+  return value.replace(/^@/, "").toLowerCase().replace(/\s/g, "");
+}
+
+async function checkUsername() {
+  const value = signupUsername.value;
+  const run = ++unRun;
+  clearTimeout(unTimer);
+  if (!value) { setUnState("idle", "3-20 characters: small letters, numbers, _ and .", "neutral"); hideSuggest(); return; }
+  const problem = validateUsername(value);
+  if (problem) {
+    setUnState("bad", problem === "username-reserved" ? "This username is reserved" : "Use 3-20 small letters, numbers, _ or . (no dot at the start or end)", "bad");
+    hideSuggest();
+    return;
+  }
+  setUnState("checking", "Checking...", "neutral");
+  unTimer = setTimeout(async () => {
+    try {
+      const free = await isFree(value);
+      if (run !== unRun) return;
+      if (free) { setUnState("free", `@${value} is available`, "good"); hideSuggest(); }
+      else { setUnState("taken", `@${value} is already taken`, "bad"); showSuggestions(value); }
+    } catch (error) {
+      console.warn("Username check failed:", error);
+      if (run === unRun) setUnState("unknown", "Could not check right now. It is checked again when you create the account.", "neutral");
+    }
+  }, 350);
 }
 
 signupUsername.addEventListener("input", () => {
-  signupUsername.value = signupUsername.value.replace(/^@/, "").toLowerCase().replace(/\s/g, "");
-  const value = signupUsername.value;
-
-  clearTimeout(usernameTimer);
-  usernameRun++;
-
-  if (!value) return setUsernameHint("3–20 characters: small letters, numbers, _ and .", "neutral");
-  if (!USERNAME_RE.test(value)) {
-    return setUsernameHint("Use 3–20 small letters, numbers, _ or . only", "bad");
-  }
-
-  setUsernameHint("Checking...", "neutral");
-  const run = usernameRun;
-  usernameTimer = setTimeout(async () => {
-    try {
-      const taken = await isUsernameTaken(value, null);
-      if (run !== usernameRun) return;
-      setUsernameHint(taken ? "This username is already taken" : "Username is available", taken ? "bad" : "good");
-    } catch (error) {
-      // Not logged in yet, so the database may not allow this lookup. It is checked again on sign up.
-      if (run === usernameRun) setUsernameHint("Looks good", "neutral");
-    }
-  }, 500);
+  signupUsername.value = normalizeUsername(signupUsername.value);
+  checkUsername();
 });
 
+/* suggestions: only names that are really free */
+const hideSuggest = () => { $("#unSuggest").hidden = true; };
+let suggestRun = 0;
+
+function latinBase(text) {
+  const words = String(text || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
+  return { words, joined: words.join("").slice(0, 14) };
+}
+function candidatesFor(seed) {
+  const { words, joined } = latinBase(seed);
+  const base = joined.length >= 3 ? joined : "user";
+  const rnd = (n) => String(Math.floor(Math.random() * 10 ** n)).padStart(n, "0");
+  const list = [base, words.length > 1 ? `${words[0]}.${words[1]}`.slice(0, 20) : `${base}.bd`, `${base}_bd`, `${base}${rnd(2)}`, `${base}${rnd(3)}`, `${base}.${rnd(2)}`, `${base}_${rnd(3)}`, `${base}${rnd(4)}`, `${base}${rnd(4)}`];
+  return [...new Set(list)].map((n) => n.slice(0, 20)).filter((n) => !validateUsername(n));
+}
+async function findFree(seed, want = 4) {
+  const found = [];
+  const names = candidatesFor(seed);
+  const flags = await Promise.all(names.map((n) => isFree(n).catch(() => null)));
+  names.forEach((n, i) => { if (flags[i] === true && found.length < want) found.push(n); });
+  return found;
+}
+async function showSuggestions(seed) {
+  const run = ++suggestRun;
+  const found = await findFree(seed);
+  if (run !== suggestRun || signupUsername.value !== seed) return;
+  const box = $("#unSuggest");
+  if (!found.length) { box.hidden = true; return; }
+  $("#unChips").innerHTML = found.map((n) => `<button type="button" class="chip" data-name="${n}">@${n}</button>`).join("");
+  box.hidden = false;
+}
+$("#unChips").addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-name]");
+  if (!chip) return;
+  signupUsername.value = chip.dataset.name;
+  checkUsername();
+});
+
+// coming to this page: suggest a name from the full name, if the box is empty
+async function onEnterUsername() {
+  if (signupUsername.value) { checkUsername(); return; }
+  setUnState("idle", "3-20 characters: small letters, numbers, _ and .", "neutral");
+  hideSuggest();
+  const run = ++suggestRun;
+  try {
+    const found = await findFree(signupName.value);
+    if (run !== suggestRun || signupUsername.value || !found.length) return;
+    $("#unChips").innerHTML = found.map((n) => `<button type="button" class="chip" data-name="${n}">@${n}</button>`).join("");
+    $("#unSuggest").hidden = false;
+  } catch (error) { /* suggestions are optional */ }
+}
+
+/* ---------------------------------------------------------------
+   Password strength
+---------------------------------------------------------------- */
 signupPassword.addEventListener("input", () => {
   const value = signupPassword.value;
   let score = 0;
@@ -310,58 +372,123 @@ signupPassword.addEventListener("input", () => {
   if (/[A-Z]/.test(value) && /[a-z]/.test(value)) score++;
   if (/\d/.test(value) && /[^A-Za-z0-9]/.test(value)) score++;
   if (!value) score = 0;
-
   const colors = ["bg-error", "bg-orange-400", "bg-yellow-400", "bg-online-emerald"];
   const labels = ["", "Weak", "Fair", "Good", "Strong"];
   document.querySelectorAll(".strength").forEach((bar, index) => {
-    bar.className = "strength h-1 flex-1 rounded-full transition-colors " + (index < score ? colors[score - 1] : "bg-surface-container");
+    bar.className = "strength h-1.5 flex-1 rounded-full transition-colors " + (index < score ? colors[score - 1] : "bg-surface-container");
   });
   $("#strengthText").textContent = value ? labels[score] : "";
 });
 
 /* ---------------------------------------------------------------
-   SIGN UP
+   SIGN UP, page by page
 ---------------------------------------------------------------- */
+steps.name.addEventListener("submit", (event) => {
+  event.preventDefault();
+  clearMsg("name");
+  signupName.value = signupName.value.replace(/\s+/g, " ").trim();
+  if (signupName.value.length < 2) return fail("name", signupName, "need-name");
+  goStep("username");
+});
+
+steps.username.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearMsg("username");
+  const value = signupUsername.value;
+  const problem = validateUsername(value);
+  if (problem) return fail("username", signupUsername, problem);
+  setLoading(unNext, true, "Checking...");
+  let free = null;
+  try { free = await isFree(value); } catch (error) { console.warn("Username check failed:", error); }
+  setLoading(unNext, false, "Next");
+  if (free === false) { setUnState("taken", `@${value} is already taken`, "bad"); showSuggestions(value); return fail("username", signupUsername, "username-taken"); }
+  goStep("email");
+});
+
+steps.email.addEventListener("submit", (event) => {
+  event.preventDefault();
+  clearMsg("email");
+  const email = signupEmail.value.trim();
+  if (!email) return fail("email", signupEmail, "need-email");
+  if (!EMAIL_RE.test(email)) return fail("email", signupEmail, "auth/invalid-email");
+  goStep("password");
+});
+
+steps.password.addEventListener("submit", (event) => {
+  event.preventDefault();
+  clearMsg("password");
+  if (signupPassword.value.length < 6) return fail("password", signupPassword, "auth/weak-password");
+  goStep("terms");
+});
+
+function fillSummary() {
+  const name = signupName.value.trim();
+  $("#sumAvatar").textContent = (name.charAt(0) || "?").toUpperCase();
+  $("#sumName").textContent = name;
+  $("#sumUser").textContent = "@" + signupUsername.value;
+  $("#sumEmail").textContent = signupEmail.value.trim();
+}
+
+// go back to an earlier page to fix something
+function backTo(stepName, input, key) {
+  const idx = SIGNUP_STEPS.indexOf(stepName);
+  const here = SIGNUP_STEPS.indexOf(current);
+  const jump = here - idx;
+  const finish = () => { showMsg(stepName, key); if (input) input.setAttribute("aria-invalid", "true"); };
+  if (jump > 0 && history.state && history.state.n >= jump) {
+    const onPop = () => { window.removeEventListener("popstate", onPop); setTimeout(finish, 0); };
+    window.addEventListener("popstate", onPop);
+    history.go(-jump);
+  } else { showStep(stepName, { dir: "back" }); finish(); }
+}
+
 let signingUp = false; // stops the "already logged in" redirect while the profile is being created
 
-forms.signup.addEventListener("submit", async (event) => {
+steps.terms.addEventListener("submit", async (event) => {
   event.preventDefault();
-  clearAlert();
+  clearMsg("terms");
 
   const name = signupName.value.trim().replace(/\s+/g, " ");
-  const username = signupUsername.value.trim().replace(/^@/, "").toLowerCase();
+  const username = signupUsername.value;
   const email = signupEmail.value.trim();
   const password = signupPassword.value;
-
-  if (name.length < 2) return fail(signupName, "need-name");
-  if (!USERNAME_RE.test(username)) return fail(signupUsername, "bad-username");
-  if (!email) return fail(signupEmail, "need-email");
-  if (!EMAIL_RE.test(email)) return fail(signupEmail, "auth/invalid-email");
-  if (password.length < 6) return fail(signupPassword, "auth/weak-password");
-  if (!agreeTerms.checked) return showAlert("error", "need-terms");
+  if (!agreeTerms.checked) return showMsg("terms", "need-terms");
 
   signingUp = true;
   setLoading(signupBtn, true, "Creating account...");
+  const reset = () => { signingUp = false; setLoading(signupBtn, false, "Create account"); };
 
   let user = null;
+  let claimed = false;
+  const undo = async () => {
+    if (!user) return;
+    if (claimed) await remove(ref(db, `usernames/${username}`)).catch(() => {});
+    await user.delete().catch(() => signOut(auth));
+    user = null;
+  };
+
   try {
     await setPersistence(auth, browserLocalPersistence);
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     user = credential.user;
 
-    // Username must be unique (checked now, because the database needs a logged-in user)
-    let taken = false;
+    // Reserve the username first. The database allows this only if nobody owns the name.
     try {
-      taken = await isUsernameTaken(username, user.uid);
+      await set(ref(db, `usernames/${username}`), user.uid);
+      claimed = true;
     } catch (error) {
-      console.warn("Could not verify username uniqueness:", error);
-    }
-    if (taken) {
-      await user.delete().catch(() => signOut(auth));
-      user = null;
-      signingUp = false;
-      setLoading(signupBtn, false, "Create account");
-      return fail(signupUsername, "username-taken");
+      const code = error?.code || "";
+      await undo();
+      reset();
+      if (/permission/i.test(code)) {
+        availCache.set(username, false);
+        backTo("username", signupUsername, "username-taken");
+        setUnState("taken", `@${username} is already taken`, "bad");
+        showSuggestions(username);
+      } else {
+        showMsg("terms", "username-check-failed");
+      }
+      return;
     }
 
     await updateProfile(user, { displayName: name }).catch(() => {});
@@ -377,20 +504,20 @@ forms.signup.addEventListener("submit", async (event) => {
       });
     } catch (error) {
       console.error("Profile write failed:", error);
-      // Do not leave an account without a profile behind
-      await user.delete().catch(() => signOut(auth));
-      user = null;
-      signingUp = false;
-      setLoading(signupBtn, false, "Create account");
-      return showAlert("error", "profile-failed");
+      await undo(); // do not leave an account (or a reserved name) without a profile behind
+      reset();
+      return showMsg("terms", "profile-failed");
     }
 
     goNext();
   } catch (error) {
     console.error(error);
-    signingUp = false;
-    showAlert("error", friendlyKey(error));
-    setLoading(signupBtn, false, "Create account");
+    await undo();
+    reset();
+    const key = friendlyKey(error);
+    if (key === "auth/email-already-in-use" || key === "auth/invalid-email") backTo("email", signupEmail, key);
+    else if (key === "auth/weak-password") backTo("password", signupPassword, key);
+    else showMsg("terms", key);
   }
 });
 
@@ -400,17 +527,13 @@ forms.signup.addEventListener("submit", async (event) => {
 let firstAuthCheck = true;
 
 onAuthStateChanged(auth, (user) => {
-  if (user && !signingUp) {
-    goNext();
-    return;
-  }
-
+  if (user && !signingUp) { goNext(); return; }
   if (firstAuthCheck) {
     firstAuthCheck = false;
     bootEl.hidden = true;
     pageEl.hidden = false;
-
-    const tab = new URLSearchParams(window.location.search).get("tab");
-    showView(tab === "signup" ? "signup" : "login", { focus: false }); // no keyboard pop-up on load
+    history.replaceState({ step: "login", n: 0 }, "");
+    showStep("login", { focus: false }); // no keyboard pop-up on load
+    if (new URLSearchParams(window.location.search).get("tab") === "signup") goStep("name");
   }
 });
