@@ -1,49 +1,39 @@
-// FreeZone BD - Ads
+// FreeZone BD - Ads = boosted posts ("Sponsored")
 //
-// How it works
+// A person pays to boost one of their own posts (boost.js). When the admin approves it, the boost is copied to
+// boostLive/{boostId} and this file shows that post between other posts, marked "Sponsored", with the button
+// and link the person chose. Nothing else is shown here: there are no other ads.
+//
 //  1. Nothing changes on the page by default: no space is reserved for ads.
-//  2. When ad data is ready and the ad image has loaded, a slot is inserted between two posts,
-//     the gap opens smoothly and the ad appears.
-//  3. If anything fails (no ads, no permission, no network, image error, ads.js problem),
-//     nothing is inserted and the feed stays exactly as it was.
+//  2. When the data is ready and the picture has loaded, a slot is inserted between two posts, the gap opens smoothly.
+//  3. If anything fails (no boosts, no permission, no network, a deleted post, ...) nothing is inserted and the feed stays as it was.
 //
-// Use:  import("./ads.js").then((m) => m.insertAds(container, { placement: "feed" }))
+// Use:  import("./ads.js").then((m) => m.insertAds(container, { placement: "feed", context }))
 //       Call it after the posts have been rendered into `container`.
+//       context = { interests, me (my uid), isBlocked(uid), onOpen(post) }   - all optional
 //
-// Firebase data (add from the Firebase Console):
-//   ads/{adId} = {   (optional  tags: "food, cars"  = what the ad is about; without it the #hashtags of the text are used)
-//     active: true, advertiser: "Shop name", logoURL: "https://...", title: "Headline",
-//     text: "Short description", imageURL: "https://...", link: "https://...", cta: "Learn more",
-//     startAt: 1767225600000, endAt: 1769904000000,          // optional, milliseconds
-//     placements: { feed: true, profile: true },             // optional, default: everywhere
-//     impressions: 0, clicks: 0
-//   }
-//   config/ads = { enabled: true, feed: { firstAfter: 3, every: 5 }, profile: { firstAfter: 2, every: 6 } }   // optional
+// Data (Firebase Realtime Database), written by the admin when a boost is approved:
+//   boostLive/{boostId} = { postId, uid, btnText, link (https), startAt, endAt, impressions, clicks }
+// The post itself is read from posts/{postId}, so it is always the current text and picture.
 
 import { db } from "./config.js";
 
-import {
-  ref,
-  get,
-  update,
-  increment
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+import { ref, get, update, increment, query, orderByChild, startAt } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-import { escapeHtml, showToast } from "./post.js";
+import { escapeHtml, showToast, avatarHtml, postImageUrls, postVideoOf, timeAgo } from "./post.js";
 import { pickAdsForSlots } from "./feed-algorithm.js";
 
 /* ---------------------------------------------------------------
    Settings
 ---------------------------------------------------------------- */
-const DEFAULT_CONFIG = {
-  enabled: true,
+const POSITIONS = {
   feed: { firstAfter: 3, every: 5 },
   profile: { firstAfter: 2, every: 6 }
 };
 
-const CACHE_MS = 5 * 60 * 1000; // re-read ads from Firebase at most every 5 minutes
-const IMAGE_TIMEOUT_MS = 6000; // give up on an ad whose image does not load in time
-const VISIBLE_MS = 1000; // an ad counts as "seen" after 1 second at least half visible
+const CACHE_MS = 5 * 60 * 1000; // re-read the boosts from Firebase at most every 5 minutes
+const IMAGE_TIMEOUT_MS = 6000; // give up on a post whose picture does not load in time
+const VISIBLE_MS = 1000; // counted as "seen" after 1 second at least half visible
 const HIDDEN_KEY = "fz_hidden_ads";
 
 /* ---------------------------------------------------------------
@@ -67,60 +57,66 @@ function injectStyles() {
 }
 
 /* ---------------------------------------------------------------
-   Data
+   Data: the live boosts and their posts
 ---------------------------------------------------------------- */
 let dataCache = { time: 0, promise: null };
 
-function safeUrl(url) {
+const httpsUrl = (url) => {
   try {
     const parsed = new URL(String(url));
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : "";
+    return parsed.protocol === "https:" ? parsed.href : "";
   } catch (error) {
     return "";
   }
-}
-
-function mergeConfig(remote) {
-  const config = {
-    enabled: DEFAULT_CONFIG.enabled,
-    feed: { ...DEFAULT_CONFIG.feed },
-    profile: { ...DEFAULT_CONFIG.profile }
-  };
-  if (!remote || typeof remote !== "object") return config;
-
-  if (remote.enabled === false) config.enabled = false;
-  ["feed", "profile"].forEach((key) => {
-    const value = remote[key];
-    if (!value || typeof value !== "object") return;
-    if (Number.isFinite(value.firstAfter) && value.firstAfter >= 1) config[key].firstAfter = Math.floor(value.firstAfter);
-    if (Number.isFinite(value.every) && value.every >= 2) config[key].every = Math.floor(value.every);
-  });
-  return config;
-}
+};
 
 function loadData() {
   if (dataCache.promise && Date.now() - dataCache.time < CACHE_MS) return dataCache.promise;
 
   dataCache.time = Date.now();
   dataCache.promise = (async () => {
-    let config = mergeConfig(null);
+    const now = Date.now();
+    const live = [];
     try {
-      const configSnap = await get(ref(db, "config/ads"));
-      if (configSnap.exists()) config = mergeConfig(configSnap.val());
-    } catch (error) {
-      // No config is fine: defaults are used
-    }
-
-    const ads = [];
-    try {
-      const adsSnap = await get(ref(db, "ads"));
-      adsSnap.forEach((child) => {
-        ads.push({ id: child.key, ...child.val() });
+      const snap = await get(query(ref(db, "boostLive"), orderByChild("endAt"), startAt(now)));
+      snap.forEach((child) => {
+        const boost = child.val();
+        if (boost && Number.isFinite(boost.startAt) && boost.startAt <= now) live.push({ boostId: child.key, ...boost });
       });
     } catch (error) {
-      console.warn("Ads: could not read ads (the feed is unaffected):", error?.code || error);
+      console.warn("Ads: could not read the boosts (the feed is unaffected):", error?.code || error);
+      return [];
     }
-    return { config, ads };
+
+    // The posts. A deleted, private or followers-only post is not shown.
+    const ads = await Promise.all(
+      live.slice(0, 40).map(async (boost) => {
+        try {
+          const postSnap = await get(ref(db, `posts/${boost.postId}`));
+          if (!postSnap.exists()) return null;
+          const post = { id: boost.postId, ...postSnap.val() };
+          if (post.uid !== boost.uid) return null; // the boost belongs to the post's own author only
+          if (post.audience === "me" || post.audience === "followers") return null;
+          const link = httpsUrl(boost.link);
+          if (!link) return null;
+          // `id` / `text` / `impressions` / `clicks` are what the feed algorithm reads when it picks an ad
+          return {
+            id: boost.boostId,
+            post,
+            link,
+            btnText: String(boost.btnText || "Learn more").slice(0, 24),
+            text: post.text || "",
+            impressions: Number(boost.impressions) || 0,
+            clicks: Number(boost.clicks) || 0,
+            startAt: boost.startAt,
+            endAt: boost.endAt
+          };
+        } catch (error) {
+          return null;
+        }
+      })
+    );
+    return ads.filter(Boolean);
   })();
 
   return dataCache.promise;
@@ -151,7 +147,7 @@ function rememberHidden(adId) {
 }
 
 /* ---------------------------------------------------------------
-   Frequency cap (feed algorithm part 14): how often I saw each ad today. Kept on this phone, one day at a time.
+   Frequency cap: how often I saw each ad today. Kept on this phone, one day at a time.
 ---------------------------------------------------------------- */
 const FREQ_KEY = "fz_ad_freq";
 const dayKey = () => new Date().toISOString().slice(0, 10);
@@ -172,19 +168,7 @@ function recordShown(adId) {
 }
 
 /* ---------------------------------------------------------------
-   Choosing ads
----------------------------------------------------------------- */
-function isEligible(ad, placement, now, hidden) {
-  if (ad.active !== true || hidden.has(ad.id)) return false;
-  if (Number.isFinite(ad.startAt) && now < ad.startAt) return false;
-  if (Number.isFinite(ad.endAt) && now > ad.endAt) return false;
-  if (ad.placements && typeof ad.placements === "object" && ad.placements[placement] !== true) return false;
-  if (!ad.text && !ad.title && !ad.imageURL) return false;
-  return true;
-}
-
-/* ---------------------------------------------------------------
-   Image preloading: an ad is only shown once its image is ready
+   Image preloading: a post is only shown once its picture is ready
 ---------------------------------------------------------------- */
 const readyImages = new Map(); // url -> { width, height }
 
@@ -213,14 +197,23 @@ function preloadImage(url) {
   });
 }
 
+// The picture of a boosted post: its first photo, or the cover of its video
+function mediaOf(post) {
+  const photos = postImageUrls(post);
+  if (photos && photos.length) return { url: photos[0], more: photos.length - 1, video: false };
+  const video = postVideoOf(post);
+  if (video && video.thumb) return { url: video.thumb, more: 0, video: true };
+  return null;
+}
+
 /* ---------------------------------------------------------------
-   Tracking
+   Tracking (the owner's own views and clicks are not counted)
 ---------------------------------------------------------------- */
 const countedImpressions = new Set();
 const shownBefore = new Set(); // ads already opened once: re-renders show them without animation
 
 function track(adId, field) {
-  update(ref(db, `ads/${adId}`), { [field]: increment(1) }).catch(() => {});
+  update(ref(db, `boostLive/${adId}`), { [field]: increment(1) }).catch(() => {});
 }
 
 function watchImpression(slot, adId, placement) {
@@ -241,7 +234,7 @@ function watchImpression(slot, adId, placement) {
         timer = setTimeout(() => {
           if (countedImpressions.has(key)) return;
           countedImpressions.add(key);
-          track(adId, "impressions");
+          if (!slot.dataset.own) track(adId, "impressions");
           recordShown(adId);
           observer.disconnect();
         }, VISIBLE_MS);
@@ -256,37 +249,14 @@ function watchImpression(slot, adId, placement) {
 }
 
 /* ---------------------------------------------------------------
-   The ad card
+   The Sponsored card
 ---------------------------------------------------------------- */
-function buildAdCard(ad, imageSize) {
-  const link = safeUrl(ad.link);
-  const imageURL = imageSize && ad.imageURL ? safeUrl(ad.imageURL) : "";
-  const advertiser = ad.advertiser || ad.title || "Sponsored";
-  const initial = escapeHtml(String(advertiser).trim().charAt(0).toUpperCase() || "A");
-  const logoURL = safeUrl(ad.logoURL);
+function buildAdCard(ad, media, imageSize) {
+  const post = ad.post;
+  const who = post.name || "FreeZone User";
+  const text = (post.text || "").trim();
   const ratio = imageSize && imageSize.width && imageSize.height ? `${imageSize.width} / ${imageSize.height}` : "16 / 9";
-
-  const body = `
-    ${ad.title && ad.text ? `<h3 class="font-label-lg text-label-lg text-on-surface px-4 pt-3 break-words">${escapeHtml(ad.title)}</h3>` : ""}
-    ${
-      ad.text || ad.title
-        ? `<p class="font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-wrap break-words px-4 ${ad.title && ad.text ? "pt-1" : "pt-3"}">${escapeHtml(ad.text || ad.title)}</p>`
-        : ""
-    }
-    ${
-      imageURL
-        ? `<div class="mt-3 bg-surface-container"><img src="${escapeHtml(imageURL)}" alt="" class="w-full object-cover block" style="aspect-ratio:${ratio};max-height:24rem;" /></div>`
-        : ""
-    }
-    ${
-      link
-        ? `<div class="flex items-center justify-between gap-3 px-4 py-3 ${imageURL ? "" : "mt-1"}">
-             <span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(new URL(link).hostname.replace(/^www\./, ""))}</span>
-             <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.cta || "Learn more")}</span>
-           </div>`
-        : `<div class="pb-4"></div>`
-    }
-  `;
+  const host = new URL(ad.link).hostname.replace(/^www\./, "");
 
   const card = document.createElement("article");
   card.className = "bg-slate-surface border-y border-slate-border overflow-hidden";
@@ -294,20 +264,31 @@ function buildAdCard(ad, imageSize) {
   card.innerHTML = `
     <div class="flex items-center justify-between gap-3 px-4 pt-4">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="relative w-10 h-10 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-label-lg text-label-lg flex-shrink-0 overflow-hidden">
-          ${initial}
-          ${logoURL ? `<img src="${escapeHtml(logoURL)}" alt="" class="absolute inset-0 w-full h-full object-cover bg-white" onerror="this.remove()" />` : ""}
-        </div>
+        ${avatarHtml(post.photoURL, "w-10 h-10")}
         <div class="min-w-0">
-          <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(advertiser)}</div>
-          <div class="font-body-sm text-body-sm text-slate-muted">Sponsored</div>
+          <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(who)}</div>
+          <div class="font-body-sm text-body-sm text-slate-muted">Sponsored${post.createdAt ? ` · ${escapeHtml(timeAgo(post.createdAt))}` : ""}</div>
         </div>
       </div>
       <button type="button" class="fz-ad-hide w-8 h-8 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container active:scale-95 transition-all flex-shrink-0" aria-label="Hide this ad">
         <span class="material-symbols-outlined text-[20px]">close</span>
       </button>
     </div>
-    ${link ? `<a class="fz-ad-link block" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer sponsored">${body}</a>` : body}
+    <div class="fz-ad-open ${ad.canOpen ? "cursor-pointer" : ""}">
+      ${text ? `<p class="fz-ad-text font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-wrap break-words px-4 pt-3" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden;">${escapeHtml(text)}</p>` : ""}
+      ${
+        media && imageSize
+          ? `<div class="relative mt-3 bg-surface-container"><img src="${escapeHtml(media.url)}" alt="" class="w-full object-cover block" style="aspect-ratio:${ratio};max-height:24rem;" />
+               ${media.video ? `<span class="absolute inset-0 flex items-center justify-center"><span class="w-14 h-14 rounded-full bg-black/55 text-white flex items-center justify-center"><span class="material-symbols-outlined text-[34px]">play_arrow</span></span></span>` : ""}
+               ${media.more > 0 ? `<span class="absolute right-2 top-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[12px] font-semibold">+${media.more}</span>` : ""}
+             </div>`
+          : ""
+      }
+    </div>
+    <a class="fz-ad-link flex items-center justify-between gap-3 px-4 py-3 ${media || text ? "" : "mt-1"} bg-surface-container-low" href="${escapeHtml(ad.link)}" target="_blank" rel="noopener noreferrer sponsored">
+      <span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(host)}</span>
+      <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>
+    </a>
   `;
   return card;
 }
@@ -329,14 +310,15 @@ function openSlot(slot, instant) {
   requestAnimationFrame(() => requestAnimationFrame(() => slot.classList.add("fz-open")));
 }
 
-function createSlot(ad, imageSize, placement) {
+function createSlot(ad, media, imageSize, placement, context) {
   const slot = document.createElement("div");
   slot.className = "fz-ad-slot";
   slot.dataset.adId = ad.id;
+  if (context.me && ad.post.uid === context.me) slot.dataset.own = "1";
 
   const inner = document.createElement("div");
   inner.className = "fz-ad-inner";
-  const card = buildAdCard(ad, imageSize);
+  const card = buildAdCard(ad, media, imageSize);
   inner.appendChild(card);
   slot.appendChild(inner);
 
@@ -346,8 +328,12 @@ function createSlot(ad, imageSize, placement) {
     showToast("Ad hidden");
   });
 
-  const linkEl = card.querySelector(".fz-ad-link");
-  if (linkEl) linkEl.addEventListener("click", () => track(ad.id, "clicks"));
+  card.querySelector(".fz-ad-link").addEventListener("click", () => {
+    if (!slot.dataset.own) track(ad.id, "clicks");
+  });
+
+  // Tapping the post itself opens it, like any other post
+  if (ad.canOpen) card.querySelector(".fz-ad-open").addEventListener("click", () => context.onOpen(ad.post));
 
   watchImpression(slot, ad.id, placement);
   return slot;
@@ -361,7 +347,7 @@ export function clearAds(container) {
 }
 
 /**
- * Inserts ads between the posts that are already in `container`.
+ * Inserts the boosted posts between the posts that are already in `container`.
  * Safe to call after every render: it never throws and never leaves an empty gap.
  */
 export async function insertAds(container, { placement = "feed", context = {} } = {}) {
@@ -373,18 +359,22 @@ export async function insertAds(container, { placement = "feed", context = {} } 
     const run = (container.__fzAdsRun = (container.__fzAdsRun || 0) + 1);
     clearAds(container);
 
-    const { config, ads } = await loadData();
+    const all = await loadData();
     if (container.__fzAdsRun !== run) return;
-    if (!config.enabled) return;
 
     const hidden = getHiddenIds();
     const now = Date.now();
-    const eligible = ads.filter((ad) => isEligible(ad, placement, now, hidden));
+    const eligible = all
+      .filter((ad) => !hidden.has(ad.id) && now >= ad.startAt && now <= ad.endAt)
+      .filter((ad) => !(context.isBlocked && context.isBlocked(ad.post.uid)))
+      .filter((ad) => !container.querySelector(`article[data-post-id="${CSS.escape(ad.post.id)}"]`)) // already in this list
+      .filter((ad) => !(placement === "profile" && context.profileUid && ad.post.uid === context.profileUid))
+      .map((ad) => ({ ...ad, canOpen: typeof context.onOpen === "function" }));
     if (!eligible.length) return;
 
     // Which posts get an ad after them
     const posts = Array.from(container.children).filter((el) => el.tagName === "ARTICLE");
-    const { firstAfter, every } = config[placement] || config.feed;
+    const { firstAfter, every } = POSITIONS[placement] || POSITIONS.feed;
     const anchors = [];
     posts.forEach((post, index) => {
       const position = index + 1;
@@ -393,7 +383,7 @@ export async function insertAds(container, { placement = "feed", context = {} } 
     });
     if (!anchors.length) return;
 
-    // Feed algorithm parts 12-14: which ad goes to which spot (my interests, click rate, daily caps, no repeat in a row)
+    // Which ad goes to which spot (my interests, click rate, daily caps, no repeat in a row)
     const freq = readFreq();
     const picks = pickAdsForSlots(eligible, anchors.length, {
       interests: context.interests,
@@ -411,12 +401,13 @@ export async function insertAds(container, { placement = "feed", context = {} } 
         // The first choice, then up to 2 spare ads (when a picture does not load); if all fail, the spot stays empty
         for (let attempt = 0; attempt < candidates.length; attempt++) {
           const ad = candidates[attempt];
-          const imageSize = await preloadImage(safeUrl(ad.imageURL));
-          if (imageSize === null) continue; // image failed: try the next ad
+          const media = mediaOf(ad.post);
+          const imageSize = await preloadImage(media ? media.url : "");
+          if (imageSize === null) continue; // picture failed: try the next ad
 
           if (container.__fzAdsRun !== run || !anchor.isConnected) return;
 
-          const slot = createSlot(ad, imageSize, placement);
+          const slot = createSlot(ad, media, imageSize, placement, context);
           anchor.after(slot);
           const instant = shownBefore.has(`${ad.id}:${placement}`);
           shownBefore.add(`${ad.id}:${placement}`);
