@@ -5,8 +5,8 @@
 export const APP_NAME = "FreeZone BD";
 export const APP_TAGLINE = "Connect. Share. Chat.";
 export const APP_VERSION = "1.0.0";
-export const LEGAL_UPDATED = "October 11, 2026";
-export const LEGAL_UPDATED_BN = "১১ অক্টোবর ২০২৬";
+export const LEGAL_UPDATED = "October 12, 2026";
+export const LEGAL_UPDATED_BN = "১২ অক্টোবর ২০২৬";
 
 // The minimum age to use FreeZone BD (shown in the Terms and the Privacy Policy). Under 18 means a child under the Personal Data Protection Ordinance 2025.
 export const MIN_AGE = 18;
