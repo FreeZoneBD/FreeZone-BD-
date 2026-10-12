@@ -35,7 +35,8 @@ const TYPES = {
   comment: { icon: "chat_bubble", color: "bg-online-emerald", label: "commented on your post" },
   follow: { icon: "person_add", color: "bg-violet-500", label: "started following you" },
   reply: { icon: "reply", color: "bg-sky-500", label: "replied to your comment" },
-  commentLike: { icon: "favorite", color: "bg-notification-rose", label: "liked your comment" }
+  commentLike: { icon: "favorite", color: "bg-notification-rose", label: "liked your comment" },
+  boost: { icon: "campaign", color: "bg-amber-500", label: "" } // sent by the FreeZone team about a boost (approved, ended, refund ...)
 };
 
 const snippet = (text) => {
@@ -160,30 +161,63 @@ export function start(ctx = {}) {
 /* ===============================================================
    PAGE: the list
 =============================================================== */
-function emptyState() {
+const STYLE_ID = "fz-notif-style";
+function injectStyles() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = `
+    .fz-n-badge { box-shadow: 0 0 0 2.5px rgb(var(--c-slate-surface)); }
+    .fz-n-row.fz-n-new { background: rgb(var(--c-primary-fixed) / .28); }
+    .fz-n-row { -webkit-tap-highlight-color: transparent; }
+    .fz-n-menu { box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+    .fz-n-text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+    .fz-n-quote { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+    @keyframes fz-n-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    .fz-n-row { animation: fz-n-in .22s ease both; }
+    @media (prefers-reduced-motion: reduce) { .fz-n-row { animation: none; } }
+  `;
+  document.head.appendChild(style);
+}
+
+function emptyState(unreadOnly) {
   return `
-    <div class="text-center py-20 px-6">
-      <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-surface-container flex items-center justify-center">
-        <span class="material-symbols-outlined text-[30px] text-primary-container">notifications</span>
+    <div class="text-center py-20 px-8">
+      <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,rgb(var(--c-primary-fixed)),rgb(var(--c-surface-container)));">
+        <span class="material-symbols-outlined text-[38px] text-primary-container" style="font-variation-settings:'FILL' 1;">${unreadOnly ? "done_all" : "notifications"}</span>
       </div>
-      <p class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-1">No notifications yet</p>
-      <p class="font-body-md text-body-md text-slate-muted max-w-xs mx-auto">When someone likes or comments on your posts, or follows you, it will show up here.</p>
+      <p class="text-[18px] leading-6 font-bold text-on-surface mb-1">${unreadOnly ? "You're all caught up" : "No notifications yet"}</p>
+      <p class="font-body-md text-body-md text-slate-muted max-w-xs mx-auto">${
+        unreadOnly ? "You have no unread notifications." : "When someone likes or comments on your posts, or follows you, it will show up here."
+      }</p>
     </div>`;
 }
 
 function skeleton() {
-  return Array.from({ length: 5 })
+  return Array.from({ length: 6 })
     .map(
       () => `
-    <div class="flex items-start gap-3 px-4 py-3 bg-slate-surface rounded-2xl border border-slate-border">
-      <div class="skeleton w-12 h-12 rounded-full flex-shrink-0"></div>
-      <div class="flex-1 space-y-2 pt-1">
-        <div class="skeleton h-3.5 w-3/4 rounded"></div>
-        <div class="skeleton h-3 w-1/3 rounded"></div>
+    <div class="flex items-start gap-3 px-4 py-3">
+      <div class="skeleton w-14 h-14 rounded-full flex-shrink-0"></div>
+      <div class="flex-1 space-y-2.5 pt-1.5">
+        <div class="skeleton h-3.5 w-11/12 rounded"></div>
+        <div class="skeleton h-3.5 w-2/3 rounded"></div>
+        <div class="skeleton h-3 w-14 rounded"></div>
       </div>
     </div>`
     )
     .join("");
+}
+
+// Which heading a notification goes under (newest first, so the groups come out in order)
+function groupOf(createdAt, now = new Date()) {
+  const t = Number(createdAt) || 0;
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const DAY = 24 * 60 * 60 * 1000;
+  if (t >= startToday) return "Today";
+  if (t >= startToday - DAY) return "Yesterday";
+  if (t >= startToday - 6 * DAY) return "This week";
+  return "Earlier";
 }
 
 /**
@@ -196,20 +230,52 @@ export function mount(container, ctx = {}) {
     container.innerHTML = `<p class="text-center text-slate-muted text-sm py-16 px-6">Please log in to see your notifications.</p>`;
     return;
   }
+  injectStyles();
 
   const me = currentUser.uid;
   let items = [];
   let fresh = null; // ids that were unread when the page opened (they stay highlighted while you read)
+  let filter = "all"; // "all" | "unread"
 
   container.innerHTML = `
-    <div class="fz-notifs px-3 sm:px-4 py-3 space-y-2.5">
+    <div class="fz-notifs bg-slate-surface min-h-full">
+      <div class="fz-n-bar flex items-center gap-2 px-4 pt-3 pb-2">
+        <button type="button" class="fz-n-filter px-4 h-9 rounded-full text-[14px] font-semibold transition-colors" data-f="all">All</button>
+        <button type="button" class="fz-n-filter px-4 h-9 rounded-full text-[14px] font-semibold transition-colors" data-f="unread">Unread</button>
+        <div class="flex-1"></div>
+        <div class="relative">
+          <button type="button" class="fz-n-top w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:bg-surface-container" aria-label="More options"><span class="material-symbols-outlined text-[24px]">more_horiz</span></button>
+          <div class="fz-n-topmenu fz-n-menu absolute right-0 top-11 z-20 w-56 rounded-xl bg-slate-surface border border-slate-border py-1.5" hidden>
+            <button type="button" class="fz-n-readall w-full text-left px-4 py-2.5 text-[14px] text-on-surface hover:bg-surface-container-low flex items-center gap-3"><span class="material-symbols-outlined text-[20px]">done_all</span>Mark all as read</button>
+            <button type="button" class="fz-n-clear w-full text-left px-4 py-2.5 text-[14px] text-error hover:bg-error-container/40 flex items-center gap-3"><span class="material-symbols-outlined text-[20px]">delete_sweep</span>Clear all</button>
+          </div>
+        </div>
+      </div>
       <div class="fz-n-requests" style="display:none"></div>
-      <div class="fz-n-list space-y-2.5">${skeleton()}</div>
+      <div class="fz-n-list pb-6">${skeleton()}</div>
     </div>`;
 
   const root = container.querySelector(".fz-notifs");
   const listEl = container.querySelector(".fz-n-list");
   const alive = () => root.isConnected;
+
+  const paintFilters = () => {
+    root.querySelectorAll(".fz-n-filter").forEach((b) => {
+      const on = b.dataset.f === filter;
+      b.className = `fz-n-filter px-4 h-9 rounded-full text-[14px] font-semibold transition-colors ${on ? "bg-primary-fixed text-primary" : "bg-surface-container text-on-surface"}`;
+      b.setAttribute("aria-pressed", String(on));
+    });
+  };
+  paintFilters();
+
+  const closeMenus = () => {
+    root.querySelectorAll(".fz-n-menu").forEach((m) => { m.hidden = true; });
+  };
+  const onDocClick = (event) => {
+    if (!alive()) return document.removeEventListener("click", onDocClick);
+    if (!event.target.closest(".fz-n-menu") && !event.target.closest(".fz-n-more") && !event.target.closest(".fz-n-top")) closeMenus();
+  };
+  document.addEventListener("click", onDocClick);
 
   /* ---- follow requests (private account): Confirm or Delete ---- */
   const reqEl = container.querySelector(".fz-n-requests");
@@ -251,18 +317,21 @@ export function mount(container, ctx = {}) {
       }
       reqEl.style.display = "";
       reqEl.innerHTML = `
-        <div class="bg-slate-surface border border-slate-border rounded-2xl overflow-hidden">
-          <h3 class="font-label-lg text-label-lg text-on-surface px-4 pt-3 pb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[20px] text-primary">person_add</span>Follow requests <span class="text-primary">${people.length}</span></h3>
-          ${people.map((p) => `
-            <div class="fz-req flex items-center gap-3 px-4 py-2.5" data-uid="${escapeHtml(p.uid)}">
-              <button type="button" class="fz-req-open flex items-center gap-3 min-w-0 flex-1 text-left">
-                ${avatarHtml(p.photoURL, "w-11 h-11")}
-                <span class="min-w-0"><span class="block font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(p.name)}</span>${p.username ? `<span class="block font-body-sm text-body-sm text-slate-muted truncate">@${escapeHtml(p.username)}</span>` : ""}</span>
-              </button>
-              <button type="button" class="fz-req-yes px-3.5 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold active:scale-95 transition-all disabled:opacity-60">Confirm</button>
-              <button type="button" class="fz-req-no px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold active:scale-95 transition-all disabled:opacity-60">Delete</button>
-            </div>`).join("")}
-        </div>`;
+        <div class="flex items-center justify-between px-4 pt-3 pb-1">
+          <h3 class="text-[17px] font-bold text-on-surface">Follow requests <span class="text-primary">${people.length}</span></h3>
+        </div>
+        ${people.map((p) => `
+          <div class="fz-req px-4 py-2.5" data-uid="${escapeHtml(p.uid)}">
+            <button type="button" class="fz-req-open flex items-center gap-3 w-full text-left">
+              ${avatarHtml(p.photoURL, "w-14 h-14")}
+              <span class="min-w-0 flex-1"><span class="block text-[15px] leading-5 font-semibold text-on-surface truncate">${escapeHtml(p.name)}</span>${p.username ? `<span class="block text-[13px] text-slate-muted truncate">@${escapeHtml(p.username)}</span>` : ""}</span>
+            </button>
+            <div class="flex gap-2 mt-2.5 pl-[68px]">
+              <button type="button" class="fz-req-yes flex-1 h-9 rounded-lg bg-primary-container text-white text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Confirm</button>
+              <button type="button" class="fz-req-no flex-1 h-9 rounded-lg bg-surface-container text-on-surface text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Delete</button>
+            </div>
+          </div>`).join("")}
+        <div class="h-2 border-b border-slate-border/60"></div>`;
     },
     () => { reqEl.style.display = "none"; }
   );
@@ -279,73 +348,81 @@ export function mount(container, ctx = {}) {
   });
 
   /* ---- rendering ---- */
-  const rowHtml = (n) => {
+  const isFresh = (n) => !!(fresh && fresh.has(n.id));
+
+  const rowHtml = (n, index) => {
     const type = TYPES[n.type];
     if (!type) return "";
 
-    const who = n.fromUsername ? `@${n.fromUsername}` : n.fromName || "Someone";
-    const quote = n.text ? `<p class="font-body-md text-body-md text-slate-muted truncate">“${escapeHtml(n.text)}”</p>` : "";
-    const isNew = fresh && fresh.has(n.id);
+    const isBoost = n.type === "boost";
+    const who = isBoost ? "FreeZone Team" : n.fromUsername ? `@${n.fromUsername}` : n.fromName || "Someone";
+    const isNew = isFresh(n);
+    const sentence = isBoost
+      ? `<span class="font-semibold">Boost</span> · ${escapeHtml(n.text || "Update about your boost")}`
+      : `<span class="font-semibold">${escapeHtml(who)}</span> ${type.label}`;
+    const quote = !isBoost && n.text ? `<p class="fz-n-quote text-[14px] leading-5 text-slate-muted mt-0.5">“${escapeHtml(n.text)}”</p>` : "";
+    const picture = isBoost
+      ? `<div class="w-14 h-14 rounded-full flex items-center justify-center text-white" style="background:linear-gradient(135deg,#f59e0b,#ef4444);"><span class="material-symbols-outlined text-[28px]" style="font-variation-settings:'FILL' 1;">campaign</span></div>`
+      : avatarHtml(n.fromPhotoURL || "", "w-14 h-14");
+    const badge = isBoost
+      ? ""
+      : `<span class="fz-n-badge absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-full ${type.color} text-white flex items-center justify-center"><span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1;">${type.icon}</span></span>`;
 
     return `
-      <div class="fz-n-row flex items-start gap-3 pl-4 pr-2 py-3 rounded-2xl border cursor-pointer active:bg-surface-container-low transition-colors ${
-        isNew ? "bg-primary-fixed/40 border-primary-fixed" : "bg-slate-surface border-slate-border"
-      }" data-id="${escapeHtml(n.id)}">
-        <div class="relative flex-shrink-0">
-          ${avatarHtml(n.fromPhotoURL || "", "w-12 h-12")}
-          <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full ${type.color} text-white ring-2 ring-white flex items-center justify-center">
-            <span class="material-symbols-outlined text-[14px]" style="font-variation-settings:'FILL' 1;">${type.icon}</span>
-          </span>
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="font-body-md text-body-md text-on-surface"><span class="font-semibold">${escapeHtml(who)}</span> ${type.label}</p>
+      <div class="fz-n-row relative flex items-start gap-3 pl-4 pr-2 py-3 cursor-pointer active:bg-surface-container-low transition-colors ${isNew ? "fz-n-new" : ""}" data-id="${escapeHtml(n.id)}" style="animation-delay:${Math.min(index, 8) * 25}ms">
+        <div class="relative flex-shrink-0">${picture}${badge}</div>
+        <div class="min-w-0 flex-1 pt-0.5">
+          <p class="fz-n-text text-[15px] leading-5 text-on-surface">${sentence}</p>
           ${quote}
-          <p class="text-[12px] ${isNew ? "text-primary font-semibold" : "text-slate-subtle"} mt-0.5">${timeAgo(Number(n.createdAt))}</p>
+          <p class="text-[13px] leading-4 mt-1 ${isNew ? "text-primary font-semibold" : "text-slate-muted"}">${timeAgo(Number(n.createdAt))}</p>
         </div>
-        <button type="button" class="fz-n-del flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-slate-subtle hover:bg-surface-container" aria-label="Remove notification">
-          <span class="material-symbols-outlined text-[18px]">close</span>
-        </button>
+        <div class="flex flex-col items-center flex-shrink-0 w-9">
+          <button type="button" class="fz-n-more w-9 h-9 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container active:bg-surface-container" aria-label="More options"><span class="material-symbols-outlined text-[22px]">more_horiz</span></button>
+          ${isNew ? `<span class="mt-2 w-2.5 h-2.5 rounded-full bg-primary-container" aria-label="Unread"></span>` : ""}
+        </div>
+        <div class="fz-n-menu absolute right-3 top-11 z-10 w-60 rounded-xl bg-slate-surface border border-slate-border py-1.5" hidden>
+          <button type="button" class="fz-n-remove w-full text-left px-4 py-2.5 text-[14px] text-on-surface hover:bg-surface-container-low flex items-center gap-3"><span class="material-symbols-outlined text-[20px]">delete</span>Remove this notification</button>
+        </div>
       </div>`;
   };
 
   const render = () => {
     if (!alive()) return;
-    const shown = items.filter((n) => TYPES[n.type]);
+    const shown = items.filter((n) => TYPES[n.type]).filter((n) => filter === "all" || isFresh(n));
 
     if (!shown.length) {
-      listEl.innerHTML = emptyState();
+      listEl.innerHTML = emptyState(filter === "unread");
       return;
     }
 
-    const newOnes = shown.filter((n) => fresh && fresh.has(n.id));
-    const older = shown.filter((n) => !(fresh && fresh.has(n.id)));
+    // "New" first (what was unread when the page opened), then by day
+    const groups = [];
+    const add = (name, list) => { if (list.length) groups.push([name, list]); };
+    add("New", shown.filter(isFresh));
+    const rest = shown.filter((n) => !isFresh(n));
+    ["Today", "Yesterday", "This week", "Earlier"].forEach((g) => add(g, rest.filter((n) => groupOf(n.createdAt) === g)));
 
-    listEl.innerHTML =
-      (newOnes.length
-        ? `<h3 class="font-label-lg text-label-lg text-on-surface px-1 pt-1">New</h3>${newOnes.map(rowHtml).join("")}`
-        : "") +
-      (older.length
-        ? `<div class="flex items-center justify-between px-1 pt-2">
-             <h3 class="font-label-lg text-label-lg text-on-surface">${newOnes.length ? "Earlier" : "All notifications"}</h3>
-             <button type="button" class="fz-n-clear text-primary font-label-md text-label-md font-semibold">Clear all</button>
-           </div>${older.map(rowHtml).join("")}`
-        : `<div class="text-right px-1 pt-2"><button type="button" class="fz-n-clear text-primary font-label-md text-label-md font-semibold">Clear all</button></div>`);
+    let index = 0;
+    listEl.innerHTML = groups
+      .map(([name, list]) => `<h3 class="px-4 pt-3 pb-1 text-[17px] leading-6 font-bold text-on-surface">${name}</h3>${list.map((n) => rowHtml(n, index++)).join("")}`)
+      .join("");
   };
 
   /* ---- realtime list ---- */
   let readTimer = null;
+  const writeRead = () => {
+    const unread = items.filter((n) => n.read === false);
+    if (!unread.length) return;
+    const updates = {};
+    unread.forEach((n) => {
+      updates[`notifications/${me}/${n.id}/read`] = true;
+    });
+    update(ref(db), updates).catch(() => {});
+  };
   const markRead = () => {
     clearTimeout(readTimer);
     // A short delay, so the person sees what is new before the highlight and the bell badge go away
-    readTimer = setTimeout(() => {
-      const unread = items.filter((n) => n.read === false);
-      if (!unread.length) return;
-      const updates = {};
-      unread.forEach((n) => {
-        updates[`notifications/${me}/${n.id}/read`] = true;
-      });
-      update(ref(db), updates).catch(() => {});
-    }, 1200);
+    readTimer = setTimeout(writeRead, 1200);
   };
 
   const unsubscribe = onValue(
@@ -377,9 +454,32 @@ export function mount(container, ctx = {}) {
     }
   );
 
-  /* ---- taps ---- */
-  listEl.addEventListener("click", async (event) => {
+  /* ---- top bar: filter, mark all as read, clear all ---- */
+  root.querySelector(".fz-n-bar").addEventListener("click", async (event) => {
+    const f = event.target.closest(".fz-n-filter");
+    if (f) {
+      filter = f.dataset.f;
+      paintFilters();
+      render();
+      return;
+    }
+    if (event.target.closest(".fz-n-top")) {
+      const menu = root.querySelector(".fz-n-topmenu");
+      const open = menu.hidden;
+      closeMenus();
+      menu.hidden = !open;
+      return;
+    }
+    if (event.target.closest(".fz-n-readall")) {
+      closeMenus();
+      fresh = new Set(); // the highlight goes away now
+      clearTimeout(readTimer);
+      writeRead();
+      render();
+      return;
+    }
     if (event.target.closest(".fz-n-clear")) {
+      closeMenus();
       if (!items.length || !confirm("Remove all notifications?")) return;
       const updates = {};
       items.forEach((n) => {
@@ -392,20 +492,31 @@ export function mount(container, ctx = {}) {
         console.error(error);
         showToast("Could not clear notifications");
       }
-      return;
     }
+  });
 
+  /* ---- taps on a notification ---- */
+  listEl.addEventListener("click", (event) => {
     const row = event.target.closest(".fz-n-row");
     if (!row) return;
     const n = items.find((item) => item.id === row.dataset.id);
     if (!n) return;
 
-    if (event.target.closest(".fz-n-del")) {
+    if (event.target.closest(".fz-n-more")) {
+      const menu = row.querySelector(".fz-n-menu");
+      const open = menu.hidden;
+      closeMenus();
+      menu.hidden = !open;
+      return;
+    }
+    if (event.target.closest(".fz-n-remove")) {
       remove(ref(db, `notifications/${me}/${n.id}`)).catch(() => showToast("Could not remove this notification"));
       return;
     }
+    if (event.target.closest(".fz-n-menu")) return;
 
     if (["like", "comment", "reply", "commentLike"].includes(n.type) && n.postId) ctx.openPost?.(n.postId);
     else if (n.type === "follow") ctx.onOpenProfile?.(n.from);
+    else if (n.type === "boost") import("./boost.js").then((m) => m.openMyBoosts()).catch(() => showToast("Could not open My boosts"));
   });
 }
