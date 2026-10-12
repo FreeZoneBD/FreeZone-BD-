@@ -581,7 +581,7 @@ document.querySelectorAll(".nav-link[data-page]").forEach((button) => {
   });
 });
 
-// Ads are optional: if ads.js is missing or fails, the feed simply stays as it is
+// Ads (= boosted posts, see ads.js) are optional: if ads.js is missing or fails, the feed simply stays as it is
 let adsModule = null;
 function showAds(container, placement, context = {}) {
   if (!adsModule) adsModule = import("./ads.js").catch(() => null);
@@ -831,7 +831,7 @@ function listenPosts() {
     });
 
     if (debugOn()) postsContainer.querySelectorAll("article[data-post-id]").forEach((card) => addDebugLine(card, card.dataset.postId));
-    showAds(postsContainer, "feed", { interests: interests.profile });
+    showAds(postsContainer, "feed", { interests: interests.profile, me: currentUser?.uid, isBlocked, onOpen: openPostDetail });
     tracker.watch(postsContainer);
 
     // Back to the remembered place: load older pages until its post is there
