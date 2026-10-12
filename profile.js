@@ -82,9 +82,9 @@ export async function syncAuthorFields(db, uid, fields) {
 
 // Ads are optional: if ads.js is missing or fails, the profile simply stays as it is
 let adsModule = null;
-function showAds(container, placement) {
+function showAds(container, placement, context = {}) {
   if (!adsModule) adsModule = import("./ads.js").catch(() => null);
-  adsModule.then((module) => module && module.insertAds(container, { placement })).catch(() => {});
+  adsModule.then((module) => module && module.insertAds(container, { placement, context })).catch(() => {});
 }
 
 function bigAvatar(photoURL) {
@@ -683,7 +683,7 @@ export async function mount(container, ctx = {}) {
       return;
     }
     posts.forEach((post) => tabContent.appendChild(createPostCard(post, cardOptions)));
-    showAds(tabContent, "profile");
+    showAds(tabContent, "profile", { me: currentUser?.uid, isBlocked, onOpen: ctx.postActions?.onOpen, profileUid: uid });
   };
   renderPosts();
   updateCounts();
