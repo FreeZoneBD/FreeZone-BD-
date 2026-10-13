@@ -10,7 +10,7 @@
 //
 // Use:  import("./ads.js").then((m) => m.insertAds(container, { placement: "feed", context }))
 //       Call it after the posts have been rendered into `container`.
-//       context = { interests, me (my uid), isBlocked(uid), onOpen(post) }   - all optional
+//       context = { interests, me (my uid), isBlocked(uid), onOpen(post), cardOptions (the options given to createPostCard) }   - all optional
 //
 // Data (Firebase Realtime Database), written by the admin when a boost is approved:
 //   boostLive/{boostId} = { postId, uid, btnText, link (https), startAt, endAt, impressions, clicks }
@@ -20,7 +20,7 @@ import { db } from "./config.js";
 
 import { ref, get, update, increment, query, orderByChild, startAt } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-import { escapeHtml, showToast, avatarHtml, postImageUrls, postVideoOf, timeAgo } from "./post.js";
+import { escapeHtml, showToast, avatarHtml, postImageUrls, postVideoOf, timeAgo, createPostCard } from "./post.js";
 import { pickAdsForSlots } from "./feed-algorithm.js";
 
 /* ---------------------------------------------------------------
@@ -321,6 +321,17 @@ function createSlot(ad, media, imageSize, placement, context) {
   const card = buildAdCard(ad, media, imageSize);
   inner.appendChild(card);
   slot.appendChild(inner);
+
+  // The same like / comment / share / save row as every other post (the real buttons, moved onto this card)
+  if (context.cardOptions) {
+    try {
+      const real = createPostCard(ad.post, { ...context.cardOptions, showFollowChip: false });
+      const bar = real.querySelector(".like-btn")?.parentElement;
+      if (bar) card.querySelector(".fz-ad-link").after(bar); // like Facebook: the link button first, then like / comment / share
+    } catch (error) {
+      console.warn("Sponsored post: action row not added:", error);
+    }
+  }
 
   card.querySelector(".fz-ad-hide").addEventListener("click", () => {
     rememberHidden(ad.id);
