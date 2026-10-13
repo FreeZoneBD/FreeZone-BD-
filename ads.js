@@ -297,6 +297,7 @@ function buildAdCard(ad, media, imageSize) {
    Slots
 ---------------------------------------------------------------- */
 function closeSlot(slot) {
+  restoreReplaced(slot); // a boosted post that was shown as an ad on its owner's profile comes back as a normal post
   slot.classList.remove("fz-open");
   setTimeout(() => slot.remove(), 600);
 }
@@ -353,8 +354,18 @@ function createSlot(ad, media, imageSize, placement, context) {
 /* ---------------------------------------------------------------
    Public API
 ---------------------------------------------------------------- */
+function restoreReplaced(slot) {
+  if (slot.__replaces) {
+    slot.__replaces.style.display = "";
+    slot.__replaces = null;
+  }
+}
+
 export function clearAds(container) {
-  container.querySelectorAll(":scope > .fz-ad-slot").forEach((slot) => slot.remove());
+  container.querySelectorAll(":scope > .fz-ad-slot").forEach((slot) => {
+    restoreReplaced(slot);
+    slot.remove();
+  });
 }
 
 /**
@@ -375,16 +386,47 @@ export async function insertAds(container, { placement = "feed", context = {} } 
 
     const hidden = getHiddenIds();
     const now = Date.now();
-    const eligible = all
+    const live = all
       .filter((ad) => !hidden.has(ad.id) && now >= ad.startAt && now <= ad.endAt)
       .filter((ad) => !(context.isBlocked && context.isBlocked(ad.post.uid)))
-      .filter((ad) => !container.querySelector(`article[data-post-id="${CSS.escape(ad.post.id)}"]`)) // already in this list
-      .filter((ad) => !(placement === "profile" && context.profileUid && ad.post.uid === context.profileUid))
       .map((ad) => ({ ...ad, canOpen: typeof context.onOpen === "function" }));
+
+    // On a profile, the boosts of the person whose profile it is are pinned at the top as "Sponsored"
+    // (their normal card is hidden meanwhile, so the post is not shown twice)
+    const pinned =
+      placement === "profile" && context.profileUid
+        ? live.filter((ad) => ad.post.uid === context.profileUid).sort((a, b) => b.startAt - a.startAt).slice(0, 3)
+        : [];
+
+    // Everyone else's boosts go between the posts
+    const eligible = live
+      .filter((ad) => !container.querySelector(`article[data-post-id="${CSS.escape(ad.post.id)}"]`)) // already in this list
+      .filter((ad) => !(placement === "profile" && context.profileUid && ad.post.uid === context.profileUid));
+    if (!eligible.length && !pinned.length) return;
+
+    if (pinned.length) {
+      const firstChild = container.firstElementChild;
+      for (const ad of pinned) {
+        const media = mediaOf(ad.post);
+        const imageSize = await preloadImage(media ? media.url : "");
+        if (imageSize === null) continue; // picture failed: the normal card stays
+        if (container.__fzAdsRun !== run) return;
+        const slot = createSlot(ad, media, imageSize, placement, context);
+        const original = container.querySelector(`:scope > article[data-post-id="${CSS.escape(ad.post.id)}"]`);
+        if (original) {
+          original.style.display = "none";
+          slot.__replaces = original;
+        }
+        container.insertBefore(slot, firstChild);
+        const instant = shownBefore.has(`${ad.id}:${placement}`);
+        shownBefore.add(`${ad.id}:${placement}`);
+        openSlot(slot, instant);
+      }
+    }
     if (!eligible.length) return;
 
     // Which posts get an ad after them
-    const posts = Array.from(container.children).filter((el) => el.tagName === "ARTICLE");
+    const posts = Array.from(container.children).filter((el) => el.tagName === "ARTICLE" && el.style.display !== "none");
     const { firstAfter, every } = POSITIONS[placement] || POSITIONS.feed;
     const anchors = [];
     posts.forEach((post, index) => {
