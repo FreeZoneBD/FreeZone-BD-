@@ -683,7 +683,7 @@ export async function mount(container, ctx = {}) {
       return;
     }
     posts.forEach((post) => tabContent.appendChild(createPostCard(post, cardOptions)));
-    showAds(tabContent, "profile", { me: currentUser?.uid, isBlocked, onOpen: ctx.postActions?.onOpen, profileUid: uid });
+    showAds(tabContent, "profile", { me: currentUser?.uid, isBlocked, onOpen: ctx.postActions?.onOpen, profileUid: uid, cardOptions });
   };
   renderPosts();
   updateCounts();
