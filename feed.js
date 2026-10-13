@@ -831,7 +831,13 @@ function listenPosts() {
     });
 
     if (debugOn()) postsContainer.querySelectorAll("article[data-post-id]").forEach((card) => addDebugLine(card, card.dataset.postId));
-    showAds(postsContainer, "feed", { interests: interests.profile, me: currentUser?.uid, isBlocked, onOpen: openPostDetail });
+    showAds(postsContainer, "feed", {
+      interests: interests.profile,
+      me: currentUser?.uid,
+      isBlocked,
+      onOpen: openPostDetail,
+      cardOptions: { ...postActions(), currentUserUid: currentUser?.uid, savedPostIds, followingIds, onProfile: openUserProfile }
+    });
     tracker.watch(postsContainer);
 
     // Back to the remembered place: load older pages until its post is there
