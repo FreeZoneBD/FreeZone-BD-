@@ -554,13 +554,13 @@ export async function mount(container, ctx = {}) {
   const compact = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : String(n));
 
   container.innerHTML = `
-    <div class="pf-top sticky top-0 z-10 bg-background flex items-center h-14 px-2 gap-1">
+    <div class="pf-top sticky top-0 z-10 bg-background flex items-center h-12 px-2 gap-1 flex-shrink-0">
       <button type="button" class="pf-back w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all" aria-label="Back"><span class="material-symbols-outlined text-[26px]">arrow_back</span></button>
-      <span class="flex-1"></span>
+      <span class="pf-top-title flex-1 min-w-0 truncate text-[17px] leading-6 font-semibold text-on-surface px-1 transition-opacity duration-150 opacity-0 pointer-events-none">${escapeHtml(name)}</span>
       <div class="pf-top-actions flex items-center gap-0.5"></div>
     </div>
 
-    <div class="px-5 pt-1 pb-3 bg-background">
+    <div class="px-5 pt-1 pb-3 bg-background flex-shrink-0">
       <div class="flex items-start gap-4 text-left">
         <div class="min-w-0 flex-1 pt-3">
           <h2 class="text-[26px] leading-8 font-bold text-on-surface break-words">${escapeHtml(name)}</h2>
@@ -622,7 +622,7 @@ export async function mount(container, ctx = {}) {
       }
     </div>
 
-    <div class="px-3 sm:px-4 py-4 space-y-3 pb-10">
+    <div class="px-3 sm:px-4 py-4 space-y-3 pb-10 flex-shrink-0">
       ${
         locked
           ? `<div class="fz-private-lock text-center py-12 px-6 bg-slate-surface border border-slate-border rounded-2xl">
@@ -631,7 +631,7 @@ export async function mount(container, ctx = {}) {
                <p class="font-body-md text-body-md text-slate-muted">Follow ${escapeHtml(handle)} to see their posts and photos. They need to approve your request first.</p>
              </div>`
           : !blocked
-          ? `<div class="pf-tabs flex border-b border-slate-border -mx-3 sm:-mx-4 sticky z-[5] bg-background" style="top:56px;">
+          ? `<div class="pf-tabs flex border-b border-slate-border -mx-3 sm:-mx-4 sticky z-[5] bg-background" style="top:48px;">
                <button type="button" class="tab-btn flex-1 py-3 flex items-center justify-center" data-tab="posts" aria-label="Posts"><span class="material-symbols-outlined text-[26px]">grid_view</span><span class="tab-n hidden"></span></button>
                <button type="button" class="tab-btn flex-1 py-3 flex items-center justify-center" data-tab="photos" aria-label="Photos"><span class="material-symbols-outlined text-[26px]">photo_library</span><span class="tab-n hidden"></span></button>
                <button type="button" data-feature="profileVideos" data-feature-ready class="tab-btn flex-1 py-3 flex items-center justify-center" data-tab="videos" aria-label="Videos"><span class="material-symbols-outlined text-[26px]">videocam</span><span class="tab-n hidden"></span></button>
@@ -642,6 +642,25 @@ export async function mount(container, ctx = {}) {
       <div class="tab-content -mx-3 sm:-mx-4 flex flex-col gap-2" ${locked ? 'style="display:none"' : ""}></div>
     </div>
   `;
+
+  // Header: tabs stick right under it (measured, so no gap on any phone) and the name fades in once the big name scrolls away
+  {
+    const topEl = container.querySelector(".pf-top");
+    const tabsEl = container.querySelector(".pf-tabs");
+    const titleEl = container.querySelector(".pf-top-title");
+    const nameEl = container.querySelector("h2");
+    const syncTop = () => {
+      if (topEl && tabsEl) tabsEl.style.top = topEl.getBoundingClientRect().height + "px";
+      if (topEl && titleEl && nameEl) {
+        const show = nameEl.getBoundingClientRect().bottom < topEl.getBoundingClientRect().bottom + 4;
+        titleEl.style.opacity = show ? "1" : "0";
+      }
+    };
+    if (container.__pfScroll) container.removeEventListener("scroll", container.__pfScroll);
+    container.__pfScroll = syncTop;
+    container.addEventListener("scroll", syncTop, { passive: true });
+    syncTop();
+  }
 
   // Posts: same cards as the Feed (author, menu, like / comment / share) and live updates
   const tabContent = container.querySelector(".tab-content");
