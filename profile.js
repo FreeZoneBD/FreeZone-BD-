@@ -554,7 +554,7 @@ export async function mount(container, ctx = {}) {
   const compact = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : String(n));
 
   container.innerHTML = `
-    <div class="pf-top sticky top-0 z-10 bg-background flex items-center h-12 px-2 gap-1 flex-shrink-0">
+    <div class="pf-top sticky top-0 z-10 bg-background flex items-center h-11 px-2 gap-1 flex-shrink-0">
       <button type="button" class="pf-back w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all" aria-label="Back"><span class="material-symbols-outlined text-[26px]">arrow_back</span></button>
       <span class="pf-top-title flex-1 min-w-0 truncate text-[17px] leading-6 font-semibold text-on-surface px-1 transition-opacity duration-150 opacity-0 pointer-events-none">${escapeHtml(name)}</span>
       <div class="pf-top-actions flex items-center gap-0.5"></div>
@@ -622,24 +622,24 @@ export async function mount(container, ctx = {}) {
       }
     </div>
 
-    <div class="px-3 sm:px-4 py-4 space-y-3 pb-10 flex-shrink-0">
+    <div class="px-3 sm:px-4 pb-10 flex-shrink-0">
       ${
         locked
-          ? `<div class="fz-private-lock text-center py-12 px-6 bg-slate-surface border border-slate-border rounded-2xl">
+          ? `<div class="fz-private-lock mt-4 text-center py-12 px-6 bg-slate-surface border border-slate-border rounded-2xl">
                <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[30px] text-slate-muted">lock</span></div>
                <p class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-1">This account is private</p>
                <p class="font-body-md text-body-md text-slate-muted">Follow ${escapeHtml(handle)} to see their posts and photos. They need to approve your request first.</p>
              </div>`
           : !blocked
-          ? `<div class="pf-tabs flex border-b border-slate-border -mx-3 sm:-mx-4 sticky z-[5] bg-background" style="top:48px;">
-               <button type="button" class="tab-btn flex-1 py-3 flex items-center justify-center" data-tab="posts" aria-label="Posts"><span class="material-symbols-outlined text-[26px]">grid_view</span><span class="tab-n hidden"></span></button>
-               <button type="button" class="tab-btn flex-1 py-3 flex items-center justify-center" data-tab="photos" aria-label="Photos"><span class="material-symbols-outlined text-[26px]">photo_library</span><span class="tab-n hidden"></span></button>
-               <button type="button" data-feature="profileVideos" data-feature-ready class="tab-btn flex-1 py-3 flex items-center justify-center" data-tab="videos" aria-label="Videos"><span class="material-symbols-outlined text-[26px]">videocam</span><span class="tab-n hidden"></span></button>
-               ${isMe ? `<button type="button" class="tab-btn flex-1 py-3 flex items-center justify-center" data-tab="saved" aria-label="Saved"><span class="material-symbols-outlined text-[26px]">bookmark</span><span class="tab-n hidden"></span></button>` : ""}
+          ? `<div class="pf-tabs flex border-b border-slate-border -mx-3 sm:-mx-4 sticky z-[5] bg-background" style="top:44px;">
+               <button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="posts" aria-label="Posts"><span class="material-symbols-outlined text-[26px]">grid_view</span><span class="tab-n hidden"></span></button>
+               <button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="photos" aria-label="Photos"><span class="material-symbols-outlined text-[26px]">photo_library</span><span class="tab-n hidden"></span></button>
+               <button type="button" data-feature="profileVideos" data-feature-ready class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="videos" aria-label="Videos"><span class="material-symbols-outlined text-[26px]">videocam</span><span class="tab-n hidden"></span></button>
+               ${isMe ? `<button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="saved" aria-label="Saved"><span class="material-symbols-outlined text-[26px]">bookmark</span><span class="tab-n hidden"></span></button>` : ""}
              </div>`
-          : `<h3 class="font-label-lg text-label-lg text-on-surface px-1">Posts</h3>`
+          : `<h3 class="font-label-lg text-label-lg text-on-surface px-1 pt-4 pb-2">Posts</h3>`
       }
-      <div class="tab-content -mx-3 sm:-mx-4 flex flex-col gap-2" ${locked ? 'style="display:none"' : ""}></div>
+      <div class="tab-content -mx-3 sm:-mx-4 flex flex-col" ${locked ? 'style="display:none"' : ""}></div>
     </div>
   `;
 
@@ -795,7 +795,7 @@ export async function mount(container, ctx = {}) {
       tabButtons.forEach((btn) => {
         const on = btn.dataset.tab === active;
         btn.className =
-          "tab-btn flex-1 py-3 flex items-center justify-center border-b-2 transition-colors " +
+          "tab-btn flex-1 py-2 flex items-center justify-center border-b-2 transition-colors " +
           (on ? "text-on-surface border-on-surface" : "text-slate-subtle border-transparent");
         btn.firstElementChild.style.fontVariationSettings = on ? "'FILL' 1" : "'FILL' 0";
       });
@@ -838,13 +838,17 @@ export async function mount(container, ctx = {}) {
             if (ok && wasSaved) {
               if (savedN !== null) savedN = Math.max(0, savedN - 1);
               updateCounts();
-              tabContent.querySelector(`.save-btn[data-post-id="${post.id}"]`)?.closest("article")?.remove();
+              const savedCard = tabContent.querySelector(`.save-btn[data-post-id="${post.id}"]`)?.closest("article");
+              const adSlot = savedCard?.closest(".fz-ad-slot");
+              if (adSlot) { adSlot.__replaces?.remove(); adSlot.remove(); } else savedCard?.remove();
               if (!tabContent.querySelector("article")) tabContent.innerHTML = SAVED_EMPTY_HTML;
             }
             return ok;
           }
         };
         saved.forEach((post) => tabContent.appendChild(createPostCard(post, savedOptions)));
+        // A boosted post stays "Sponsored" here too (no extra ads are added to this list)
+        showAds(tabContent, "saved", { me: currentUser?.uid, isBlocked, onOpen: ctx.postActions?.onOpen, cardOptions: savedOptions, inPlaceOnly: true });
       } catch (error) {
         console.error(error);
         tabContent.innerHTML = `<p class="text-center text-slate-muted font-body-md text-body-md py-10">Could not load saved posts.</p>`;
