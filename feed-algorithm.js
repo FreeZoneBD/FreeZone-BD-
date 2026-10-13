@@ -128,14 +128,14 @@ export const DEFAULT_CONFIG = {
     firstAfter: 3,          // never in the first posts
     every: 5,               // one ad slot after this many posts
     noBackToBack: true,
-    maxPerDay: 3,           // one ad is shown to one person at most this many times a day (frequency cap)
+    maxPerDay: 10,          // one ad is shown to one person at most this many times a day (frequency cap)
     relevance: 0.5,         // how much matching my interests counts
     ctr: 0.5,               // how much the click rate counts
     explore: 0.1,           // 10% of the time a less-tested ad gets a chance
     testImpressions: 100,   // an ad with fewer impressions than this is "less tested"
     ctrPrior: 50,           // click rate is smoothed with this many imaginary average views (a new ad is not judged by 1 click)
     defaultCtr: 0.02,       // the average click rate when no ad has data yet
-    maxTotalPerDay: 15,     // all ads together, per person per day (pacing)
+    maxTotalPerDay: 30,     // all ads together, per person per day (pacing)
     repeatPenalty: 0.5      // an ad already used in this feed counts half as much for the next slot
   },
 
