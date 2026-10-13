@@ -1,99 +1,764 @@
-# FreeZone BD
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>FreeZone BD – ইউজার অ্যাপের সম্পূর্ণ গাইড</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f5f7fb; --card: #ffffff; --text: #151a24; --muted: #5b6577; --line: #e2e7f0;
+    --brand: #004ac6; --brand-soft: #e4ebff; --ok: #0a7d4b; --ok-soft: #e1f6ec; --warn: #9a5b00; --warn-soft: #fff1d6;
+    --bad: #b3261e; --bad-soft: #fde8e6; --code: #0f1b33; --code-text: #dbe6ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1218; --bg2: #161b24; --card: #1a202b; --text: #e8ecf4; --muted: #9aa5b8; --line: #2a3242;
+      --brand: #7ea6ff; --brand-soft: #1d2a4a; --ok: #5fd39a; --ok-soft: #12301f; --warn: #f2b84b; --warn-soft: #3a2c0c;
+      --bad: #ff8a80; --bad-soft: #3b1714; --code: #0a0e15; --code-text: #cfe0ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 "Hind Siliguri", "Noto Sans Bengali", Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--brand); }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { background: var(--bg2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-size: .88em; word-break: break-word; }
+  pre { background: var(--code); color: var(--code-text); padding: 14px 16px; border-radius: 12px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 12px 0; }
+  pre code { background: none; border: 0; padding: 0; color: inherit; font-size: inherit; }
 
-**Connect. Share. Chat.** সাধারণ JavaScript (ES modules), Firebase Authentication, Firebase Realtime Database ও Tailwind CSS (CDN) দিয়ে বানানো একটি সোশ্যাল অ্যাপ। ছবি imgbb তে আপলোড হয়, ডেটাবেসে শুধু ছবির লিংক থাকে। কোনো বিল্ড ধাপ নেই: ফাইলগুলো যেকোনো HTTPS স্ট্যাটিক হোস্টে রেখে `login.html` খুললেই চলে।
+  .top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .top-in { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 800; flex: none; }
+  .top b { font-size: 16px; }
+  .top small { color: var(--muted); margin-left: auto; white-space: nowrap; }
+  #menuBtn { display: none; margin-left: auto; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 6px 12px; font: inherit; cursor: pointer; }
 
-## ফিচার
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 32px; }
+  nav.toc { position: sticky; top: 64px; align-self: start; max-height: calc(100vh - 80px); overflow: auto; padding: 18px 0 30px; font-size: 14.5px; }
+  nav.toc a { display: block; padding: 5px 10px; border-radius: 8px; text-decoration: none; color: var(--muted); }
+  nav.toc a:hover, nav.toc a.on { background: var(--brand-soft); color: var(--brand); }
+  nav.toc .grp { margin: 14px 10px 4px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 
-- **ফিড**: ১ থেকে ৪টি ছবির পোস্ট, লাইক (ছবিতে ডাবল ট্যাপ), সেভ করা পোস্ট, শেয়ার ও রিপোর্ট
-- **ছবি ভিউয়ার** (ফেসবুক স্টাইল): সোয়াইপ, লাইক, কমেন্ট, শেয়ার ও মেনু
-- **কমেন্ট**: নিচ থেকে ওঠা শিটে, কমেন্টে লাইক, রিপ্লাই ও নোটিফিকেশনসহ
-- **প্রোফাইল**: ১৫০০×৫০০ ব্যানার (অ্যাডমিন বসায়), ছবি, বায়ো, ফলোয়ার সংখ্যা, Posts ও Saved ট্যাব
-- **বন্ধু**: ফলোয়ার, ফলোয়িং, সাজেশন, নাম বা @ইউজারনেম দিয়ে খোঁজা
-- **চ্যাট**: এক-একজনের মেসেজ, এডিট ও ডিলিট, "Seen", অ্যাক্টিভ স্ট্যাটাস এবং **অডিও ও ভিডিও কল** (WebRTC)
-- **স্টোরি**: পুরো স্ক্রিন ছবি, কারা দেখেছে তার তালিকা, রিপ্লাই ও রিঅ্যাকশন
-- **নোটিফিকেশন**: লাইক, কমেন্ট, রিপ্লাই, কমেন্টে লাইক, ফলো
-- **বিজ্ঞাপন**: পোস্টের মাঝে স্পনসর্ড কার্ড
-- **ব্লক** করা
-- **সেটিংস**: প্রোফাইল এডিট (নাম ৬০ দিনে একবার বদলানো যায়, @ইউজারনেম কখনো বদলায় না), পাসওয়ার্ড বদল, অ্যাকাউন্ট ডিলিট, ডার্ক মোড, Help center, সমস্যা জানানো, About, Terms, Privacy, Community guidelines, বন্ধুদের আমন্ত্রণ
+  main { padding: 24px 0 80px; min-width: 0; }
+  header.hero { background: linear-gradient(135deg, var(--brand-soft), var(--bg2)); border: 1px solid var(--line); border-radius: 20px; padding: 26px 24px; margin-bottom: 26px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 30px; line-height: 1.3; }
+  header.hero p { margin: 0; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chip { font-size: 13px; padding: 3px 11px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
 
-## ফাইলের তালিকা
+  section { margin-bottom: 44px; }
+  h2 { font-size: 24px; line-height: 1.35; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
+  h3 { font-size: 18px; margin: 24px 0 6px; }
+  p { margin: 8px 0; }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
 
-| ফাইল | কাজ |
-|---|---|
-| `login.html`, `login.js` | সাইন আপ, লগইন, পাসওয়ার্ড রিসেট |
-| `feed.html`, `feed.js` | মূল পেজ: ফিড, নিচের বার, পোস্ট পেজ। বাকি মডিউল দরকার মতো লোড করে |
-| `post.js` | পোস্ট কার্ড, ছবি ভিউয়ার, রিপোর্ট ডায়ালগ, শেয়ার ও সাধারণ সহায়ক ফাংশন |
-| `comments.js` | কমেন্ট তালিকা ও কমেন্ট শিট |
-| `create.js` | পোস্ট তৈরি (৪টি পর্যন্ত ছবি, আপলোড প্রগ্রেস) |
-| `profile.js` | প্রোফাইল পেজ (নিজের ও অন্যের) |
-| `friends.js` | সাজেশন, ফলোয়ার, ফলোয়িং, মানুষ খোঁজা |
-| `chat.js` | ইনবক্স, কথোপকথন, অনলাইন স্ট্যাটাস |
-| `call.js`, `call-config.js` | অডিও ও ভিডিও কল, STUN ও TURN সেটিংস |
-| `story.js` | স্টোরি |
-| `notification.js` | নোটিফিকেশন বেল ও নোটিফিকেশন লেখা |
-| `block.js` | ব্লক ও আনব্লক |
-| `ads.js` | বিজ্ঞাপন |
-| `settings.js`, `help.js`, `feedback.js`, `about.js` | সেটিংস ও তার উপ-পেজ |
-| `app-info.js` | অ্যাপের নাম, ভার্সন, সাপোর্ট ইমেইল, আমন্ত্রণ লিংক (এক জায়গায়) |
-| `terms.html`, `privacy.html`, `guidelines.html`, `legal.css` | আইনি পেজ |
-| `theme.css`, `theme.js` | লাইট ও ডার্ক রং (CSS ভেরিয়েবল) ও থিম বদল |
-| `imgbb.js` | imgbb তে ছবি আপলোড |
-| `config.js` | আপনার Firebase কনফিগ (বাকি ফাইলের সঙ্গে একই ফোল্ডারে রাখুন) |
-| `database.rules.json` | Realtime Database এর নিরাপত্তা নিয়ম (rules) |
-| `feed-demo.html` | শুধু ডিজাইন ডেমো, অ্যাপের অংশ নয় |
+  .note, .warn, .ok, .bad { border-radius: 12px; padding: 11px 15px; margin: 14px 0; border: 1px solid; }
+  .note { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand) 30%, transparent); }
+  .warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+  .ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+  .bad { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+  .note b:first-child, .warn b:first-child, .ok b:first-child, .bad b:first-child { margin-right: 4px; }
 
-সব ফাইল `feed.html` এর ফোল্ডারেই থাকতে হবে।
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin: 14px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; }
+  .card h4 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
 
-## সেটআপ
+  .tw { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 560px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--bg2); font-weight: 700; position: sticky; top: 0; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { white-space: nowrap; }
 
-1. **Firebase প্রজেক্ট**: একটি প্রজেক্ট খুলুন, Web অ্যাপ যোগ করুন, **Authentication > Email/Password** চালু করুন এবং একটি **Realtime Database** বানান।
-2. **`config.js`**: এখান থেকে `auth` ও `db` এক্সপোর্ট করতে হবে (আপনার Firebase web config দিয়ে তৈরি)। বাকি ফাইলগুলো `./config.js` থেকে এ দুটো নেয়।
-3. **Rules**: Realtime Database > Rules এ `database.rules.json` এর লেখা পেস্ট করে **Publish** করুন। এই ফাইল বদলালে প্রতিবার আবার Publish করতে হবে। না করলে নতুন ফিচারে (কল, ব্যানার, কমেন্ট ইত্যাদি) "permission denied" আসবে।
-4. **imgbb**: `imgbb.js` এ `IMGBB_API_KEY` এ আপনার কী বসান।
-5. **সাপোর্ট ইমেইল**: `app-info.js` এ `SUPPORT_EMAIL` বসান।
-6. **হোস্টিং**: HTTPS ব্যবহার করুন (Firebase Hosting, Netlify, GitHub Pages ইত্যাদি)। কলে ক্যামেরা ও মাইক্রোফোন শুধু HTTPS এ চলে।
-7. **অনুমোদিত ডোমেইন**: Authentication > Settings > Authorised domains এ আপনার ডোমেইন যোগ করুন।
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps > li { counter-increment: s; position: relative; padding: 4px 0 4px 44px; margin: 10px 0; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 2px; width: 30px; height: 30px; border-radius: 50%; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
 
-## অ্যাডমিনের কাজ
+  .check { list-style: none; padding: 0; }
+  .check li { padding-left: 30px; position: relative; }
+  .check li::before { content: "☐"; position: absolute; left: 4px; color: var(--brand); font-size: 18px; line-height: 1.5; }
 
-- **প্রোফাইল ব্যানার**: শুধু অ্যাডমিন বসাতে পারে। ছবির লিংক `users/{uid}/bannerURL` এ লিখুন (Firebase Console থেকে বা আপনার অ্যাডমিন প্যানেল থেকে)। ছবি ১৫০০×৫০০ (৩:১) মাপের হবে। ইউজার নিজে বদলাতে পারে না।
-- **অ্যাডমিন অ্যাকাউন্ট**: Console এ `admins/{অ্যাডমিনের uid}: true` বসান। এতে অ্যাপ থেকে `bannerURL` লেখা যাবে।
-- **বিজ্ঞাপন**: বিজ্ঞাপনের তথ্য `ads.js` পড়ে। কোন কোন ফিল্ড লাগে তা ওই ফাইলের উপরের কমেন্টে আছে।
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px 14px; margin: 10px 0; }
+  summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+  details[open] summary { border-bottom: 1px solid var(--line); margin-bottom: 8px; }
 
-## কল
+  footer { border-top: 1px solid var(--line); padding: 22px 16px 50px; color: var(--muted); text-align: center; font-size: 14px; }
 
-কল WebRTC দিয়ে চলে। Firebase শুধু সংযোগের তথ্য বহন করে (`calls/{calleeUid}/{callId}`)। শব্দ ও ছবি দুই ফোনের মধ্যে সরাসরি যায়।
+  @media (max-width: 880px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; }
+    #menuBtn { display: block; }
+    .top small { display: none; }
+    nav.toc { display: none; position: fixed; inset: 56px 0 0 0; max-height: none; background: var(--bg); z-index: 15; padding: 12px 16px 40px; }
+    nav.toc.open { display: block; }
+    header.hero h1 { font-size: 25px; }
+    h2 { font-size: 21px; }
+  }
+  @media print {
+    .top, nav.toc { display: none; }
+    .wrap { display: block; }
+    section { break-inside: avoid-page; }
+  }
+</style>
+</head>
+<body>
 
-- অন্য জনের ফোনে রিং হয় শুধু অ্যাপ খোলা থাকলে। অ্যাপ বন্ধ থাকলে রিং করতে পুশ নোটিফিকেশন লাগবে (এখনকার কোডে নেই)।
-- STUN দেওয়া আছে। মোবাইল ডেটায় কল না লাগলে `call-config.js` এ একটি **TURN** সার্ভার যোগ করুন।
-- একসঙ্গে একটি কল চলে, এবং শুধু ১-এর সঙ্গে ১।
+<div class="top"><div class="top-in">
+  <span class="logo">F</span><b>FreeZone BD · ইউজার অ্যাপ গাইড</b>
+  <small>ভার্সন ১.০.০ · হালনাগাদ ১৩ অক্টোবর ২০২৬</small>
+  <button id="menuBtn" type="button" aria-label="সূচি">☰ সূচি</button>
+</div></div>
 
-## ডেটার কাঠামো
+<div class="wrap">
+<nav class="toc" id="toc" aria-label="সূচি">
+  <div class="grp">শুরু</div>
+  <a href="#intro">১. পরিচিতি</a>
+  <a href="#quick">২. দ্রুত শুরু</a>
+  <a href="#setup">৩. সেটআপ (ধাপে ধাপে)</a>
+  <div class="grp">পেজ ও ফিচার</div>
+  <a href="#nav">৪. অ্যাপের কাঠামো</a>
+  <a href="#login">৫. লগইন ও সাইন-আপ</a>
+  <a href="#feed">৬. ফিড</a>
+  <a href="#post">৭. পোস্ট কার্ড</a>
+  <a href="#create">৮. পোস্ট তৈরি</a>
+  <a href="#comments">৯. কমেন্ট</a>
+  <a href="#search">১০. সার্চ</a>
+  <a href="#profile">১১. প্রোফাইল</a>
+  <a href="#friends">১২. বন্ধু ও ফলো</a>
+  <a href="#chat">১৩. চ্যাট ও কল</a>
+  <a href="#stories">১৪. স্টোরি</a>
+  <a href="#reels">১৫. Reels ও ভিডিও</a>
+  <a href="#notif">১৬. নোটিফিকেশন</a>
+  <a href="#boost">১৭. Boost ও Sponsored</a>
+  <a href="#settings">১৮. সেটিংস</a>
+  <a href="#safety">১৯. প্রাইভেসি, ব্লক, মিউট</a>
+  <a href="#legal">২০. আইনি পেজ</a>
+  <div class="grp">প্রযুক্তি</div>
+  <a href="#files">২১. ফাইলের তালিকা</a>
+  <a href="#data">২২. ডেটার কাঠামো</a>
+  <a href="#rules">২৩. Rules ও ইনডেক্স</a>
+  <a href="#config">২৪. অ্যাডমিন থেকে চালানো সেটিং</a>
+  <a href="#algo">২৫. ফিড অ্যালগরিদম</a>
+  <div class="grp">পরিচালনা</div>
+  <a href="#test">২৬. টেস্ট চেকলিস্ট</a>
+  <a href="#trouble">২৭. সমস্যা ও সমাধান</a>
+  <a href="#security">২৮. নিরাপত্তা</a>
+  <a href="#update">২৯. আপডেট দেওয়ার নিয়ম</a>
+</nav>
 
-```
-users/{uid}                  name, nameLower, username, bio, photoURL, bannerURL, nameChangedAt, createdAt
-posts/{postId}               uid, name, username, photoURL, text, images, likesCount, commentsCount, likes, comments, createdAt
-followers/{uid}, following/{uid}, savedPosts/{uid}, blocks/{uid}
-notifications/{uid}/{id}     type: like | comment | reply | commentLike | follow
-chats/{chatId}               members, messages, reads        (chatId = দুই uid সাজিয়ে "_" দিয়ে জোড়া)
-userChats/{uid}/{chatId}     ইনবক্সের এন্ট্রি
-presence/{uid}               online, lastSeen
-stories, storyViews, storyReactions, storySeen
-calls/{calleeUid}/{callId}   offer, answer, status, callerIce, calleeIce
-feedback/{uid}/{id}          "Report a problem" এর বার্তা
-admins/{uid}                 true
-```
+<main>
+<header class="hero">
+  <h1>FreeZone BD – ইউজার অ্যাপের সম্পূর্ণ গাইড</h1>
+  <p>Connect. Share. Chat. এই গাইডে অ্যাপের প্রতিটি পেজ কী করে, কোন ফাইল কী কাজ করে, ডেটা কোথায় থাকে, কীভাবে চালু করতে ও টেস্ট করতে হয়, সব এক জায়গায় আছে।</p>
+  <div class="chips">
+    <span class="chip">Vanilla JavaScript (ES modules)</span><span class="chip">Firebase Auth</span><span class="chip">Realtime Database</span>
+    <span class="chip">Tailwind CDN</span><span class="chip">imgbb ছবি</span><span class="chip">বিল্ড ধাপ নেই</span><span class="chip">লাইট ও ডার্ক মোড</span>
+  </div>
+</header>
 
-## নিরাপত্তার কথা
+<section id="intro">
+  <h2>১. পরিচিতি</h2>
+  <p>FreeZone BD একটি বাংলাভাষী সোশ্যাল অ্যাপ। কোনো বিল্ড টুল লাগে না: সব ফাইল একটি ফোল্ডারে রেখে HTTPS হোস্টে আপলোড করলেই চলে। ছবি imgbb-তে যায় এবং ডেটাবেসে শুধু লিংক থাকে। ভিডিও ও ভয়েস মেসেজের জন্য ঐচ্ছিকভাবে Firebase Storage যোগ করা যায়।</p>
+  <div class="grid">
+    <div class="card"><h4>ইউজার অ্যাপ (এই গাইড)</h4><p>ফোল্ডারের সব ফাইল। শুরু হয় <code>login.html</code> ও <code>feed.html</code> থেকে।</p></div>
+    <div class="card"><h4>অ্যাডমিন সাইট</h4><p><code>admin-site/</code> ফোল্ডার, আলাদা হোস্টে রাখতে হয়। সেটআপ <code>admin-site/README.md</code>-এ আছে।</p></div>
+    <div class="card"><h4>Firebase</h4><p>দুই সাইটই একই প্রজেক্ট ও একই ডেটাবেস ব্যবহার করে।</p></div>
+  </div>
+  <div class="note"><b>মনে রাখুন:</b> সব ফাইল <code>feed.html</code>-এর ফোল্ডারেই (একই স্তরে) থাকবে। সাব-ফোল্ডার নেই। শুধু <code>admin-site</code> আলাদা সাইট।</div>
+</section>
 
-- imgbb এর কী ফ্রন্ট-এন্ড কোডে থাকে, তাই সাইট খুললে যে কেউ দেখতে পারে। বদলে নেওয়া যায় এমন কী ব্যবহার করুন। অ্যাপ বড় হলে ছবি আপলোডের জন্য ছোট একটি সার্ভার বা Cloud Function নেওয়ার কথা ভাবুন।
-- Firebase web config গোপন নয়। ডেটা বাঁচায় **rules**, তাই `database.rules.json` সবসময় পাবলিশ করা ও হালনাগাদ রাখুন।
-- এই ফাইলগুলোতে কখনো service-account কী বা অ্যাডমিন পাসওয়ার্ড রাখবেন না।
+<section id="quick">
+  <h2>২. দ্রুত শুরু</h2>
+  <ol class="steps">
+    <li>Firebase-এ প্রজেক্ট খুলুন, <b>Email/Password</b> সাইন-ইন চালু করুন, একটি <b>Realtime Database</b> বানান।</li>
+    <li><code>config.js</code> বানিয়ে <code>auth</code> ও <code>db</code> এক্সপোর্ট করুন (নিচে দেখুন)।</li>
+    <li><code>database.rules.json</code>-এর লেখা Realtime Database &gt; Rules-এ পেস্ট করে <b>Publish</b> করুন।</li>
+    <li><code>imgbb.js</code>-এ নিজের কী বসান, <code>app-info.js</code>-এ নিজের তথ্য বসান।</li>
+    <li>সব ফাইল HTTPS হোস্টে আপলোড করুন, Firebase-এ Authorised domain যোগ করুন।</li>
+    <li><code>login.html</code> খুলে অ্যাকাউন্ট খুলুন। নিজের uid <code>admins/{uid} = true</code> বসিয়ে অ্যাডমিন বানান।</li>
+  </ol>
+</section>
 
-## লোকালি টেস্ট
+<section id="setup">
+  <h2>৩. সেটআপ (ধাপে ধাপে)</h2>
 
-ফোল্ডারটি যেকোনো লোকাল স্ট্যাটিক সার্ভার দিয়ে খুলুন (যেমন `python3 -m http.server`) এবং `http://localhost:8000/login.html` এ যান। ক্যামেরা ও মাইক্রোফোনের জন্য `localhost` নিরাপদ ঠিকানা হিসেবে ধরা হয়।
+  <h3>৩.১ <code>config.js</code></h3>
+  <p>এই ফাইল আপনার নিজের; সব মডিউল <code>./config.js</code> থেকে <code>auth</code> ও <code>db</code> নেয়।</p>
+<pre><code>import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { getDatabase } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-## ভার্সন
+const app = initializeApp({ /* Firebase Console &gt; Project settings &gt; Web app config */ });
+export const auth = getAuth(app);
+export const db = getDatabase(app);
 
-`app-info.js` এ `APP_VERSION` দেখুন। আইনি পেজে `LEGAL_UPDATED` এর তারিখ দেখায়।
+// ভিডিও/ভয়েস আপলোড চালু করতে (পরে) নিচের দুই লাইন যোগ করুন:
+// import { getStorage } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
+// export const storage = getStorage(app);</code></pre>
+  <div class="note"><b>Firebase SDK ভার্সন:</b> সব ফাইলে <code>12.2.1</code> ব্যবহার হয়। ভার্সন বদলালে সব ফাইলে একসাথে বদলাতে হবে।</div>
+
+  <h3>৩.২ Rules Publish করা</h3>
+  <p>Realtime Database &gt; Rules &gt; <code>database.rules.json</code>-এর পুরো লেখা পেস্ট করে <b>Publish</b>। এই ফাইল বদলালে প্রতিবার আবার Publish করতে হবে।</p>
+  <div class="warn"><b>না করলে:</b> নতুন ফিচারে "permission denied" আসবে। যেমন ইউজারনেম যাচাই, Boost, কল, ঘোষণার ব্যানার।</div>
+
+  <h3>৩.৩ <code>imgbb.js</code> ও <code>app-info.js</code></h3>
+  <ul>
+    <li><code>imgbb.js</code>: <code>IMGBB_API_KEY</code>-এ আপনার কী। কী ব্রাউজারে খোলা থাকে (দেখুন <a href="#security">নিরাপত্তা</a>)।</li>
+    <li><code>app-info.js</code>: অ্যাপের নাম, ভার্সন, <code>MIN_AGE</code> (১৮), পরিচালকের নাম ও ঠিকানা, সাপোর্ট ইমেইল, আইনি পেজের তারিখ (<code>LEGAL_UPDATED</code>)। এক জায়গায় বদলালে সব পেজে বদলায়।</li>
+  </ul>
+
+  <h3>৩.৪ হোস্টিং ও ডোমেইন</h3>
+  <ul>
+    <li>HTTPS লাগবে (Firebase Hosting, Netlify, GitHub Pages ইত্যাদি)। ক্যামেরা, মাইক ও কল শুধু HTTPS-এ (বা <code>localhost</code>-এ) চলে।</li>
+    <li>Authentication &gt; Settings &gt; <b>Authorised domains</b>-এ ডোমেইন যোগ না করলে লগইন হবে না।</li>
+  </ul>
+
+  <h3>৩.৫ অ্যাডমিন অ্যাকাউন্ট</h3>
+  <p>Console-এ <code>admins/{আপনার uid}</code>-এ <code>true</code> বসান। মালিকের জন্য <code>owner</code> লিখুন (মালিককে প্যানেল থেকে সরানো যায় না)।</p>
+
+  <h3>৩.৬ পুরনো ইউজারদের ইউজারনেম রেজিস্ট্রি (একবার)</h3>
+  <p>ইউজারনেম এখন <code>usernames/{নাম} = uid</code> নোডে রাখা হয়, যাতে একই নাম কখনো দুজনে না পায়। যারা আগে থেকে আছে তাদের নাম ঢুকাতে: অ্যাডমিন প্যানেল &gt; <b>Users</b> &gt; <b>Sync usernames now</b>। একাধিকবার চালালে ক্ষতি নেই। ডুপ্লিকেট থাকলে তালিকা দেখায় (প্রথমজন নামটি রাখে)।</p>
+  <div class="warn"><b>জরুরি:</b> এটি না চালালে পুরনো ইউজারদের নাম নতুন কেউ নিতে পারবে।</div>
+
+  <h3>৩.৭ Storage (ঐচ্ছিক, ভিডিওর জন্য)</h3>
+  <ol>
+    <li>Firebase Storage চালু করুন, <code>storage.rules</code>-এ <code>PUT_ADMIN_UID_HERE</code>-এর জায়গায় অ্যাডমিনের uid বসিয়ে Publish করুন।</li>
+    <li><code>config.js</code>-এ <code>storage</code> এক্সপোর্ট করুন (৩.১ দেখুন)।</li>
+    <li>এরপর ভিডিও ফিচারের "preview" নোটিশ চলে যায় এবং আসল আপলোড চলে।</li>
+  </ol>
+  <div class="tw"><table>
+    <tr><th>ধরন</th><th>সর্বোচ্চ আকার</th><th>সর্বোচ্চ সময়</th><th>Storage ফোল্ডার</th></tr>
+    <tr><td>পোস্টের ভিডিও</td><td>৫০ MB</td><td>৬০ সেকেন্ড</td><td><code>posts/{uid}/</code></td></tr>
+    <tr><td>স্টোরির ভিডিও</td><td>৩০ MB</td><td>২০ সেকেন্ড</td><td><code>stories/{uid}/</code></td></tr>
+    <tr><td>চ্যাটের ভিডিও ও ভয়েস</td><td>২৫ MB</td><td>৬০ সেকেন্ড</td><td><code>chat/{uid}/</code></td></tr>
+    <tr><td>স্টোরির গান (শুধু অ্যাডমিন)</td><td>১৫ MB</td><td>-</td><td><code>music/{uid}/</code></td></tr>
+  </table></div>
+</section>
+
+<section id="nav">
+  <h2>৪. অ্যাপের কাঠামো</h2>
+  <p>অ্যাপ আসলে দুটি HTML পেজ: <code>login.html</code> (লগইন) ও <code>feed.html</code> (বাকি সবকিছু)। <code>feed.js</code> প্রতিটি "পেজ" দরকার মতো আলাদা মডিউল হিসেবে লোড করে (dynamic import), তাই শুরুর লোড হালকা থাকে।</p>
+  <div class="tw"><table>
+    <tr><th>জায়গা</th><th>কী খোলে</th><th>মডিউল</th></tr>
+    <tr><td>নিচের বার: Home</td><td>ফিড (For you / Following)</td><td><code>feed.js</code></td></tr>
+    <tr><td>নিচের বার: Search</td><td>সার্চ পেজ</td><td><code>search.js</code></td></tr>
+    <tr><td>নিচের বার: Video</td><td>Reels (পূর্ণ স্ক্রিন)</td><td><code>reels.js</code></td></tr>
+    <tr><td>নিচের বার: Chat</td><td>ইনবক্স ও কথোপকথন</td><td><code>chat.js</code></td></tr>
+    <tr><td>নিচের বার: Notifications</td><td>নোটিফিকেশন পেজ</td><td><code>notification.js</code></td></tr>
+    <tr><td>ভাসমান + বাটন</td><td>পোস্ট তৈরি</td><td><code>create.js</code></td></tr>
+    <tr><td>উপরে বামে অ্যাভাটার</td><td>নিজের প্রোফাইল</td><td><code>profile.js</code></td></tr>
+    <tr><td>উপরে ডানে বন্ধু আইকন</td><td>Friends</td><td><code>friends.js</code></td></tr>
+    <tr><td>প্রোফাইলের ⋮ মেনু</td><td>সেটিংস</td><td><code>settings.js</code></td></tr>
+  </table></div>
+  <p>প্রতিটি পেজ <code>mount(container, ctx)</code> এক্সপোর্ট করে। <code>ctx</code>-এ থাকে <code>db</code>, <code>currentUser</code>, <code>followingIds</code>, <code>postActions</code> ইত্যাদি। কোনো পেজ নিজের টপ বার আঁকলে <code>ctx.setHeader(false)</code> দিয়ে শেয়ার্ড হেডার লুকায় (সার্চ পেজ তা-ই করে)। নতুন পেজ যোগ করতে <code>feed.js</code>-এর <code>pageModules</code> তালিকায় এক লাইন যোগ করুন এবং নিজের <code>mount</code> লিখুন।</p>
+</section>
+
+<section id="login">
+  <h2>৫. লগইন ও সাইন-আপ <code>login.html</code> · <code>login.js</code></h2>
+  <p>প্রতিটি ধাপ একটি পূর্ণ স্ক্রিন পেজ। স্লাইড অ্যানিমেশন, উপরে তীর বাটন ও প্রগ্রেস বার, নিচে বড় বাটন। ব্রাউজারের Back বাটনও ধাপে ধাপে পিছায়।</p>
+  <div class="tw"><table>
+    <tr><th>ধাপ</th><th>কী হয়</th></tr>
+    <tr><td>লগইন</td><td>ইমেইল, পাসওয়ার্ড, "Remember me", "Forgot password?"। নিচে "Create new account"।</td></tr>
+    <tr><td>রিসেট</td><td>ইমেইলে রিসেট লিংক। ইমেইল আছে কি না তা জানানো হয় না (প্রাইভেসি)।</td></tr>
+    <tr><td>১/৫ নাম</td><td>কমপক্ষে ২ অক্ষর।</td></tr>
+    <tr><td>২/৫ ইউজারনেম</td><td>লিখতে লিখতে "available / taken" ও আইকন। নেওয়া থাকলে ফাঁকা নামের সাজেশন চিপ। নাম থেকে প্রথমেই সাজেশন আসে।</td></tr>
+    <tr><td>৩/৫ ইমেইল</td><td>ফরম্যাট যাচাই।</td></tr>
+    <tr><td>৪/৫ পাসওয়ার্ড</td><td>কমপক্ষে ৬ অক্ষর, শক্তির বার।</td></tr>
+    <tr><td>৫/৫ নিশ্চিত</td><td>সারাংশ কার্ড, ১৮+ ও শর্তে সম্মতির টিক, "Create account"।</td></tr>
+  </table></div>
+  <h3>ইউজারনেমের নিয়ম</h3>
+  <ul>
+    <li>৩–২০ অক্ষর; শুধু ছোট হাতের <code>a-z</code>, সংখ্যা, <code>_</code> ও <code>.</code>। শুরু বা শেষে ডট, বা পরপর দুই ডট চলবে না।</li>
+    <li><code>admin</code>, <code>support</code>, <code>freezone</code> ইত্যাদি সংরক্ষিত নাম নেওয়া যায় না।</li>
+    <li><code>Abdul</code> আর <code>abdul</code> একই ধরা হয় (সব ছোট হাতে সেভ)। ইউজারনেম পরে বদলানো যায় না।</li>
+  </ul>
+  <h3>অ্যাকাউন্ট খোলার ক্রম (গুরুত্বপূর্ণ)</h3>
+  <ol class="steps">
+    <li>Auth-এ ইউজার তৈরি।</li>
+    <li><code>usernames/{নাম} = uid</code> লিখে নামটি দখল। রুল শুধু খালি নামেই লিখতে দেয়, তাই দুজন একসাথে চাইলেও একজনই পায়।</li>
+    <li><code>users/{uid}</code> প্রোফাইল লেখা।</li>
+  </ol>
+  <p>দখল ব্যর্থ হলে বা প্রোফাইল না লেখা গেলে অ্যাকাউন্ট ও দখল করা নাম মুছে ফেলা হয়, আর ইউজারকে ইউজারনেম পেজে ফেরানো হয়। ইমেইল বা পাসওয়ার্ডের ভুলেও ওই ধাপে ফেরানো হয়।</p>
+  <div class="note"><b>লিংকে ধাপ:</b> <code>login.html?tab=signup</code> সরাসরি সাইন-আপ খোলে। <code>?next=feed.html?post=ID</code> লগইনের পর ওই পেজে নেয় (শুধু একই সাইটে)।</div>
+</section>
+
+<section id="feed">
+  <h2>৬. ফিড <code>feed.html</code> · <code>feed.js</code></h2>
+  <div class="grid">
+    <div class="card"><h4>For you / Following</h4><p>For you: সবার পোস্ট, অ্যালগরিদমে সাজানো। Following: যাদের ফলো করেন তাদের ও নিজের পোস্ট। পছন্দ মনে থাকে (<code>feed-tabs.js</code>)।</p></div>
+    <div class="card"><h4>পেজ করে লোড</h4><p>একবারে সব নয়, এক পাতা করে। লাইক, এডিট, ডিলিট সঙ্গে সঙ্গে দেখায় (<code>feed-pager.js</code>)।</p></div>
+    <div class="card"><h4>"নতুন পোস্ট" বাটন</h4><p>নিচে পড়ার সময় নতুন পোস্ট জোর করে ঢোকে না, "↑ 3 new posts" বাটন আসে। নিজের পোস্ট সঙ্গে সঙ্গে আসে (<code>feed-new.js</code>)।</p></div>
+    <div class="card"><h4>স্ক্রল মনে রাখা</h4><p>রিলোডের পরও আগের জায়গায় ফেরে (<code>scroll-memory.js</code>)।</p></div>
+    <div class="card"><h4>Pull to refresh</h4><p>একদম ওপরে থাকলে টেনে রিফ্রেশ (<code>pull-refresh.js</code>)।</p></div>
+    <div class="card"><h4>অফলাইন বার</h4><p>"You're offline" ও "Back online" (<code>offline-bar.js</code>)।</p></div>
+    <div class="card"><h4>People you may like</h4><p>ফিডের মাঝে সোয়াইপ কার্ড, Follow ও Remove সহ (<code>suggest.js</code>)।</p></div>
+    <div class="card"><h4>খালি ফিড</h4><p>অবস্থা অনুযায়ী উপযুক্ত বার্তা (<code>empty-state.js</code>)।</p></div>
+    <div class="card"><h4>ঘোষণা ও রক্ষণাবেক্ষণ</h4><p>অ্যাডমিনের ঘোষণার ব্যানার; রক্ষণাবেক্ষণ মোডে অ্যাডমিন ছাড়া সবাই "back soon" দেখে (<code>status.js</code>)।</p></div>
+  </div>
+  <p>ফিডের নির্বাচিত পোস্ট তালিকার মাঝে <b>Sponsored</b> কার্ড বসে (দেখুন <a href="#boost">Boost</a>)।</p>
+</section>
+
+<section id="post">
+  <h2>৭. পোস্ট কার্ড <code>post.js</code></h2>
+  <ul>
+    <li><b>হেডার:</b> অ্যাভাটার, নাম, @username, সময়, "edited", অডিয়েন্স আইকন, ঐচ্ছিক Follow চিপ, ⋯ মেনু।</li>
+    <li><b>বিষয়বস্তু:</b> লেখা (লম্বা হলে "আরও দেখুন"), #হ্যাশট্যাগ লিংক, feeling ও স্থান ট্যাগ, ১–৪টি ছবি (ফিডের গ্রিড), ভিডিও, পোল।</li>
+    <li><b>অ্যাকশন সারি:</b> ❤️ লাইক (ছবিতে ডাবল ট্যাপও চলে), 💬 কমেন্ট, শেয়ার, সেভ।</li>
+    <li><b>ছবি ভিউয়ার:</b> ফেসবুক স্টাইল, সোয়াইপ, লাইক, কমেন্ট, শেয়ার ও মেনু।</li>
+    <li><b>নিজের পোস্টের মেনু:</b> <b>Boost post</b>, Who can see this (Public / Followers / Only me), Edit, Delete।</li>
+    <li><b>অন্যের পোস্টের মেনু:</b> Save, Not interested, Report, Block, শেয়ার।</li>
+    <li><b>অডিয়েন্স:</b> <code>public</code> সবাই, <code>followers</code> শুধু ফলোয়াররা, <code>me</code> শুধু নিজে। দেখার নিয়ম <code>canViewPost()</code>-এ আছে এবং প্রাইভেট অ্যাকাউন্টের পোস্টেও প্রযোজ্য।</li>
+    <li><b>পোল:</b> ২–৪টি অপশন, ভোট <code>pollVotes/{postId}/{uid}</code>-এ, ফল লাইভ।</li>
+  </ul>
+</section>
+
+<section id="create">
+  <h2>৮. পোস্ট তৈরি <code>create.js</code></h2>
+  <ul>
+    <li>লেখা, ৪টি পর্যন্ত ছবি, ভিডিও (Storage চালু থাকলে), পোল, feeling ও স্থান (<code>tags.js</code>), ইমোজি পিকার (<code>emoji.js</code>)।</li>
+    <li>ছবি আপলোডের আগে ক্রপার (<code>crop.js</code>) ও সংকোচন; সত্যিকারের শতাংশের প্রগ্রেস বার, ছবি-প্রতি শতাংশ ও Cancel।</li>
+    <li>অডিয়েন্স বেছে নেওয়া যায়। #হ্যাশট্যাগ থাকলে <code>hashtags/{tag}/{postId}</code> সূচি লেখা হয়।</li>
+    <li>সাসপেন্ড করা অ্যাকাউন্ট পোস্ট করতে পারে না (rules আটকায়)।</li>
+  </ul>
+</section>
+
+<section id="comments">
+  <h2>৯. কমেন্ট <code>comments.js</code></h2>
+  <ul>
+    <li>নিচ থেকে ওঠা শিট এবং আলাদা পেজ, দুই জায়গাতেই কাজ করে।</li>
+    <li>কমেন্ট, রিপ্লাই, কমেন্টে লাইক, এডিট ও ডিলিট। সংশ্লিষ্ট মানুষকে নোটিফিকেশন যায়।</li>
+  </ul>
+</section>
+
+<section id="search">
+  <h2>১০. সার্চ <code>search.js</code></h2>
+  <h3>খালি সার্চ বক্সে</h3>
+  <ul>
+    <li><b>Recent:</b> আগের সার্চ ও খোলা প্রোফাইল (শুধু এই ফোনে, <code>localStorage fz_recent_searches</code>, সর্বোচ্চ ১২টি)। প্রথমে ৫টি; "See all", প্রতিটির ✕, "Clear all"।</li>
+    <li><b>Trending:</b> গত ৭ দিনে সবচেয়ে বেশি ব্যবহৃত #ট্যাগ।</li>
+    <li><b>People you may know:</b> কার্ডে Follow বাটনসহ।</li>
+  </ul>
+  <h3>লিখলে</h3>
+  <p>ফিল্টার চিপ: <b>All · People · Posts · Photos · Polls</b>।</p>
+  <ul>
+    <li><b>People:</b> নাম বা @username-এর <u>শুরু</u> মিলিয়ে খোঁজে (কমপক্ষে ২ অক্ষর)। নিজে, ব্লক, মিউট ও সাসপেন্ড বাদ। প্রতিটি রো-তে বড় ছবি, নাম, @username ও Follow / Following / Requested।</li>
+    <li><b>Posts:</b> সবচেয়ে নতুন ৪০০টি পোস্টে খোঁজে (লেখা, নাম, ইউজারনেম, feeling, স্থান, #ট্যাগ)। সব শব্দ মিলতে হবে। <code>#ট্যাগ</code> আসল ট্যাগ হতে হবে।</li>
+    <li><b>All:</b> আগে ৩ জন মানুষ ও "See all people", তারপর পোস্ট।</li>
+  </ul>
+  <p>প্রোফাইল দেখে ফিরলে লেখা ও ফিল্টার ফিরে আসে। People সার্চ <code>users</code>-এর <code>username</code>, <code>name</code>, <code>nameLower</code> ইনডেক্স ব্যবহার করে।</p>
+  <div class="note"><b>সীমা:</b> পোস্ট সার্চ শুধু নতুন ৪০০ পোস্টে। পুরনো পোস্ট খুঁজতে #ট্যাগ পেজ ব্যবহার করুন (<code>hashtag.js</code>)।</div>
+</section>
+
+<section id="profile">
+  <h2>১১. প্রোফাইল <code>profile.js</code></h2>
+  <ul>
+    <li>ব্যানার (৩:১, শুধু অ্যাডমিন বসাতে পারে), ছবি, নাম, @username, বায়ো (১৫০ অক্ষর), ফলোয়ার/ফলোয়িং/পোস্ট সংখ্যা।</li>
+    <li><b>নিজের প্রোফাইলে:</b> Edit profile, Add bio, সেটিংসের ⋮ মেনু, QR কোড ও শেয়ার।</li>
+    <li><b>অন্যের প্রোফাইলে:</b> Follow / Following / Requested, Message, ⋯ মেনু (ব্লক, রিপোর্ট, QR, শেয়ার)।</li>
+    <li>ট্যাব: Posts, Photos, Videos (ফিচার-গেটের নিয়ন্ত্রণে), Saved (শুধু নিজের)। প্রোফাইলের পোস্ট ফিডের মতো একই কার্ড; ২য় পোস্টের পর, তারপর প্রতি ৬টিতে Sponsored বসতে পারে।</li>
+    <li>ফলোয়ার/ফলোয়িং তালিকায় খোঁজা ও Remove।</li>
+  </ul>
+</section>
+
+<section id="friends">
+  <h2>১২. বন্ধু ও ফলো <code>friends.js</code> · <code>privacy.js</code> · <code>suggest.js</code></h2>
+  <ul>
+    <li>ট্যাব: Suggestions, Followers, Following, Find people। প্রতিটি রো-তে Message / Remove follower / Unfollow মেনু।</li>
+    <li><b>প্রাইভেট অ্যাকাউন্ট:</b> <code>users/{uid}/isPrivate = true</code> হলে ফলো করতে অনুরোধ পাঠাতে হয় (বাটনে "Requested")। মালিক নোটিফিকেশন পেজ থেকে Confirm বা Delete করেন।</li>
+  </ul>
+</section>
+
+<section id="chat">
+  <h2>১৩. চ্যাট ও কল <code>chat.js</code> · <code>call.js</code></h2>
+  <ul>
+    <li>এক-একজনের কথোপকথন, রিয়েলটাইম; ছবি, এডিট, ডিলিট, "Seen", অনলাইন/Last seen, চ্যাট ও মেসেজ খোঁজা (<code>chat-search.js</code>), ইমোজি।</li>
+    <li>ভিডিও ও ভয়েস মেসেজ ফিচার-গেটের নিয়ন্ত্রণে (Storage লাগে)।</li>
+    <li><b>অডিও ও ভিডিও কল (WebRTC):</b> Firebase শুধু সংকেত বহন করে (<code>calls/{calleeUid}/{callId}</code>)। শব্দ ও ছবি দুই ফোনের মধ্যে সরাসরি যায়।</li>
+  </ul>
+  <div class="warn"><b>কলের সীমা:</b> রিং শুধু তখনই হয় যখন অন্যজনের অ্যাপ খোলা। বন্ধ থাকলে রিংয়ের জন্য পুশ নোটিফিকেশন লাগবে (এখনকার কোডে নেই)। এক সময়ে একটি কল, ১-এর সঙ্গে ১। শুধু মোবাইল ডেটায় কল না লাগলে <code>call-config.js</code>-এ একটি TURN সার্ভার যোগ করুন (STUN দেওয়াই আছে)।</div>
+</section>
+
+<section id="stories">
+  <h2>১৪. স্টোরি <code>story.js</code></h2>
+  <ul>
+    <li>ফিডের ওপরে স্টোরি বার; পূর্ণ স্ক্রিন ভিউয়ার; ২৪ ঘণ্টা পর অদৃশ্য।</li>
+    <li>কারা দেখেছে তার তালিকা, রিপ্লাই ও রিঅ্যাকশন; অ্যাডমিনের দেওয়া গান (Storage-এর <code>music/</code>)।</li>
+    <li>ভিডিও স্টোরি ফিচার-গেটের নিয়ন্ত্রণে।</li>
+  </ul>
+</section>
+
+<section id="reels">
+  <h2>১৫. Reels ও ভিডিও <code>reels.js</code> · <code>features.js</code> · <code>video-tools.js</code></h2>
+  <p>Reels পূর্ণ স্ক্রিন ভিডিও, এক সোয়াইপে একটি। লাইক পোস্টের <code>likes</code> ও <code>likesCount</code>-এ যায়, ফিডের একই ফাংশন দিয়ে।</p>
+  <h3>ফিচার-গেট</h3>
+  <p>প্রতিটি ভিডিও-সংক্রান্ত ফিচারের তিনটি অবস্থা, অ্যাডমিনের <b>Features</b> পেজ থেকে বদলানো যায় এবং সঙ্গে সঙ্গে কার্যকর হয়:</p>
+  <div class="tw"><table>
+    <tr><th>মোড</th><th>ফল</th></tr>
+    <tr><td><code>on</code> (ডিফল্ট)</td><td>আসল ফিচার চলে। Storage যুক্ত না থাকলে প্রিভিউ নোটিশসহ।</td></tr>
+    <tr><td><code>soon</code></td><td>সাদা পূর্ণ পেজে "Coming soon"।</td></tr>
+    <tr><td><code>hidden</code></td><td>বাটন একদমই দেখা যায় না।</td></tr>
+  </table></div>
+  <p>ফিচারের চাবি: <code>postVideo</code>, <code>storyVideo</code>, <code>chatVideo</code>, <code>voiceMessage</code>, <code>profileVideos</code>, <code>reels</code>। ডেটা <code>config/features</code>-এ (না থাকলে "on")।</p>
+  <p><code>video-tools.js</code>: ভিডিও ফাইল যাচাই (সময়, আকার, ফরম্যাট) ও কভার ছবি।</p>
+</section>
+
+<section id="notif">
+  <h2>১৬. নোটিফিকেশন <code>notification.js</code></h2>
+  <ul>
+    <li>ফেসবুক স্টাইল পেজ: চিপ <b>All / Unread</b>, উপরের ⋯ মেনুতে "Mark all as read" ও "Clear all"।</li>
+    <li>গ্রুপ: New, Today, Yesterday, This week, Earlier। অপঠিত সারিতে হালকা রঙ ও ডট।</li>
+    <li>প্রতিটি সারির ⋯ মেনুতে Remove। Follow request-এ নামের নিচেই Confirm/Delete।</li>
+    <li>ধরন: <code>like</code>, <code>comment</code>, <code>reply</code>, <code>commentLike</code>, <code>follow</code>, <code>boost</code> (অ্যাডমিনের বার্তা; ট্যাপ করলে "My boosts" খোলে)।</li>
+    <li>নোটিফিকেশন পাঠানোর কোডও এই ফাইলেই (<code>start(ctx)</code>), তাই <code>feed.js</code> না ছুঁয়ে বদলানো যায়।</li>
+  </ul>
+</section>
+
+<section id="boost">
+  <h2>১৭. Boost ও Sponsored <code>boost.js</code> · <code>ads.js</code></h2>
+  <p>ইউজার টাকা দিয়ে নিজের পোস্ট অন্যদের ফিডে "Sponsored" হিসেবে দেখাতে পারেন। অ্যাডমিন পেমেন্ট যাচাই করে অনুমোদন দেন।</p>
+  <h3>প্যাকেজ</h3>
+  <div class="tw"><table>
+    <tr><th>মেয়াদ</th><th>দাম</th></tr>
+    <tr><td>৩০ দিন</td><td>৳ ৩০০</td></tr>
+    <tr><td>৬০ দিন</td><td>৳ ৫০০</td></tr>
+    <tr><td>১২০ দিন</td><td>৳ ১০০০</td></tr>
+  </table></div>
+  <p>দাম <code>database.rules.json</code>-এও স্থির করা, কাজেই ব্রাউজারে বদলে লাভ নেই। দাম বদলাতে <code>boost.js</code> ও rules দুটোই বদলান।</p>
+  <h3>ইউজারের ধাপ (পোস্টের ⋯ &gt; Boost post)</h3>
+  <ol class="steps">
+    <li><b>প্যাকেজ</b> বাছাই।</li>
+    <li><b>বাটনের নাম ও https লিংক</b> (শুধু https চলে)।</li>
+    <li><b>পেমেন্ট:</b> bKash/Nagad নম্বরে Send Money, প্রেরকের নম্বর, TrxID ও স্ক্রিনশট। সব ঠিক থাকলেই "Complete" আসে। ৩ দিনের ফেরত নীতির বক্স দেখানো হয়।</li>
+    <li>অর্ডার <code>pending</code> হয়ে অ্যাডমিনের কাছে যায়।</li>
+  </ol>
+  <h3>নিয়ম ও সুরক্ষা</h3>
+  <ul>
+    <li>শুধু নিজের পাবলিক পোস্ট Boost করা যায়। একই পোস্টে pending/active/refund_requested থাকলে নতুন অর্ডার হয় না। একসাথে সর্বোচ্চ ৩টি pending।</li>
+    <li><b>TrxID ডুপ্লিকেট রোধ:</b> <code>boostTrx/{method_TRXID} = uid</code> আগে লেখা হয়; একই TrxID দুবার ব্যবহার করা যায় না।</li>
+    <li>"My boosts"-এ স্ট্যাটাস, ভিউ, ক্লিক ও "Request a refund"। এটি এখন Boost-এর নোটিফিকেশনে ট্যাপ করলে খোলে।</li>
+  </ul>
+  <h3>ফেরত (Refund)</h3>
+  <p>অনুমোদনের পর ৩ দিন পর্যন্ত ফেরত চাওয়া যায়। অ্যাডমিন নিজে টাকা ফেরত পাঠিয়ে "Mark as refunded" দেন (অথবা কারণসহ "Keep running")। ৩ দিন পার হলে ফেরত নেই। নীতির লেখা <code>terms.html</code> ও <code>privacy.html</code>-এ আছে।</p>
+  <h3>দেখানো (<code>ads.js</code>)</h3>
+  <ul>
+    <li>অনুমোদনের সময় অ্যাডমিন <code>boostLive/{id}</code> লেখে। <code>ads.js</code> সেটি পড়ে আসল পোস্ট <code>posts/{postId}</code> থেকে এনে দেখায়, তাই লেখা ও ছবি সবসময় হালনাগাদ।</li>
+    <li><b>জায়গা:</b> ফিডে ৩য় পোস্টের পর, তারপর প্রতি ৫টিতে। প্রোফাইলে ২য় পোস্টের পর, তারপর প্রতি ৬টিতে।</li>
+    <li><b>কার্ডের ক্রম:</b> লেখক ও "Sponsored" (✕ সহ) → লেখা ও ছবি/ভিডিও → <b>লিংক বাটন বার</b> (হোস্ট + বাটন) → লাইক, কমেন্ট, শেয়ার, সেভ। লেখা বা ছবিতে চাপলে পোস্ট খোলে।</li>
+    <li>আপনি যে পোস্ট Boost করেছেন তা নিজের প্রোফাইলে বিজ্ঞাপন হিসেবে আসে না। নিজের ভিউ ও ক্লিক গোনা হয় না।</li>
+    <li>বাদ পড়ে: মুছে ফেলা পোস্ট, followers/me অডিয়েন্সের পোস্ট, uid না মেলা, http লিংক, ব্লক করা লেখক, ফিডে ইতিমধ্যে থাকা পোস্ট।</li>
+    <li>দিনে সীমিত বার দেখানো; ✕ দিলে সেই ডিভাইসে লুকায়।</li>
+    <li>লিংকের <code>rel="noopener noreferrer sponsored"</code>।</li>
+    <li>কিছু ব্যর্থ হলে কিছুই ঢোকানো হয় না, ফিড আগের মতোই থাকে।</li>
+  </ul>
+  <h3>মেয়াদ শেষ</h3>
+  <p>মেয়াদ ফুরালে অ্যাডমিন প্যানেলের "End and notify" দিয়ে বন্ধ ও ইউজারকে নোটিফিকেশন যায়। অ্যাডমিন চাইলে <b>Re-open</b> করে নতুন প্যাকেজ ও নতুন TrxID দিয়ে আবার চালু করতে পারেন।</p>
+  <div class="note"><b>অ্যাডমিনের সেটিং:</b> bKash/Nagad নম্বর অ্যাডমিন প্যানেলের Boosts পেজে বসাতে হয় (<code>config/boost</code>)। না বসালে ইউজার পেমেন্টের নম্বর দেখতে পাবে না।</div>
+</section>
+
+<section id="settings">
+  <h2>১৮. সেটিংস <code>settings.js</code> · <code>help.js</code> · <code>feedback.js</code> · <code>about.js</code></h2>
+  <ul>
+    <li><b>Edit profile:</b> ছবি, নাম (৬০ দিনে একবার), বায়ো। ইউজারনেম বদলায় না।</li>
+    <li>পাসওয়ার্ড বদল, অ্যাকাউন্ট ডিলিট, প্রাইভেট অ্যাকাউন্ট চালু/বন্ধ (<code>users/{uid}/isPrivate</code>)।</li>
+    <li><b>থিম:</b> Light / Dark / System (<code>theme.js</code>; <code>localStorage fz-theme</code>)।</li>
+    <li>Blocked accounts। (<b>My boosts</b> এখন শুধু Boost-এর নোটিফিকেশনে ট্যাপ করলে খোলে; সেটিংসে আলাদা এন্ট্রি এখনো নেই।)</li>
+    <li>Help center (FAQ; নতুন প্রশ্ন যোগ করতে <code>help.js</code>-এর <code>FAQ</code>-এ এক লাইন), Report a problem (<code>feedback/{uid}/{id}</code>), About, Terms, Privacy, Community guidelines, বন্ধুদের আমন্ত্রণ।</li>
+  </ul>
+</section>
+
+<section id="safety">
+  <h2>১৯. প্রাইভেসি, ব্লক, মিউট ও ইন্টারেস্ট</h2>
+  <div class="grid">
+    <div class="card"><h4>ব্লক <code>block.js</code></h4><p><code>blocks/{me}/{they}</code>, শুধু নিজে পড়তে ও লিখতে পারে। ব্লক করলে ফিড, সার্চ, সাজেশন ও Sponsored থেকেও বাদ।</p></div>
+    <div class="card"><h4>মিউট <code>mute.js</code></h4><p>ব্লক না করে পোস্ট লুকানোর ব্যবস্থা (<code>mutes/{me}/{they}</code>); ফিড, সার্চ ও #ট্যাগ পেজ এটি মানে। <b>এখনো কোনো মেনুতে মিউট বাটন নেই</b>, শুধু <code>muteAccount()</code> ফাংশন আছে।</p></div>
+    <div class="card"><h4>Not interested <code>less.js</code></h4><p>পোস্ট সরে যায় এবং ওই লেখক ও ট্যাগ কিছুদিন "For you"-তে নিচে নামে। শুধু এই ফোনে মনে রাখা হয়।</p></div>
+    <div class="card"><h4>ইন্টারেস্ট প্রোফাইল <code>interests.js</code></h4><p>লাইক, কমেন্ট, শেয়ার, সেভ, ফলো ও ভিউ থেকে ছোট একটি রুচির প্রোফাইল তৈরি হয়। ফোনে ও নিজের ব্যক্তিগত <code>userInterests/{uid}</code>-এ থাকে।</p></div>
+    <div class="card"><h4>ভিউ <code>views.js</code></h4><p>পোস্টের অর্ধেক ~২.৫ সেকেন্ড পর্দায় থাকলে "দেখা" ধরা হয়; <code>viewsCount</code> প্রতি জন প্রতি পোস্টে একবার বাড়ে।</p></div>
+    <div class="card"><h4>রিপোর্ট</h4><p>পোস্ট ও প্রোফাইল রিপোর্ট অ্যাডমিন প্যানেলের Reports পেজে যায়।</p></div>
+  </div>
+</section>
+
+<section id="legal">
+  <h2>২০. আইনি পেজ</h2>
+  <div class="tw"><table>
+    <tr><th>ফাইল</th><th>বিষয়</th></tr>
+    <tr><td><code>terms.html</code></td><td>শর্তাবলী (Boost ও ৩ দিনের ফেরত নীতিসহ)</td></tr>
+    <tr><td><code>privacy.html</code></td><td>গোপনীয়তা নীতি (Boost-পেমেন্টের তথ্য: TrxID, স্ক্রিনশট, প্রেরকের নম্বরসহ)</td></tr>
+    <tr><td><code>guidelines.html</code></td><td>কমিউনিটি গাইডলাইন</td></tr>
+    <tr><td><code>legal.css</code></td><td>এই তিন পেজের স্টাইল</td></tr>
+  </table></div>
+  <p>পেজগুলো বাংলা ও ইংরেজি দুই ভাষায়। নাম, ঠিকানা, ইমেইল ও তারিখ <code>app-info.js</code> থেকে বসে।</p>
+  <div class="warn"><b>প্রকাশের আগে:</b> লেখাগুলো একজন বাংলাদেশি আইনজীবী ও হিসাবরক্ষককে দিয়ে দেখিয়ে নিন। ফেরত নীতির অনুমানগুলো আপনার সিদ্ধান্ত অনুযায়ী মিলিয়ে নিন এবং bKash/Nagad চার্জ কে বহন করবে তা স্পষ্ট করে লিখুন।</div>
+</section>
+
+<section id="files">
+  <h2>২১. ফাইলের তালিকা</h2>
+  <h3>পেজ ও প্রবেশদ্বার</h3>
+  <div class="tw"><table>
+    <tr><th>ফাইল</th><th>কাজ</th></tr>
+    <tr><td><code>login.html</code> · <code>login.js</code></td><td>লগইন, ধাপে ধাপে সাইন-আপ, পাসওয়ার্ড রিসেট</td></tr>
+    <tr><td><code>feed.html</code> · <code>feed.js</code></td><td>মূল পেজ: ফিড, নিচের বার, সব পেজ লোড করা</td></tr>
+    <tr><td><code>terms.html</code> · <code>privacy.html</code> · <code>guidelines.html</code> · <code>legal.css</code></td><td>আইনি পেজ</td></tr>
+  </table></div>
+  <h3>ফিচার মডিউল</h3>
+  <div class="tw"><table>
+    <tr><th>ফাইল</th><th>কাজ</th></tr>
+    <tr><td><code>post.js</code></td><td>পোস্ট কার্ড, ছবি ভিউয়ার, পোল, রিপোর্ট, শেয়ার, সহায়ক ফাংশন (সবচেয়ে বেশি আমদানি হওয়া ফাইল)</td></tr>
+    <tr><td><code>create.js</code></td><td>পোস্ট তৈরি</td></tr>
+    <tr><td><code>comments.js</code></td><td>কমেন্ট শিট ও তালিকা</td></tr>
+    <tr><td><code>search.js</code></td><td>সার্চ: Recent, People, Posts, Photos, Polls</td></tr>
+    <tr><td><code>hashtag.js</code> · <code>hashtags.js</code></td><td>#ট্যাগ পেজ; ট্যাগ বের করা ও সূচি</td></tr>
+    <tr><td><code>profile.js</code></td><td>নিজের ও অন্যের প্রোফাইল</td></tr>
+    <tr><td><code>friends.js</code> · <code>suggest.js</code> · <code>privacy.js</code></td><td>বন্ধু তালিকা, সাজেশন, প্রাইভেট অ্যাকাউন্ট ও ফলো রিকোয়েস্ট</td></tr>
+    <tr><td><code>chat.js</code> · <code>chat-search.js</code></td><td>ইনবক্স, কথোপকথন, চ্যাট খোঁজা</td></tr>
+    <tr><td><code>call.js</code> · <code>call-config.js</code></td><td>অডিও/ভিডিও কল; STUN/TURN সেটিং</td></tr>
+    <tr><td><code>story.js</code></td><td>স্টোরি</td></tr>
+    <tr><td><code>reels.js</code></td><td>Reels</td></tr>
+    <tr><td><code>notification.js</code></td><td>নোটিফিকেশন পেজ ও পাঠানোর কোড</td></tr>
+    <tr><td><code>boost.js</code> · <code>ads.js</code></td><td>Boost কেনা ও "My boosts"; Sponsored কার্ড দেখানো</td></tr>
+    <tr><td><code>settings.js</code> · <code>help.js</code> · <code>feedback.js</code> · <code>about.js</code></td><td>সেটিংস ও তার উপ-পেজ</td></tr>
+    <tr><td><code>block.js</code> · <code>mute.js</code> · <code>less.js</code></td><td>ব্লক, মিউট (ফাংশন), Not interested</td></tr>
+    <tr><td><code>status.js</code></td><td>ঘোষণা ব্যানার ও রক্ষণাবেক্ষণ মোড</td></tr>
+    <tr><td><code>features.js</code></td><td>ফিচার-গেট (on / soon / hidden)</td></tr>
+  </table></div>
+  <h3>ফিড ও অ্যালগরিদম</h3>
+  <div class="tw"><table>
+    <tr><th>ফাইল</th><th>কাজ</th></tr>
+    <tr><td><code>feed-algorithm.js</code></td><td>"For you" স্কোরিং ও সাজানো, বিজ্ঞাপনের জায়গা বাছাই (<code>pickAdsForSlots</code>)</td></tr>
+    <tr><td><code>feed-algorithm.test.mjs</code></td><td>অ্যালগরিদমের স্বয়ংক্রিয় টেস্ট</td></tr>
+    <tr><td><code>feed-pager.js</code> · <code>feed-new.js</code> · <code>feed-tabs.js</code></td><td>পেজ করে লোড, "নতুন পোস্ট" বাটন, দুই ট্যাব</td></tr>
+    <tr><td><code>scroll-memory.js</code> · <code>pull-refresh.js</code> · <code>offline-bar.js</code> · <code>empty-state.js</code></td><td>স্ক্রল মনে রাখা, টেনে রিফ্রেশ, অফলাইন বার, খালি অবস্থা</td></tr>
+    <tr><td><code>interests.js</code> · <code>views.js</code></td><td>রুচির প্রোফাইল; পোস্ট "দেখা" গোনা</td></tr>
+  </table></div>
+  <h3>সহায়ক ও ভাগ করা</h3>
+  <div class="tw"><table>
+    <tr><th>ফাইল</th><th>কাজ</th></tr>
+    <tr><td><code>config.js</code></td><td><b>আপনার</b> Firebase সংযোগ (<code>auth</code>, <code>db</code>, ঐচ্ছিক <code>storage</code>)</td></tr>
+    <tr><td><code>app-info.js</code></td><td>অ্যাপের নাম, ভার্সন, পরিচালকের তথ্য, সাপোর্ট ইমেইল, আমন্ত্রণ লিংক</td></tr>
+    <tr><td><code>theme.css</code> · <code>theme.js</code></td><td>লাইট/ডার্ক রং (CSS ভেরিয়েবল) ও থিম বদল</td></tr>
+    <tr><td><code>imgbb.js</code> · <code>storage.js</code> · <code>video-tools.js</code> · <code>crop.js</code></td><td>ছবি আপলোড, Storage আপলোড, ভিডিও যাচাই, ছবি ক্রপ</td></tr>
+    <tr><td><code>emoji.js</code> · <code>tags.js</code></td><td>ইমোজি পিকার; feeling ও স্থান ট্যাগ</td></tr>
+    <tr><td><code>qr.js</code> · <code>qr-scan.js</code> · <code>qr-read.js</code></td><td>QR বানানো, ক্যামেরায় স্ক্যান, ছবি থেকে QR পড়া</td></tr>
+  </table></div>
+  <h3>নিয়ম ফাইল ও অন্যান্য</h3>
+  <div class="tw"><table>
+    <tr><th>ফাইল</th><th>কাজ</th></tr>
+    <tr><td><code>database.rules.json</code></td><td>Realtime Database নিরাপত্তা নিয়ম ও ইনডেক্স (প্রতিবার বদলালে Publish)</td></tr>
+    <tr><td><code>storage.rules</code></td><td>Firebase Storage নিয়ম (ভিডিও চালু করলে)</td></tr>
+    <tr><td><code>feed-demo.html</code> · <code>feed-lab.html</code></td><td>শুধু ডিজাইন ডেমো ও ফিড পরীক্ষাগার; অ্যাপের অংশ নয়, হোস্টে না রাখলেও চলে</td></tr>
+    <tr><td><code>README.md</code> · <code>README.bn.md</code></td><td>আগের সংক্ষিপ্ত গাইড (এই ফাইলটি এর পূর্ণ ও হালনাগাদ রূপ)</td></tr>
+    <tr><td><code>admin-site/</code></td><td>অ্যাডমিন সাইট (আলাদা হোস্টে)</td></tr>
+    <tr><td><code>admin-site-old/</code> · <code>admin-site-flat.zip</code> · <code>admins.json</code></td><td>পুরনো ব্যাকআপ/নমুনা; অ্যাপ চালাতে লাগে না, হোস্টে তোলার দরকার নেই</td></tr>
+  </table></div>
+</section>
+
+<section id="data">
+  <h2>২২. ডেটার কাঠামো (Realtime Database)</h2>
+<pre><code>usernames/{name}                = uid            ইউজারনেম রেজিস্ট্রি (একটি নাম একজনের)
+users/{uid}                     name, nameLower, username, bio, photoURL, bannerURL,
+                                isPrivate, nameChangedAt, createdAt, suspended*
+posts/{postId}                  uid, name, username, photoURL, text, imageURLs, videoURL,
+                                videoThumb, poll{options}, feeling, place, audience,
+                                likes/{uid}, likesCount, commentsCount, viewsCount,
+                                createdAt, editedAt
+  (কমেন্ট posts/{id}/comments-এ; লাইক posts/{id}/likes/{uid})
+pollVotes/{postId}/{uid}        = ভোটের অপশন নম্বর
+hashtags/{tag}/{postId}         = সময় (সূচি)
+following/{uid}, followers/{uid}, savedPosts/{uid}
+followRequests/{target}/{requester}   প্রাইভেট অ্যাকাউন্টের অনুরোধ
+myRequests/{requester}/{target}       একই অনুরোধ, ফলোকারীর দিকে ("Requested")
+blocks/{me}/{they}, mutes/{me}/{they}
+notifications/{uid}/{id}        type: like|comment|reply|commentLike|follow|boost, from, fromName, postId, text, read, createdAt
+chats/{chatId}                  members, messages, reads       (chatId = দুই uid সাজিয়ে "_" দিয়ে জোড়া)
+userChats/{uid}/{chatId}        ইনবক্সের সারি
+chatClears/..                   চ্যাট "মুছে ফেলার" সময়
+presence/{uid}                  online, lastSeen
+stories/{uid}, storyViews, storySeen, storyReactions
+calls/{calleeUid}/{callId}      callerUid, video, status, offer, answer, ICE
+userSettings/{uid}, userInterests/{uid}   ব্যক্তিগত
+feedback/{uid}/{id}             "Report a problem"
+reports, userReports            পোস্ট ও প্রোফাইল রিপোর্ট
+boosts/{id}                     uid, postId, days, price, btnText, link, method, trxId, screenshotURL,
+                                status (pending|active|refund_requested|refunded|rejected|expired),
+                                createdAt, approvedAt, startAt, endAt, refundUntil
+boostLive/{id}                  postId, uid, btnText, link, startAt, endAt, impressions, clicks
+boostTrx/{method_TRXID}         = uid                           ডুপ্লিকেট TrxID রোধ
+config/announcement | maintenance | features | boost   অ্যাডমিনের সেটিং
+admins/{uid}                    true | "owner"
+adminLogs                       অ্যাডমিনের কাজের লগ</code></pre>
+  <div class="note"><b>দ্রষ্টব্য:</b> ফিল্ডের পুরো ও চূড়ান্ত তালিকার জন্য সবসময় <code>database.rules.json</code> দেখুন; সেটিই সত্যের উৎস।</div>
+</section>
+
+<section id="rules">
+  <h2>২৩. Rules ও ইনডেক্স</h2>
+  <h3>প্রধান নিয়মগুলো</h3>
+  <ul>
+    <li><b>usernames:</b> যে কেউ একটি নির্দিষ্ট নাম পড়তে পারে (লগইন ছাড়াও, যাচাইয়ের জন্য), পুরো তালিকা নয়। লেখা যায় শুধু খালি নামে এবং নিজের uid দিয়ে; মুছতে পারে শুধু মালিক বা অ্যাডমিন। নামের ফরম্যাট <code>^[a-z0-9_.]{3,20}$</code>।</li>
+    <li><b>users/{uid}/username:</b> নতুন প্রোফাইলে <code>usernames/{নাম}</code> ঠিক তার uid-কে দেখাতে হবে; পরে বদলানো যায় না।</li>
+    <li><b>users/{uid}/name:</b> ২–৪০ অক্ষর; বদলানো যায় ৬০ দিনে একবার।</li>
+    <li><b>posts:</b> তৈরি করতে লাগে নিজের uid; সাসপেন্ড হলে পারে না।</li>
+    <li><b>boosts:</b> মালিক ও অ্যাডমিন পড়ে। মালিক তালিকা পড়তে পারে শুধু <code>orderByChild("uid").equalTo(নিজের uid)</code> কোয়েরিতে। তৈরি হয় শুধু <code>pending</code>-এ, নিজের পোস্টে, নির্ধারিত দামে ও বৈধ TrxID-সহ। মালিক শুধু active থেকে refund_requested করতে পারে (৩ দিনের মধ্যে, অন্য কোনো ফিল্ড না বদলে)।</li>
+    <li><b>boostLive:</b> সবাই পড়তে পারে; অ্যাডমিন লেখে; যে কেউ impressions/clicks শুধু +১ করতে পারে।</li>
+    <li><b>config/*:</b> সবাই পড়ে, অ্যাডমিন লেখে।</li>
+  </ul>
+  <h3>দরকারি ইনডেক্স (<code>.indexOn</code>)</h3>
+  <div class="tw"><table>
+    <tr><th>পথ</th><th>ইনডেক্স</th><th>কেন</th></tr>
+    <tr><td><code>users</code></td><td>username, name, nameLower, createdAt</td><td>People সার্চ, ইউজার খোঁজা</td></tr>
+    <tr><td><code>posts</code></td><td>createdAt, uid</td><td>ফিড পেজিং, প্রোফাইলের পোস্ট</td></tr>
+    <tr><td><code>boosts</code></td><td>uid, status</td><td>"My boosts", অ্যাডমিনের ট্যাব</td></tr>
+    <tr><td><code>boostLive</code></td><td>endAt</td><td>চলমান Boost বাছা</td></tr>
+    <tr><td><code>hashtags/{tag}</code></td><td>.value</td><td>নতুন পোস্ট আগে</td></tr>
+  </table></div>
+  <div class="warn"><b>সতর্কতা:</b> রুলগুলো কোনো আসল Firebase সার্ভারে স্বয়ংক্রিয়ভাবে পরীক্ষা করা হয়নি। Publish করার পর নিচের <a href="#test">টেস্ট চেকলিস্ট</a> একবার পুরো চালান।</div>
+</section>
+
+<section id="config">
+  <h2>২৪. অ্যাডমিন থেকে চালানো সেটিং</h2>
+  <div class="tw"><table>
+    <tr><th>অ্যাডমিন পেজ</th><th>অ্যাপে প্রভাব</th></tr>
+    <tr><td>Announcements</td><td>ইউজারদের সবার ওপরে ঘোষণার ব্যানার (<code>config/announcement</code>); রক্ষণাবেক্ষণ মোড (<code>config/maintenance</code>)।</td></tr>
+    <tr><td>Features</td><td>ভিডিও/Reels ফিচার on / soon / hidden (<code>config/features</code>)।</td></tr>
+    <tr><td>Boosts</td><td>bKash/Nagad নম্বর (<code>config/boost</code>); অর্ডার অনুমোদন, বাতিল, ফেরত, মেয়াদ শেষ, Re-open।</td></tr>
+    <tr><td>Users</td><td>সাসপেন্ড/চালু; <b>Sync usernames now</b>।</td></tr>
+    <tr><td>Posts</td><td>সব পোস্ট ফিডের মতো কার্ডে; Details ও Delete।</td></tr>
+    <tr><td>Reports / Feedback</td><td>রিপোর্ট ও সমস্যার বার্তা।</td></tr>
+    <tr><td>Admins / Logs</td><td>অ্যাডমিন যোগ/সরানো; কাজের লগ।</td></tr>
+  </table></div>
+  <p>প্রোফাইল ব্যানার শুধু অ্যাডমিন বসাতে পারে: <code>users/{uid}/bannerURL</code> (৩:১, ১৫০০×৫০০)।</p>
+</section>
+
+<section id="algo">
+  <h2>২৫. ফিড অ্যালগরিদম <code>feed-algorithm.js</code></h2>
+  <p>প্রতিটি পোস্ট স্কোর পায়, সবচেয়ে বেশি স্কোর আগে দেখায়। স্কোরে সময় (নতুন বেশি), এনগেজমেন্ট (লাইক, কমেন্ট, শেয়ার), আপনার রুচি (<code>interests.js</code>), লেখকের সঙ্গে সম্পর্ক ও "দেখা" পোস্টের জরিমানা ইত্যাদি যোগ হয়। "Not interested" দেওয়া লেখক ও ট্যাগ কিছুদিনের জন্য নামে। বিজ্ঞাপনের জায়গা এই ফাইলের <code>pickAdsForSlots</code> বাছে। ফাইলের ওপরের মন্তব্যে প্রতিটি ওজন ও সেটিং বিস্তারিত আছে।</p>
+  <p>টেস্ট চালাতে: <code>node feed-algorithm.test.mjs</code></p>
+</section>
+
+<section id="test">
+  <h2>২৬. টেস্ট চেকলিস্ট (প্রতিটি রিলিজের আগে ফোনে)</h2>
+  <h3>লগইন ও অ্যাকাউন্ট</h3>
+  <ul class="check">
+    <li>নতুন অ্যাকাউন্ট: নাম → ইউজারনেম → ইমেইল → পাসওয়ার্ড → নিশ্চিত, প্রতিটি ধাপ ও Back বাটন।</li>
+    <li>নেওয়া ইউজারনেম লিখলে "taken" ও সাজেশন আসে; ফাঁকা নামে "available"।</li>
+    <li>একই ইউজারনেম দুই ডিভাইস থেকে একসাথে চাইলে একজনই পায়।</li>
+    <li>পুরনো ইমেইলে সাইন-আপ চাইলে ইমেইল ধাপে ফিরে ভুল দেখায়।</li>
+    <li>লগইন, Remember me, Forgot password।</li>
+  </ul>
+  <h3>ফিড ও পোস্ট</h3>
+  <ul class="check">
+    <li>পোস্ট তৈরি (লেখা, ছবি ১–৪টি, পোল), লাইক, কমেন্ট, রিপ্লাই, শেয়ার, সেভ।</li>
+    <li>For you / Following; নতুন পোস্ট বাটন; পুল-টু-রিফ্রেশ; অফলাইন বার।</li>
+    <li>অডিয়েন্স (Public / Followers / Only me) অন্য অ্যাকাউন্টে যাচাই।</li>
+    <li>ব্লকের পর পোস্ট ও সার্চে আর আসে না।</li>
+  </ul>
+  <h3>সার্চ, বন্ধু, প্রোফাইল</h3>
+  <ul class="check">
+    <li>সার্চ: Recent জমা, ✕ দিয়ে মোছা, Clear all; People/Posts/Photos/Polls ফিল্টার; Follow বাটন।</li>
+    <li>ডাবল বর্ডার নেই (লাইট ও ডার্ক দুই মোডে)।</li>
+    <li>প্রাইভেট অ্যাকাউন্টে ফলো রিকোয়েস্ট ও Confirm।</li>
+    <li>প্রোফাইল এডিট; নাম ৬০ দিনের সীমা।</li>
+  </ul>
+  <h3>চ্যাট ও নোটিফিকেশন</h3>
+  <ul class="check">
+    <li>মেসেজ, ছবি, Seen, অনলাইন স্ট্যাটাস। কল (Wi-Fi ও মোবাইল ডেটায়)।</li>
+    <li>নোটিফিকেশন: গ্রুপ, Unread চিপ, Mark all as read, Remove, Confirm/Delete।</li>
+  </ul>
+  <h3>Boost (পুরো প্রবাহ)</h3>
+  <ul class="check">
+    <li>ইউজার: Boost post → প্যাকেজ → বাটন ও লিংক → পেমেন্ট (ভুয়া ডেটা দিয়ে নয়, আসল ছোট লেনদেনে) → Complete।</li>
+    <li>অ্যাডমিন: Waiting-এ অর্ডার, Approve; নোটিফিকেশন যায়।</li>
+    <li>অন্য অ্যাকাউন্টের ফিডে ৩য় পোস্টের পর Sponsored কার্ড; লিংক বাটন বারের পরে লাইক/কমেন্ট/শেয়ার সারি; ক্লিক গোনা।</li>
+    <li>একই TrxID আবার দিলে আটকায়।</li>
+    <li>Refund: ইউজার অনুরোধ, অ্যাডমিন Mark as refunded; ৩ দিন পরে অনুরোধ বন্ধ।</li>
+    <li>মেয়াদ শেষে "End and notify"।</li>
+  </ul>
+  <h3>অ্যাডমিন সাইট</h3>
+  <ul class="check">
+    <li>Sync usernames now; Posts পেজে ফিডের মতো কার্ড; Users সাসপেন্ড ও চালু।</li>
+  </ul>
+</section>
+
+<section id="trouble">
+  <h2>২৭. সমস্যা ও সমাধান</h2>
+  <details><summary>"permission denied" আসছে</summary>
+    <p>প্রায় সবসময় সর্বশেষ <code>database.rules.json</code> Publish করা হয়নি। Console &gt; Realtime Database &gt; Rules-এ পুরো ফাইল পেস্ট করে Publish করুন। সাইন-আপে এলে <code>usernames</code> নিয়মও Publish হয়েছে কি না দেখুন।</p></details>
+  <details><summary>লগইন হচ্ছে না / "unauthorized-domain"</summary>
+    <p>Authentication &gt; Settings &gt; Authorised domains-এ আপনার ডোমেইন যোগ করুন।</p></details>
+  <details><summary>People সার্চে কেউ আসছে না</summary>
+    <p><code>users</code>-এর <code>.indexOn</code>-এ <code>username</code>, <code>name</code>, <code>nameLower</code> আছে কি না দেখুন (Rules Publish)। পুরনো ইউজারদের <code>nameLower</code> না থাকলে নাম দিয়ে নয়, <code>username</code> দিয়ে মিলবে।</p></details>
+  <details><summary>সাইন-আপে "ইউজারনেম যাচাই করা যায়নি"</summary>
+    <p>ইন্টারনেট বা Rules দেখুন। যাচাই না হলেও অ্যাকাউন্ট খোলার সময় রুল আবার চূড়ান্ত যাচাই করে, তাই ডুপ্লিকেট হওয়ার ভয় নেই।</p></details>
+  <details><summary>পুরনো ইউজারনেম নতুন কেউ নিতে পারছে</summary>
+    <p>অ্যাডমিন &gt; Users &gt; <b>Sync usernames now</b> চালান।</p></details>
+  <details><summary>Boost করার সময় "My boosts" খালি / permission denied</summary>
+    <p><code>boosts</code> নিয়ম ও <code>.indexOn: ["uid","status"]</code> Publish করা আছে কি না দেখুন।</p></details>
+  <details><summary>Sponsored কার্ড আসছে না</summary>
+    <p>Boost অনুমোদিত (active) ও মেয়াদ বাকি কি না; পোস্ট পাবলিক কি না; লিংক https কি না; আপনি নিজেই লেখক নন তো; ✕ দিয়ে লুকিয়েছেন কি না দেখুন। কনসোলে <code>boostLive</code> পড়ার ত্রুটি আছে কি না দেখুন।</p></details>
+  <details><summary>কল জুড়ছে না (শুধু মোবাইল ডেটায়)</summary>
+    <p><code>call-config.js</code>-এ TURN সার্ভার যোগ করুন। দুজনেরই অ্যাপ খোলা থাকতে হবে; HTTPS লাগবে।</p></details>
+  <details><summary>ভিডিও আপলোডে "preview" নোটিশ</summary>
+    <p><code>config.js</code>-এ <code>storage</code> এক্সপোর্ট করা ও <code>storage.rules</code> Publish করা হয়নি।</p></details>
+  <details><summary>ছবি আপলোড হচ্ছে না</summary>
+    <p><code>imgbb.js</code>-এর কী ঠিক আছে কি না, ও দিনের সীমা পার হয়েছে কি না দেখুন।</p></details>
+  <details><summary>আইকন চৌকো/অক্ষর দেখাচ্ছে</summary>
+    <p>Material Symbols ফন্ট লোড হয়নি (ইন্টারনেট বা ফন্ট ব্লক)। <code>feed.html</code>-এর ফন্ট লিংক ঠিক আছে কি না দেখুন।</p></details>
+  <details><summary>ইনপুটে দুটি বর্ডার দেখা যাচ্ছে</summary>
+    <p>ব্রাউজারের ফোকাস আউটলাইন ও ফর্ম-প্লাগইনের রিং একসাথে আসে। সার্চ ও লগইন পেজে তা ইনলাইন CSS-এ বন্ধ করা আছে। অন্য ইনপুটে হলে একই CSS (<code>outline:0; box-shadow:none</code>) দিন।</p></details>
+</section>
+
+<section id="security">
+  <h2>২৮. নিরাপত্তা</h2>
+  <ul>
+    <li>Firebase web config গোপন নয়; ডেটা বাঁচায় <b>rules</b>। তাই <code>database.rules.json</code> সবসময় Publish ও হালনাগাদ রাখুন।</li>
+    <li><b>imgbb কী</b> ব্রাউজারে খোলা থাকে, যে কেউ দেখতে পারে। বদলে নেওয়া যায় এমন কী ব্যবহার করুন; অ্যাপ বড় হলে ছোট সার্ভার বা Cloud Function নিন।</li>
+    <li>এই ফাইলগুলোতে কখনো service-account কী বা অ্যাডমিন পাসওয়ার্ড রাখবেন না।</li>
+    <li>অ্যাডমিনের সংখ্যা কম রাখুন, শক্ত পাসওয়ার্ড দিন।</li>
+    <li>ইউজারের লেখা সবসময় <code>escapeHtml()</code> দিয়ে বসানো হয়; বাইরের লিংকে <code>rel="noopener noreferrer"</code> (বিজ্ঞাপনে <code>sponsored</code>) ও শুধু https।</li>
+    <li>পেমেন্টের স্ক্রিনশট ও TrxID শুধু মালিক ও অ্যাডমিন পড়তে পারে।</li>
+  </ul>
+</section>
+
+<section id="update">
+  <h2>২৯. আপডেট দেওয়ার নিয়ম</h2>
+  <ol class="steps">
+    <li>বদলানো ফাইলগুলো হোস্টে একই নামে প্রতিস্থাপন করুন।</li>
+    <li><code>database.rules.json</code> বদলালে আগে Rules Publish করুন, তারপর অ্যাপ।</li>
+    <li>একসাথে বদলাতে হয় এমন জোড়া: <code>login.html</code> + <code>login.js</code>; <code>ads.js</code> + <code>feed.js</code> + <code>profile.js</code> (Sponsored কার্ডের অ্যাকশন সারি); <code>boost.js</code> + অ্যাডমিনের <code>page-boosts.js</code> + rules।</li>
+    <li>ব্রাউজারে হার্ড রিফ্রেশ করুন (পুরনো ক্যাশ থাকতে পারে)।</li>
+    <li>বড় বদলের পর <a href="#test">টেস্ট চেকলিস্ট</a> চালান।</li>
+    <li>আইনি লেখা বদলালে <code>app-info.js</code>-এ <code>LEGAL_UPDATED</code> ও <code>LEGAL_UPDATED_BN</code> নতুন তারিখ দিন।</li>
+  </ol>
+  <h3>নতুন ফিচার যোগ করলে</h3>
+  <ul>
+    <li>নতুন পেজ: <code>mount(container, ctx)</code> এক্সপোর্ট করে একটি মডিউল লিখে <code>feed.js</code>-এর <code>pageModules</code>-এ এক লাইন যোগ করুন।</li>
+    <li>নতুন ডেটা নোড: <code>database.rules.json</code>-এ নিয়ম ও দরকারি <code>.indexOn</code> যোগ করে Publish করুন।</li>
+    <li>নতুন নোটিফিকেশন ধরন: <code>notification.js</code>-এর <code>TYPES</code>-এ যোগ করে rules-এর <code>type</code> তালিকায় বসান।</li>
+    <li>নতুন Help প্রশ্ন: <code>help.js</code>-এর <code>FAQ</code>-এ এক লাইন।</li>
+    <li>নতুন ফিচার ভিডিও-সংক্রান্ত হলে <code>features.js</code>-এর <code>FEATURES</code>-এ যোগ করুন।</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+<footer>FreeZone BD · ইউজার অ্যাপ গাইড · ভার্সন ১.০.০ · হালনাগাদ ১৩ অক্টোবর ২০২৬ · অ্যাডমিন সাইটের গাইড: <code>admin-site/README.md</code></footer>
+
+<script>
+  // mobile menu
+  const toc = document.getElementById("toc");
+  document.getElementById("menuBtn").addEventListener("click", () => toc.classList.toggle("open"));
+  toc.addEventListener("click", (e) => { if (e.target.tagName === "A") toc.classList.remove("open"); });
+  // highlight the section being read
+  const links = [...toc.querySelectorAll("a")];
+  const map = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (en.isIntersecting) { links.forEach((a) => a.classList.remove("on")); map.get(en.target.id)?.classList.add("on"); }
+    });
+  }, { rootMargin: "-20% 0px -70% 0px" });
+  document.querySelectorAll("main section[id]").forEach((s) => io.observe(s));
+</script>
+</body>
+</html>
