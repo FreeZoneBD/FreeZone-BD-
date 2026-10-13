@@ -833,6 +833,7 @@ function listenPosts() {
     if (debugOn()) postsContainer.querySelectorAll("article[data-post-id]").forEach((card) => addDebugLine(card, card.dataset.postId));
     showAds(postsContainer, "feed", {
       interests: interests.profile,
+      tab: feedTabs.tab,
       me: currentUser?.uid,
       isBlocked,
       onOpen: openPostDetail,
@@ -1132,6 +1133,9 @@ function renderPostDetail(postId, post) {
     )
   );
   postDetailBody.scrollTop = keepScroll;
+  // A boosted post is "Sponsored" on its own page too
+  if (!adsModule) adsModule = import("./ads.js").catch(() => null);
+  adsModule.then((module) => module && module.markSponsored($("#postDetailCard"), postId, { me: currentUser?.uid })).catch(() => {});
   const newVideo = keepVideo && postDetailBody.querySelector(".post-video video");
   if (newVideo) {
     newVideo.preload = "auto";
