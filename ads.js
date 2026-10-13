@@ -27,7 +27,8 @@ import { pickAdsForSlots } from "./feed-algorithm.js";
    Settings
 ---------------------------------------------------------------- */
 const POSITIONS = {
-  feed: { firstAfter: 3, every: 5 },
+  feed: { firstAfter: 3, every: 4 }, // "For you": after the 3rd post, then after every 4 more
+  feedFollowing: { firstAfter: 5, every: 5 }, // "Following": after the 5th post, then after every 5 more
   profile: { firstAfter: 2, every: 6 }
 };
 
@@ -234,8 +235,10 @@ function watchImpression(slot, adId, placement) {
         timer = setTimeout(() => {
           if (countedImpressions.has(key)) return;
           countedImpressions.add(key);
-          if (!slot.dataset.own) track(adId, "impressions");
-          recordShown(adId);
+          if (!slot.dataset.own) {
+            track(adId, "impressions");
+            recordShown(adId); // my own views of my own ad do not use up the daily limit
+          }
           observer.disconnect();
         }, VISIBLE_MS);
       } else {
@@ -366,6 +369,27 @@ export function clearAds(container) {
     restoreReplaced(slot);
     slot.remove();
   });
+  container.querySelectorAll(":scope > .fz-ad-decor").forEach((el) => el.remove());
+}
+
+// The person who boosted the post sees their own post: the real card (with its three-dot menu: edit, delete, ...)
+// stays, with the "Sponsored" label above it and the link button under it. The X (hide ad) is only for other people.
+const isOwnAd = (ad, context) => !!(context.me && ad.post.uid === context.me);
+
+function decorateOwn(original, ad) {
+  const host = new URL(ad.link).hostname.replace(/^www\./, "");
+  const label = document.createElement("div");
+  label.className = "fz-ad-decor px-4 pt-3 pb-1 font-label-md text-label-md font-semibold text-slate-muted bg-slate-surface";
+  label.textContent = "Sponsored";
+  const link = document.createElement("a");
+  link.className = "fz-ad-decor fz-ad-link flex items-center justify-between gap-3 px-4 py-3 bg-surface-container-low";
+  link.href = ad.link;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer sponsored";
+  link.innerHTML = `<span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(host)}</span>
+    <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
+  original.before(label);
+  original.after(link);
 }
 
 /**
@@ -398,15 +422,28 @@ export async function insertAds(container, { placement = "feed", context = {} } 
         ? live.filter((ad) => ad.post.uid === context.profileUid).sort((a, b) => b.startAt - a.startAt).slice(0, 3)
         : [];
 
+    // A boosted post that is already in this list as a normal card (e.g. the "For you" tab) becomes the Sponsored card
+    // in its own place, so the same post never shows in two different looks
+    const inPlace = live.filter(
+      (ad) => !pinned.includes(ad) && container.querySelector(`:scope > article[data-post-id="${CSS.escape(ad.post.id)}"]`)
+    );
+
     // Everyone else's boosts go between the posts
     const eligible = live
       .filter((ad) => !container.querySelector(`article[data-post-id="${CSS.escape(ad.post.id)}"]`)) // already in this list
       .filter((ad) => !(placement === "profile" && context.profileUid && ad.post.uid === context.profileUid));
-    if (!eligible.length && !pinned.length) return;
+    if (!eligible.length && !pinned.length && !inPlace.length) return;
 
     if (pinned.length) {
       const firstChild = container.firstElementChild;
+      if (firstChild && !firstChild.isConnected) return;
       for (const ad of pinned) {
+        const own = container.querySelector(`:scope > article[data-post-id="${CSS.escape(ad.post.id)}"]`);
+        if (own && isOwnAd(ad, context)) {
+          if (firstChild && own !== firstChild) container.insertBefore(own, firstChild); // pinned to the top
+          decorateOwn(own, ad);
+          continue;
+        }
         const media = mediaOf(ad.post);
         const imageSize = await preloadImage(media ? media.url : "");
         if (imageSize === null) continue; // picture failed: the normal card stays
@@ -423,22 +460,68 @@ export async function insertAds(container, { placement = "feed", context = {} } 
         openSlot(slot, instant);
       }
     }
-    if (!eligible.length) return;
+    const originalOf = (ad) => container.querySelector(`:scope > article[data-post-id="${CSS.escape(ad.post.id)}"]`);
 
-    // Which posts get an ad after them
-    const posts = Array.from(container.children).filter((el) => el.tagName === "ARTICLE" && el.style.display !== "none");
-    const { firstAfter, every } = POSITIONS[placement] || POSITIONS.feed;
+    // The advertiser's own boosts: the real card stays (label above, link under it). Everybody else's are handled below.
+    const others = [];
+    for (const ad of inPlace) {
+      const original = originalOf(ad);
+      if (!original) continue;
+      if (isOwnAd(ad, context)) decorateOwn(original, ad);
+      else others.push(ad);
+    }
+
+    // Ad spots between the posts: after the 3rd post, then every 5th (feed). The boosted posts that are already in the
+    // list do not count as posts: on the feed they move to an ad spot instead of staying wherever they were ranked.
+    const relocate = placement === "feed" && !context.inPlaceOnly;
+    const moving = new Set(others.map(originalOf));
+    const spotKey = placement === "feed" && context.tab && context.tab !== "foryou" ? "feedFollowing" : placement;
+    const { firstAfter, every } = POSITIONS[spotKey] || POSITIONS.feed;
+    const posts = Array.from(container.children).filter((el) => el.tagName === "ARTICLE" && el.style.display !== "none" && !moving.has(el));
     const anchors = [];
     posts.forEach((post, index) => {
       const position = index + 1;
       const isSpot = position === firstAfter || (position > firstAfter && (position - firstAfter) % every === 0);
       if (isSpot && position < posts.length) anchors.push(post);
     });
-    if (!anchors.length) return;
+    // A short feed (e.g. "Following" with only a few posts) has no spot yet: the ad goes after the last post instead of nowhere
+    if (!anchors.length && placement === "feed" && posts.length >= 1) anchors.push(posts[posts.length - 1]);
+
+    const reveal = (slot, ad) => {
+      const instant = shownBefore.has(`${ad.id}:${placement}`);
+      shownBefore.add(`${ad.id}:${placement}`);
+      openSlot(slot, instant);
+    };
+
+    // Boosted posts of other people that are already in this list become the Sponsored card:
+    // on the feed at the next free ad spot (not at the top), in other lists right where they are
+    await Promise.all(
+      others.map(async (ad, index) => {
+        const original = originalOf(ad);
+        if (!original) return;
+        const media = mediaOf(ad.post);
+        const imageSize = await preloadImage(media ? media.url : "");
+        if (imageSize === null) return; // picture failed: the normal card stays
+        if (container.__fzAdsRun !== run || !original.isConnected) return;
+        const slot = createSlot(ad, media, imageSize, placement, context);
+        original.style.display = "none";
+        slot.__replaces = original;
+        const anchor = relocate ? anchors[index] : null;
+        if (anchor && anchor.isConnected) anchor.after(slot);
+        else container.insertBefore(slot, original); // no spot (few posts): it stays where it is
+        reveal(slot, ad);
+      })
+    );
+
+    if (!eligible.length || context.inPlaceOnly) return; // inPlaceOnly: lists like "Saved" only re-dress the posts they already have
+    const freeAnchors = relocate ? anchors.slice(others.length) : anchors;
+    if (!freeAnchors.length) return;
 
     // Which ad goes to which spot (my interests, click rate, daily caps, no repeat in a row)
     const freq = readFreq();
-    const picks = pickAdsForSlots(eligible, anchors.length, {
+    // The ads seen the least today come first (ties in a random order), so with several ads they take turns
+    eligible.sort((a, b) => (freq.ads[a.id] || 0) - (freq.ads[b.id] || 0) || Math.random() - 0.5);
+    const picks = pickAdsForSlots(eligible, freeAnchors.length, {
       interests: context.interests,
       now,
       adFreq: freq.ads,
@@ -448,7 +531,7 @@ export async function insertAds(container, { placement = "feed", context = {} } 
     if (!picks.length) return;
 
     await Promise.all(
-      anchors.map(async (anchor, slotIndex) => {
+      freeAnchors.map(async (anchor, slotIndex) => {
         const candidates = picks[slotIndex];
         if (!candidates) return; // the daily limit is reached: this spot stays empty
         // The first choice, then up to 2 spare ads (when a picture does not load); if all fail, the spot stays empty
@@ -462,9 +545,7 @@ export async function insertAds(container, { placement = "feed", context = {} } 
 
           const slot = createSlot(ad, media, imageSize, placement, context);
           anchor.after(slot);
-          const instant = shownBefore.has(`${ad.id}:${placement}`);
-          shownBefore.add(`${ad.id}:${placement}`);
-          openSlot(slot, instant);
+          reveal(slot, ad);
           return;
         }
       })
@@ -472,5 +553,41 @@ export async function insertAds(container, { placement = "feed", context = {} } 
   } catch (error) {
     // Ads must never break the page
     console.warn("Ads: skipped because of an error:", error);
+  }
+}
+
+/**
+ * For a single post shown on its own (the post page): if it is a live boost, add the "Sponsored" label above the card
+ * and the link button under it, like the Sponsored card in the feed. Never throws, never blocks the post.
+ */
+export async function markSponsored(wrap, postId, { me } = {}) {
+  try {
+    if (!wrap || !postId) return;
+    injectStyles();
+    const now = Date.now();
+    const all = await loadData();
+    const ad = all.find((item) => item.post.id === postId && now >= item.startAt && now <= item.endAt);
+    if (!ad || !wrap.isConnected || wrap.querySelector(".fz-sponsored-label")) return;
+
+    const host = new URL(ad.link).hostname.replace(/^www\./, "");
+    const label = document.createElement("div");
+    label.className = "fz-sponsored-label px-4 pt-3 pb-1 font-label-md text-label-md font-semibold text-slate-muted bg-slate-surface";
+    label.textContent = "Sponsored";
+
+    const link = document.createElement("a");
+    link.className = "fz-ad-link flex items-center justify-between gap-3 px-4 py-3 bg-surface-container-low";
+    link.href = ad.link;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer sponsored";
+    link.innerHTML = `<span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(host)}</span>
+      <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
+    link.addEventListener("click", () => {
+      if (!(me && ad.post.uid === me)) track(ad.id, "clicks");
+    });
+
+    wrap.prepend(label);
+    wrap.append(link);
+  } catch (error) {
+    console.warn("Sponsored label skipped:", error);
   }
 }
