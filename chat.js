@@ -512,6 +512,8 @@ export async function sendChatMessage(db, me, otherUid, text, extra = {}, previe
     [`userChats/${otherUid}/${chatId}/lastAt`]: now,
     [`userChats/${otherUid}/${chatId}/unread`]: increment(1)
   });
+  // push notification for the other person (does nothing until the push Worker is set up)
+  try { window.fzPush && window.fzPush.notify({ kind: "message", chatId, messageId: messageRef.key }); } catch (e) { /* ignore */ }
   return messageRef.key;
 }
 
