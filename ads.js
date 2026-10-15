@@ -373,14 +373,22 @@ export function clearAds(container) {
 }
 
 // The person who boosted the post sees their own post: the real card (with its three-dot menu: edit, delete, ...)
-// stays, with the "Sponsored" label above it and the link button under it. The X (hide ad) is only for other people.
+// stays, with a small round tick next to the name (instead of the "Sponsored" label) and the link button under it. The X (hide ad) is only for other people.
 const isOwnAd = (ad, context) => !!(context.me && ad.post.uid === context.me);
 
 function decorateOwn(original, ad) {
   const host = new URL(ad.link).hostname.replace(/^www\./, "");
-  const label = document.createElement("div");
-  label.className = "fz-ad-decor px-4 pt-3 pb-1 font-label-md text-label-md font-semibold text-slate-muted bg-slate-surface";
-  label.textContent = "Sponsored";
+  // Instead of the "Sponsored" label: a small round tick next to the name. Only the person who boosted sees it (others see "Sponsored")
+  const nameEl = original.querySelector(".profile-link .truncate");
+  if (nameEl && !original.querySelector(".fz-ad-badge")) {
+    const badge = document.createElement("span");
+    badge.className = "fz-ad-badge flex-shrink-0 inline-flex items-center justify-center";
+    badge.title = "Boosted post (only you can see this mark)";
+    badge.setAttribute("role", "img");
+    badge.setAttribute("aria-label", "Boosted post");
+    badge.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="rgb(var(--c-primary-container))"/><path d="M7 12.5l3.2 3.2L17 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    nameEl.after(badge);
+  }
   const link = document.createElement("a");
   link.className = "fz-ad-decor fz-ad-link flex items-center justify-between gap-3 px-4 py-3 bg-surface-container-low";
   link.href = ad.link;
@@ -388,7 +396,6 @@ function decorateOwn(original, ad) {
   link.rel = "noopener noreferrer sponsored";
   link.innerHTML = `<span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(host)}</span>
     <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
-  original.before(label);
   original.after(link);
 }
 
