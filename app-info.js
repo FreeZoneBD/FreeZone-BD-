@@ -5,6 +5,10 @@
 export const APP_NAME = "FreeZone BD";
 export const APP_TAGLINE = "Connect. Share. Chat.";
 export const APP_VERSION = "1.0.0";
+
+// The address of your push-notification Worker (Cloudflare). Leave "" until the Worker is set up: then push is simply off.
+// Looks like "https://freezone-push.YOURNAME.workers.dev"
+export const PUSH_WORKER_URL = "https://freezone-push.abdulrohimrire.workers.dev";
 export const LEGAL_UPDATED = "October 12, 2026";
 export const LEGAL_UPDATED_BN = "১২ অক্টোবর ২০২৬";
 
