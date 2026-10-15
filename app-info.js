@@ -9,8 +9,8 @@ export const APP_VERSION = "1.0.0";
 // The address of your push-notification Worker (Cloudflare). Leave "" until the Worker is set up: then push is simply off.
 // Looks like "https://freezone-push.YOURNAME.workers.dev"
 export const PUSH_WORKER_URL = "https://freezone-push.abdulrohimrire.workers.dev";
-export const LEGAL_UPDATED = "October 12, 2026";
-export const LEGAL_UPDATED_BN = "১২ অক্টোবর ২০২৬";
+export const LEGAL_UPDATED = "October 15, 2026";
+export const LEGAL_UPDATED_BN = "১৫ অক্টোবর ২০২৬";
 
 // The minimum age to use FreeZone BD (shown in the Terms and the Privacy Policy). Under 18 means a child under the Personal Data Protection Ordinance 2025.
 export const MIN_AGE = 18;
