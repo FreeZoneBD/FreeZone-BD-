@@ -411,6 +411,7 @@ function buildSections({ ctx, state, go }) {
             });
             if (!ok) return;
             try {
+              try { if (window.fzPush) await window.fzPush.unregister(); } catch (e) { /* ignore */ }
               await signOut(ctx.auth); // feed.js notices the sign-out and sends the person to the login page
             } catch (error) {
               console.error("Log out:", error);
@@ -1048,6 +1049,7 @@ async function deleteAccountData({ db, user, onStep }) {
   await update(ref(db), { [`users/${uid}`]: null });
 
   onStep("Deleting your login...");
+  try { if (window.fzPush) await window.fzPush.unregister(true); } catch (e) { /* ignore */ }
   await deleteUser(user);
 }
 
