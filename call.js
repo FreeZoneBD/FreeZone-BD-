@@ -24,7 +24,7 @@ import {
 import { escapeHtml, avatarHtml, showToast } from "./post.js";
 import { isBlocked } from "./block.js";
 import { sendChatMessage } from "./chat.js";
-import { ICE_SERVERS, RING_TIMEOUT_MS } from "./call-config.js";
+import { currentIceServers, warmIceServers, RING_TIMEOUT_MS } from "./call-config.js";
 
 const STALE_MS = 2 * 60 * 1000; // an old, unanswered call is ignored
 let active = null; // the call that is going on right now (only one at a time)
@@ -134,7 +134,7 @@ function runCall({ db, me, callRef, role, video, stream, peerName, peerPhoto, on
   const statusEl = $(".cl-status");
   const timerEl = $(".cl-timer");
 
-  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  const pc = new RTCPeerConnection({ iceServers: currentIceServers() });
   const remoteStream = new MediaStream();
   let localStream = stream;
   let finished = false;
@@ -311,6 +311,7 @@ export async function startCall({ db, me, other, video = false }) {
       const mine = await get(ref(db, `users/${me}`));
       if (mine.exists()) meSnap = mine.val();
     } catch (error) { /* the name is optional */ }
+    await warmIceServers(); // relay details for calls on mobile data (waits at most 2.5 s)
     session = runCall({
       db, me, callRef, role: "caller", video, stream, peerName: other.name, peerPhoto: other.photoURL,
       onFinish: cleanup
@@ -415,6 +416,7 @@ async function handleIncoming(db, me, callId, data) {
       active = null;
       return update(callRef, { status: "declined" }).catch(() => {});
     }
+    await warmIceServers();
     try {
       const session = runCall({
         db, me, callRef, role: "callee", video: !!data.video, stream,
@@ -445,6 +447,7 @@ export function startCallListener({ db, currentUser } = {}) {
   if (listenerStarted || !db || !currentUser) return;
   listenerStarted = true;
   const me = currentUser.uid;
+  warmIceServers(); // fetch the relay details now, so the first call does not wait for them
 
   onChildAdded(ref(db, `calls/${me}`), (snap) => {
     const data = snap.val();
