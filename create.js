@@ -4,6 +4,7 @@
 
 import {
   ref,
+  get,
   push,
   set,
   update,
@@ -712,12 +713,20 @@ export function mount(container, ctx = {}) {
       container.querySelector(".fz-p-cancel").classList.add("hidden"); // too late to cancel now
       setProgress(1, "Publishing your post", "Almost done...");
 
+      // Who is posting: if the profile was not loaded when this page opened, read it now (so a post is never saved as "You")
+      let author = profile;
+      if (!ctx.currentProfile || !ctx.currentProfile.name) {
+        try {
+          const mine = await get(ref(db, `users/${currentUser.uid}`));
+          if (mine.exists()) author = { ...profile, ...mine.val() };
+        } catch (error) { /* keep what we have */ }
+      }
       const postRef = push(ref(db, "posts"));
       await set(postRef, {
         uid: currentUser.uid,
-        name: profile.name || "FreeZone User",
-        username: profile.username || "",
-        photoURL: profile.photoURL || "",
+        name: author.name || currentUser.displayName || "FreeZone User",
+        username: author.username || "",
+        photoURL: author.photoURL || "",
         text,
         imageURL: urls[0] || "", // the first photo, for older parts of the app
         ...(urls.length ? { imageURLs: urls } : {}),
