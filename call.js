@@ -327,6 +327,7 @@ export async function startCall({ db, me, other, video = false }) {
       createdAt: serverTimestamp(),
       offer: { type: offer.type, sdp: offer.sdp }
     });
+    try { window.fzPush && window.fzPush.notify({ kind: "call", toUid: other.uid, callId }); } catch (e) { /* ignore */ }
     active = { callId, role: "caller" };
     session.releaseIce();
 
