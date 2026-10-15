@@ -228,7 +228,9 @@ onAuthStateChanged(auth, async (user) => {
   const sharedPostId = linkParams.get("post");
   const sharedProfileUid = linkParams.get("profile");
   const sharedUsername = linkParams.get("u");
-  if (sharedPostId) openPostDetail(sharedPostId);
+  const sharedChatUid = linkParams.get("chat"); // from a push notification
+  if (sharedChatUid) openChatWith(sharedChatUid);
+  else if (sharedPostId) openPostDetail(sharedPostId);
   else if (sharedProfileUid) openUserProfile(sharedProfileUid);
   else if (sharedUsername) openProfileByUsername(sharedUsername);
 });
