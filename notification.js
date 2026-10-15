@@ -77,7 +77,10 @@ export function start(ctx = {}) {
     if (profile.username) notification.fromUsername = String(profile.username).slice(0, 20);
     if (profile.photoURL) notification.fromPhotoURL = String(profile.photoURL).slice(0, 600);
     Object.keys(notification).forEach((key) => notification[key] === undefined && delete notification[key]);
-    return set(ref(db, `notifications/${toUid}/${id}`), notification);
+    return set(ref(db, `notifications/${toUid}/${id}`), notification).then((result) => {
+      try { window.fzPush && window.fzPush.notify({ kind: "notification", toUid, id }); } catch (e) { /* ignore */ }
+      return result;
+    });
   };
 
   const handle = async (detail) => {
