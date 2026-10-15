@@ -1,5 +1,8 @@
 // FreeZone BD - image upload (imgbb). Only the returned link is saved in Firebase, never the image itself.
-const IMGBB_API_KEY = "aede02b305570da9ff878b94285d9623";
+// The photo goes to our own Worker (the same one that sends push notifications), which adds the secret imgbb key
+// and checks that the person is signed in. The key is therefore never inside the app or the website.
+import { auth } from "./config.js";
+import { PUSH_WORKER_URL } from "./app-info.js";
 
 /**
  * Uploads an image Blob/File and resolves with its direct link (https://i.ibb.co/...).
@@ -10,46 +13,56 @@ export function uploadToImgbb(blob, filename = "image.jpg", { onProgress, signal
   return new Promise((resolve, reject) => {
     if (signal && signal.aborted) return reject(new DOMException("Upload cancelled", "AbortError"));
 
-    const form = new FormData();
-    form.append("image", blob, filename);
+    const base = String(PUSH_WORKER_URL || "").replace(/\/+$/, "");
+    if (!base) return reject(new Error("Photo upload is not set up"));
+    if (!auth.currentUser) return reject(new Error("Please sign in to upload a photo"));
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`);
-    xhr.timeout = 120000;
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
-    };
-
-    xhr.onload = () => {
-      let json = null;
-      try {
-        json = JSON.parse(xhr.responseText);
-      } catch (error) {
-        // not JSON
-      }
-      if (xhr.status >= 200 && xhr.status < 300 && json && json.success && json.data && json.data.url) {
-        if (onProgress) onProgress(1);
-        resolve(json.data.url);
-      } else {
-        reject(new Error((json && json.error && json.error.message) || "Upload failed"));
-      }
-    };
-    xhr.onerror = () => reject(new Error("Network error"));
-    xhr.ontimeout = () => reject(new Error("Upload timed out"));
-
+    let cancelled = false;
     if (signal) {
       signal.addEventListener(
         "abort",
         () => {
-          xhr.abort();
+          cancelled = true;
+          try { xhr.abort(); } catch (error) { /* not started yet */ }
           reject(new DOMException("Upload cancelled", "AbortError"));
         },
         { once: true }
       );
     }
 
-    xhr.send(form);
+    auth.currentUser.getIdToken().then((idToken) => {
+      if (cancelled) return;
+      const form = new FormData();
+      form.append("image", blob, filename);
+
+      xhr.open("POST", base + "/upload");
+      xhr.setRequestHeader("Authorization", "Bearer " + idToken);
+      xhr.timeout = 120000;
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
+      };
+
+      xhr.onload = () => {
+        let json = null;
+        try {
+          json = JSON.parse(xhr.responseText);
+        } catch (error) {
+          // not JSON
+        }
+        if (xhr.status >= 200 && xhr.status < 300 && json && json.success && json.data && json.data.url) {
+          if (onProgress) onProgress(1);
+          resolve(json.data.url);
+        } else {
+          reject(new Error((json && (json.error && json.error.message || (typeof json.error === "string" && json.error))) || "Upload failed"));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error"));
+      xhr.ontimeout = () => reject(new Error("Upload timed out"));
+
+      xhr.send(form);
+    }, () => reject(new Error("Please sign in to upload a photo")));
   });
 }
 
