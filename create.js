@@ -758,7 +758,7 @@ export function mount(container, ctx = {}) {
     } catch (error) {
       if (error && error.name === "AbortError") { showToast("Upload cancelled"); setPosting(false); return; }
       console.error(error);
-      showToast(error.code === "PERMISSION_DENIED" ? "Could not post: database rules block it" : "Could not post right now. Try again.");
+      showToast(error.code === "PERMISSION_DENIED" ? "Could not post: database rules block it" : error.code === "storage-full" ? error.message : "Could not post right now. Try again.");
       container.querySelector(".fz-p-cancel")?.classList.remove("hidden");
       setPosting(false);
     }
