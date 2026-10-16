@@ -22,6 +22,7 @@
 // registerFeature("reels", fn), previewNotice() -> text to show while Storage is not connected.
 
 import * as cfg from "./config.js"; // a namespace import: a missing `storage` export is just undefined (no error)
+import * as appInfo from "./app-info.js"; // videos are uploaded through the Worker (Cloudinary) when PUSH_WORKER_URL is set
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
@@ -37,7 +38,7 @@ export const FEATURES = {
 const listeners = new Set();
 const MODES = ["on", "soon", "hidden"];
 const state = {
-  storage: !!cfg.storage, // is Firebase Storage connected in config.js?
+  storage: !!(appInfo.PUSH_WORKER_URL || cfg.storage), // is video storage connected? (the Worker + Cloudinary, see storage.js)
   admin: {}               // config/features: only the features that are NOT "on"
 };
 const handlers = new Map();
@@ -48,7 +49,7 @@ export const featureVisible = (key) => featureMode(key) !== "hidden";
 export const featureOn = (key) => featureMode(key) === "on";
 export const onFeaturesChange = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
 export const registerFeature = (key, fn) => { handlers.set(key, fn); };
-export const previewNotice = () => (state.storage ? "" : "Preview: videos can be uploaded when Firebase Storage is connected.");
+export const previewNotice = () => (state.storage ? "" : "Preview: videos can be uploaded when video storage is connected.");
 
 /* ---------------------------------------------------------------
    Show / hide the elements
