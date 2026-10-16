@@ -452,7 +452,7 @@ export async function mount(container, ctx = {}) {
         await reload();
       } catch (error) {
         console.error(error);
-        showToast(error.code === "PERMISSION_DENIED" ? "Could not share: database rules block it" : "Could not share your story. Try again.");
+        showToast(error.code === "PERMISSION_DENIED" ? "Could not share: database rules block it" : error.code === "storage-full" ? error.message : "Could not share your story. Try again.");
         shareBtn.disabled = false;
         shareBtn.textContent = "Share story";
       }
