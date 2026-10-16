@@ -1,48 +1,85 @@
-// FreeZone BD - uploads to Firebase Storage (videos and their cover pictures).
-// Works only after config.js exports `storage` (see features.js). Until then nothing here is called.
-// uploadVideo(file, { uid, kind, signal, onProgress }) -> download URL     kind: "posts" | "stories" | "chat"
-// uploadThumb(blob,  { uid, kind, signal })            -> download URL
-// uploadAudio(blob,  { uid, kind, signal, onProgress }) -> download URL  (voice messages)
+// FreeZone BD - uploads of videos, their cover pictures and voice messages (Cloudinary, free plan, no card).
+// The phone asks our Cloudflare Worker for a signed upload ticket (only signed-in people get one, and the file goes into
+// their own name), then sends the file straight to Cloudinary. The Cloudinary secret never leaves the Worker.
+//
+//   uploadVideo(file, { uid, kind, signal, onProgress }) -> https URL      kind: "posts" | "stories" | "chat"
+//   uploadThumb(blob,  { uid, kind, signal })            -> https URL      (the cover picture of a video)
+//   uploadAudio(blob,  { uid, kind, signal, onProgress }) -> https URL     (voice messages)
+//
+// Old Firebase Storage version: Firebase now needs a paid (Blaze) plan for Storage, so it is no longer used.
 
-import * as cfg from "./config.js";
-import { ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js";
+import { auth } from "./config.js";
+import * as appInfo from "./app-info.js"; // a namespace import: a missing PUSH_WORKER_URL is just undefined
 
 const abortError = () => Object.assign(new Error("Upload cancelled"), { name: "AbortError" });
-const rand = () => Math.random().toString(36).slice(2, 8);
 
-function upload(blob, path, { signal, onProgress } = {}) {
+const workerBase = () => String(appInfo.PUSH_WORKER_URL || "").replace(/\/+$/, "");
+
+// Asks the Worker for the ticket of ONE file
+async function getTicket(kind, type, signal) {
+  const base = workerBase();
+  const user = auth && auth.currentUser;
+  if (!base) throw Object.assign(new Error("Storage is not connected"), { code: "no-storage" });
+  if (!user) throw Object.assign(new Error("Please log in again"), { code: "no-login" });
+  const idToken = await user.getIdToken();
+  const res = await fetch(`${base}/sign`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${idToken}`, "content-type": "application/json" },
+    body: JSON.stringify({ kind, type }),
+    signal
+  }).catch((error) => { throw error && error.name === "AbortError" ? abortError() : Object.assign(new Error("No internet connection"), { code: "network" }); });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* not JSON */ }
+  if (res.status === 429) throw Object.assign(new Error((data && data.error) || "Video storage is full for now. Please try again later."), { code: "storage-full" });
+  if (!res.ok || !data || !data.ok) throw Object.assign(new Error((data && data.error) || "Could not start the upload"), { code: "sign-failed", status: res.status });
+  return data;
+}
+
+function sendFile(blob, ticket, { signal, onProgress } = {}) {
   return new Promise((resolve, reject) => {
-    if (!cfg.storage) return reject(Object.assign(new Error("Storage is not connected"), { code: "no-storage" }));
     if (signal && signal.aborted) return reject(abortError());
-    const task = uploadBytesResumable(sRef(cfg.storage, path), blob, { contentType: blob.type || "application/octet-stream" });
-    const onAbort = () => task.cancel();
+    const form = new FormData();
+    form.append("file", blob);
+    form.append("api_key", ticket.apiKey);
+    form.append("timestamp", String(ticket.timestamp));
+    form.append("folder", ticket.folder);
+    form.append("public_id", ticket.publicId);
+    form.append("signature", ticket.signature);
+    const xhr = new XMLHttpRequest();
+    const onAbort = () => xhr.abort();
     if (signal) signal.addEventListener("abort", onAbort, { once: true });
-    task.on(
-      "state_changed",
-      (snap) => onProgress && snap.totalBytes && onProgress(snap.bytesTransferred / snap.totalBytes),
-      (error) => {
-        if (signal) signal.removeEventListener("abort", onAbort);
-        reject(error && error.code === "storage/canceled" ? abortError() : error);
-      },
-      async () => {
-        if (signal) signal.removeEventListener("abort", onAbort);
-        try { resolve(await getDownloadURL(task.snapshot.ref)); } catch (error) { reject(error); }
+    const done = () => { if (signal) signal.removeEventListener("abort", onAbort); };
+    xhr.open("POST", ticket.uploadUrl);
+    xhr.upload.onprogress = (e) => { if (onProgress && e.lengthComputable && e.total) onProgress(e.loaded / e.total); };
+    xhr.onload = () => {
+      done();
+      let json = null;
+      try { json = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
+      const url = json && (json.secure_url || json.url);
+      if (xhr.status >= 200 && xhr.status < 300 && typeof url === "string" && url.startsWith("https://")) {
+        if (onProgress) onProgress(1);
+        return resolve(url);
       }
-    );
+      const why = json && json.error && json.error.message;
+      reject(Object.assign(new Error(why || `Upload failed (${xhr.status})`), { code: "upload-failed", status: xhr.status }));
+    };
+    xhr.onerror = () => { done(); reject(Object.assign(new Error("No internet connection"), { code: "network" })); };
+    xhr.onabort = () => { done(); reject(abortError()); };
+    xhr.send(form);
   });
 }
 
-export const uploadVideo = (file, { uid, kind = "posts", signal, onProgress } = {}) => {
-  const ext = (file.type.split("/")[1] || "mp4").replace(/[^a-z0-9]/gi, "").slice(0, 5) || "mp4";
-  return upload(file, `${kind}/${uid}/${Date.now()}-${rand()}.${ext}`, { signal, onProgress });
-};
+async function upload(blob, kind, type, opts = {}) {
+  const ticket = await getTicket(kind, type, opts.signal);
+  return sendFile(blob, ticket, opts);
+}
 
-export const uploadThumb = (blob, { uid, kind = "posts", signal } = {}) =>
-  upload(blob, `${kind}/${uid}/${Date.now()}-${rand()}-cover.jpg`, { signal });
+export const uploadVideo = (file, { uid, kind = "posts", signal, onProgress } = {}) => upload(file, kind, "video", { signal, onProgress });
 
-// Voice message: audio/webm;codecs=opus, audio/mp4 ... -> download URL
+export const uploadThumb = (blob, { uid, kind = "posts", signal } = {}) => upload(blob, kind, "image", { signal });
+
+// Voice message: audio/webm;codecs=opus, audio/mp4 ... -> https URL
 export const uploadAudio = (blob, { uid, kind = "chat", signal, onProgress } = {}) => {
   const base = String(blob.type || "audio/webm").split(";")[0];
-  const ext = (base.split("/")[1] || "webm").replace(/[^a-z0-9]/gi, "").slice(0, 5) || "webm";
-  return upload(new Blob([blob], { type: base }), `${kind}/${uid}/${Date.now()}-${rand()}-voice.${ext}`, { signal, onProgress });
+  return upload(new Blob([blob], { type: base }), kind, "audio", { signal, onProgress });
 };
