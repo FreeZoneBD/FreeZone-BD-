@@ -15,6 +15,7 @@
 // posts/{postId}/commentsCount counts the comments (not the replies).
 // Notifications are announced with the "fz:notify" event; notification.js writes them.
 
+import { commentSkeleton } from "./skeleton.js";
 import {
   ref,
   push,
@@ -419,7 +420,7 @@ export function openCommentsSheet({ db, postId, getMe, onProfile, isBlocked, onP
       </div>
 
       <div class="cs-list flex-1 min-h-0 overflow-y-auto overscroll-contain border-t border-slate-border/60 pb-2">
-        <p class="text-center text-slate-muted font-body-md text-body-md py-12">Loading...</p>
+        ${commentSkeleton(5)}
       </div>
 
       <form class="cs-form flex items-center gap-2.5 px-3 pt-2.5 border-t border-slate-border flex-shrink-0 bg-slate-surface" style="padding-bottom:calc(.625rem + env(safe-area-inset-bottom, 0px));" autocomplete="off">

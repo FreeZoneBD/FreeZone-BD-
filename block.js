@@ -10,6 +10,7 @@
 //
 // feed.js calls startBlocks() once after login; the other files use isBlocked() / blockAccount() / unblockAccount().
 
+import { rowSkeleton } from "./skeleton.js";
 import {
   ref,
   get,
@@ -208,7 +209,7 @@ export async function openBlockedAccounts({ db, me, onChange } = {}) {
          <span class="material-symbols-outlined text-[20px]">close</span>
        </button>
      </div>
-     <div class="ba-list overflow-y-auto px-2 py-2"><p class="text-center text-slate-muted font-body-md text-body-md py-10">Loading...</p></div>`,
+     <div class="ba-list overflow-y-auto px-2 py-2">${rowSkeleton(4)}</div>`,
     "Blocked accounts"
   );
   const listEl = overlay.querySelector(".ba-list");

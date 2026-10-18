@@ -1,5 +1,6 @@
 // FreeZone BD - the page of one hashtag: every post that uses it, newest first.
 // Opened from feed.js (tap a #tag). ctx: { db, currentUser, followingIds, postActions, tag, setTitle }
+import { postSkeleton } from "./skeleton.js";
 import { ref, get, query, limitToLast } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 import { escapeHtml, createPostCard, canViewPost } from "./post.js";
 import { isBlocked } from "./block.js";
@@ -19,7 +20,7 @@ export async function mount(container, ctx = {}) {
     return;
   }
 
-  container.innerHTML = `<div class="py-16 text-center text-slate-muted font-body-md text-body-md">Loading #${escapeHtml(tag)}...</div>`;
+  container.innerHTML = postSkeleton(3);
   let posts = [];
   try {
     const idsSnap = await get(query(ref(db, `hashtags/${tag}`), limitToLast(LIMIT)));

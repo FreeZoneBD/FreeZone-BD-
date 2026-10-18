@@ -2,6 +2,7 @@
 // Loaded on demand (dynamic import) from feed.js.
 // - Bottom nav "Profile"  -> shows the logged-in user's own profile
 // - Tapping a post's photo/name -> shows that user's profile (context.uid)
+import { profileSkeleton, postSkeleton } from "./skeleton.js";
 import { setPrivate, isRequested, ensurePrivacy } from "./privacy.js";
 import {
   ref,
@@ -502,7 +503,7 @@ export async function mount(container, ctx = {}) {
     return;
   }
 
-  container.innerHTML = `<div class="flex-1 flex items-center justify-center py-16 text-slate-muted font-body-md text-body-md">Loading profile...</div>`;
+  container.innerHTML = profileSkeleton();
 
   let user;
   try {
@@ -822,7 +823,7 @@ export async function mount(container, ctx = {}) {
         return;
       }
 
-      tabContent.innerHTML = `<p class="text-center text-slate-muted font-body-md text-body-md py-10">Loading saved posts...</p>`;
+      tabContent.innerHTML = postSkeleton(2);
       try {
         const saved = await loadSavedPosts(db, uid, ctx.followingIds);
         savedN = saved.length;

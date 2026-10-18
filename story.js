@@ -25,6 +25,7 @@ import {
 
 import { uploadToImgbb, prepareImage } from "./imgbb.js";
 import { openCropper } from "./crop.js";
+import { rowSkeleton } from "./skeleton.js";
 import { sendChatMessage } from "./chat.js";
 import { escapeHtml, avatarHtml, timeAgo, showToast } from "./post.js";
 import { storageReady, previewNotice } from "./features.js";
@@ -323,7 +324,7 @@ export async function mount(container, ctx = {}) {
             <span class="font-label-lg text-label-lg text-on-surface">Add music</span>
             <button type="button" class="fz-m-close w-9 h-9 rounded-full flex items-center justify-center text-on-surface active:bg-surface-container" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
           </div>
-          <div class="fz-m-list flex-1 overflow-y-auto px-2"><p class="text-center text-slate-muted text-sm py-10">Loading...</p></div>
+          <div class="fz-m-list flex-1 overflow-y-auto px-2">${rowSkeleton(4)}</div>
           ${current ? `<button type="button" class="fz-m-none mx-4 mt-2 py-2.5 rounded-xl bg-surface-container text-error font-label-md text-label-md font-semibold">Remove music</button>` : ""}
         </div>`;
       const audio = new Audio();
@@ -690,7 +691,7 @@ export async function mount(container, ctx = {}) {
             <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Viewers</h2>
             <button type="button" class="fz-v-close w-8 h-8 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container" aria-label="Close"><span class="material-symbols-outlined text-[20px]">close</span></button>
           </div>
-          <div class="fz-v-list overflow-y-auto px-2 pb-5"><p class="text-center text-slate-muted font-body-md text-body-md py-8">Loading...</p></div>
+          <div class="fz-v-list overflow-y-auto px-2 pb-5">${rowSkeleton(4)}</div>
         </div>`;
 
       const closeSheet = () => {

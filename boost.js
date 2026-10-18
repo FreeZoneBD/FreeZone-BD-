@@ -11,6 +11,7 @@
 //   config/boost = { bkash: "01XXXXXXXXX", nagad: "01XXXXXXXXX" }     (set by the admin)
 // Only an admin can approve. The feed (ads.js) shows the boosts the admin has approved (boostLive/{id}).
 
+import { formSkeleton, rowSkeleton } from "./skeleton.js";
 import { ref, get, set, update, remove, push, query, orderByChild, equalTo, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
 import { db, auth } from "./config.js";
@@ -126,7 +127,7 @@ export async function openBoost({ post }) {
     return;
   }
   const sheet = openSheet("Boost post");
-  sheet.body.innerHTML = `<div class="p-10 text-center text-slate-muted">Loading…</div>`;
+  sheet.body.innerHTML = formSkeleton(3);
   let cfg = null, mine = [];
   try {
     const [c, m] = await Promise.all([
@@ -394,7 +395,7 @@ export async function openMyBoosts() {
   const me = auth.currentUser;
   if (!me) return;
   const sheet = openSheet("My boosts");
-  sheet.body.innerHTML = `<div class="p-10 text-center text-slate-muted">Loading…</div>`;
+  sheet.body.innerHTML = rowSkeleton(3);
   const load = async () => {
     let list = [];
     try {

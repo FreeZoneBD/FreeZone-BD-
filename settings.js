@@ -21,6 +21,7 @@
 //
 // To add a new setting to the list, add one row to buildSections(). To add a new page, add it to PAGES.
 
+import { formSkeleton } from "./skeleton.js";
 import { openAccountSwitcher, forgetAccount } from "./accounts.js";
 import {
   signOut,
@@ -641,7 +642,7 @@ async function renderEditProfile(root, ctx) {
   const { db, currentUser } = ctx;
   const uid = currentUser.uid;
 
-  root.innerHTML = `<p class="text-center text-slate-muted font-body-md text-body-md py-16">Loading...</p>`;
+  root.innerHTML = formSkeleton(3);
 
   let user;
   try {
