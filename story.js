@@ -95,6 +95,7 @@ export async function mount(container, ctx = {}) {
       const snap = await get(ref(db, `stories/${uid}`));
       const stories = [];
       const expired = {};
+      const expiredFiles = []; // video + cover of my own expired video stories
       snap.forEach((child) => {
         const value = child.val() || {};
         if (!value.imageURL) return;
@@ -106,10 +107,11 @@ export async function mount(container, ctx = {}) {
           expired[`stories/${uid}/${child.key}`] = null; // my own expired stories are cleaned up
           expired[`storyViews/${uid}/${child.key}`] = null;
           expired[`storyReactions/${uid}/${child.key}`] = null;
+          if (value.videoURL) expiredFiles.push(value.videoURL, value.imageURL);
         }
       });
       stories.sort((a, b) => a.createdAt - b.createdAt);
-      return { uid, stories, expired };
+      return { uid, stories, expired, expiredFiles };
     } catch (error) {
       return { uid, stories: [], expired: {} }; // no permission or no network: just no stories
     }
@@ -126,7 +128,12 @@ export async function mount(container, ctx = {}) {
     seen = seenSnap && seenSnap.exists() ? seenSnap.val() : {};
 
     const expired = Object.assign({}, ...results.map((result) => result.expired));
-    if (Object.keys(expired).length) update(ref(db), expired).catch(() => {});
+    if (Object.keys(expired).length) {
+      update(ref(db), expired).catch(() => {});
+      // the expired video stories are removed from Cloudinary too (4 files per call)
+      const files = results.flatMap((result) => result.expiredFiles || []).filter((u) => typeof u === "string");
+      if (files.length) import("./storage.js").then(async (m) => { for (let i = 0; i < files.length; i += 4) await m.deleteMedia(files.slice(i, i + 4)); }).catch(() => {});
+    }
 
     const found = await Promise.all(
       results
@@ -428,6 +435,7 @@ export async function mount(container, ctx = {}) {
           const { uploadVideo, uploadThumb } = await import("./storage.js");
           videoURL = await uploadVideo(media.video.file, {
             uid: me, kind: "stories",
+            onPrepare: (fraction) => { shareBtn.textContent = `Preparing ${Math.round(fraction * 100)}%`; },
             onProgress: (fraction) => { shareBtn.textContent = `Sharing ${Math.round(fraction * 95)}%`; }
           });
           imageURL = await uploadThumb(media.video.cover, { uid: me, kind: "stories" });
@@ -452,7 +460,7 @@ export async function mount(container, ctx = {}) {
         await reload();
       } catch (error) {
         console.error(error);
-        showToast(error.code === "PERMISSION_DENIED" ? "Could not share: database rules block it" : error.code === "storage-full" ? error.message : "Could not share your story. Try again.");
+        showToast(error.code === "PERMISSION_DENIED" ? "Could not share: database rules block it" : ["storage-full", "sign-failed", "upload-failed", "network", "no-login", "no-storage"].includes(error.code) ? "Could not share. " + error.message : "Could not share your story. Try again.");
         shareBtn.disabled = false;
         shareBtn.textContent = "Share story";
       }
@@ -1079,6 +1087,9 @@ export async function mount(container, ctx = {}) {
           [`storyViews/${me}/${target.id}`]: null,
           [`storyReactions/${me}/${target.id}`]: null
         });
+        // a video story: its video and cover are removed from Cloudinary too
+        const files = [target.videoURL, target.imageURL].filter((u) => typeof u === "string");
+        if (files.length) import("./storage.js").then((m) => m.deleteMedia(files)).catch(() => {});
       } catch (error) {
         console.error(error);
         showToast("Could not delete the story. Try again.");
