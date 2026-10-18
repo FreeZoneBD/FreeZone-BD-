@@ -20,7 +20,7 @@ const sizeOf = (d) => ({ w: d.naturalWidth || d.width, h: d.naturalHeight || d.h
 export async function openCropper(source, options = {}) {
   const {
     aspects = [{ id: "sq", label: "1:1", ratio: 1 }],
-    circle = false, outSize = 0, maxSide = 1280,
+    circle = false, outSize = 0, maxSide = 1280, fit = false, fillColor = "#fff",
     title = "Crop photo", doneLabel = "Done"
   } = options;
 
@@ -31,7 +31,7 @@ export async function openCropper(source, options = {}) {
   return new Promise((resolve) => {
     let aspect = aspects[0];
     let zoom = 1, cx = iw / 2, cy = ih / 2;
-    let W = 0, H = 0, fw = 0, fh = 0, minS = 1, dpr = 1;
+    let W = 0, H = 0, fw = 0, fh = 0, minS = 1, dpr = 1, maxZ = MAX_ZOOM;
 
     const root = document.createElement("div");
     root.className = "fz-cropper";
@@ -87,7 +87,12 @@ export async function openCropper(source, options = {}) {
       canvas.width = Math.max(1, Math.round(W * dpr)); canvas.height = Math.max(1, Math.round(H * dpr));
       const pad = 20, mw = Math.max(40, W - pad * 2), mh = Math.max(40, H - pad * 2), r = ratioOf(aspect);
       if (mw / mh > r) { fh = mh; fw = fh * r; } else { fw = mw; fh = fw / r; }
-      minS = Math.max(fw / iw, fh / ih);
+      const cover = Math.max(fw / iw, fh / ih);
+      // fit: the whole photo may be made smaller than the frame (black bars), so it can be placed freely
+      minS = fit ? Math.min(fw / iw, fh / ih) : cover;
+      maxZ = fit ? MAX_ZOOM * (cover / minS) : MAX_ZOOM;
+      slider.max = String(maxZ);
+      zoom = Math.min(zoom, maxZ); slider.value = String(zoom);
       clamp();
       draw();
     };
@@ -118,7 +123,7 @@ export async function openCropper(source, options = {}) {
     };
 
     const setZoom = (z) => {
-      zoom = Math.min(MAX_ZOOM, Math.max(1, z));
+      zoom = Math.min(maxZ, Math.max(1, z));
       slider.value = String(zoom);
       clamp(); draw();
     };
@@ -196,9 +201,12 @@ export async function openCropper(source, options = {}) {
       const out = document.createElement("canvas");
       out.width = ow; out.height = oh;
       const g = out.getContext("2d");
-      g.fillStyle = "#fff"; g.fillRect(0, 0, ow, oh);
+      g.fillStyle = fillColor; g.fillRect(0, 0, ow, oh);
       g.imageSmoothingQuality = "high";
-      g.drawImage(img, cx - cw / 2, cy - ch / 2, cw, ch, 0, 0, ow, oh);
+      // the framed part of the photo can reach outside the photo (fit mode): draw only the part that exists
+      const sx = Math.max(0, cx - cw / 2), sy = Math.max(0, cy - ch / 2);
+      const ex = Math.min(iw, cx + cw / 2), ey = Math.min(ih, cy + ch / 2);
+      if (ex > sx && ey > sy) g.drawImage(img, sx, sy, ex - sx, ey - sy, ((sx - (cx - cw / 2)) / cw) * ow, ((sy - (cy - ch / 2)) / ch) * oh, ((ex - sx) / cw) * ow, ((ey - sy) / ch) * oh);
       out.toBlob((blob) => finish(blob), "image/jpeg", 0.9);
     });
 

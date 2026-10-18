@@ -42,6 +42,7 @@ import { createScrollMemory } from "./scroll-memory.js";
 import { pickSuggestions, suggestHidden, createSuggestCard } from "./suggest.js";
 import { openCommentsSheet, mountComments } from "./comments.js";
 import { registerFeature } from "./features.js";
+import { rememberAccount } from "./accounts.js";
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -104,9 +105,20 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
 
   const profileSnap = await get(ref(db, `users/${user.uid}`));
-  currentProfile = profileSnap.exists()
-    ? profileSnap.val()
-    : { name: user.displayName || "FreeZone User", username: "", photoURL: "" };
+  if (profileSnap.exists()) {
+    currentProfile = profileSnap.val();
+  } else {
+    // An account made outside the app (for example in the Firebase console) has no profile record yet:
+    // make a simple one, so the profile page, posts and chats work. The username can be added in Edit profile.
+    const fromEmail = (user.email || "").split("@")[0].replace(/[^\w.\- ]/g, "").slice(0, 40);
+    const name = ((user.displayName || fromEmail || "").trim().slice(0, 40).padEnd(2, " ").trim()) || "FreeZone User";
+    currentProfile = { name: name.length >= 2 ? name : "FreeZone User", username: "", photoURL: "" };
+    try {
+      await set(ref(db, `users/${user.uid}`), { name: currentProfile.name, nameLower: currentProfile.name.toLowerCase(), photoURL: "", bio: "", createdAt: serverTimestamp() });
+    } catch (error) { console.warn("Could not create the profile record:", error); }
+  }
+
+  rememberAccount(user, currentProfile); // keeps the "Switch account" list up to date
 
   // A suspended account can read but not post, comment or message (enforced by the database rules)
   if (currentProfile.suspended === true) {
@@ -229,7 +241,11 @@ onAuthStateChanged(auth, async (user) => {
   const sharedProfileUid = linkParams.get("profile");
   const sharedUsername = linkParams.get("u");
   const sharedChatUid = linkParams.get("chat"); // from a push notification
-  if (sharedChatUid) openChatWith(sharedChatUid);
+  // Coming back from Terms / Privacy / Guidelines (opened from Settings): show Settings again
+  const openWhat = linkParams.get("open");
+  if (openWhat) { try { history.replaceState(null, "", "feed.html"); } catch (error) { /* ignore */ } }
+  if (openWhat === "settings" && !sharedChatUid && !sharedPostId && !sharedProfileUid && !sharedUsername) openSettings();
+  else if (sharedChatUid) openChatWith(sharedChatUid);
   else if (sharedPostId) openPostDetail(sharedPostId);
   else if (sharedProfileUid) openUserProfile(sharedProfileUid);
   else if (sharedUsername) openProfileByUsername(sharedUsername);
@@ -814,6 +830,7 @@ function listenPosts() {
           onFollow: toggleFollow,
           onProfile: openUserProfile,
           onOpen: openPostDetail,
+          onOpenVideo: (p) => openReelsAt(p.id),
           onComments: openComments,
           onLike: toggleLike,
           onShare: shareAndLearn,
@@ -1194,10 +1211,14 @@ function openComments(postId) {
 }
 
 // Reels: the Video button in the bottom bar (features.js lets this run when the admin has Reels "On")
-registerFeature("reels", () => {
+registerFeature("reels", () => openReelsAt(""));
+
+// startPostId = the video the person tapped in the feed: Reels opens on it
+function openReelsAt(startPostId) {
   if (!currentUser) return;
   pausePostVideos(); // a video of the feed behind Reels must not keep playing
   import("./reels.js").then((module) => module.openReels({
+    startPostId,
     db,
     currentUser,
     followingIds,
@@ -1210,7 +1231,9 @@ registerFeature("reels", () => {
     onShare: shareAndLearn,
     onProfile: (uid) => openUserProfile(uid),
     onFollow: toggleFollow,
+    savedPostIds,
+    onSave: toggleSavePost,
     learn: (post, action) => learnHook?.(post, action),
     isCovered: () => !pageView.hidden || !postDetail.hidden
   })).catch((error) => { console.error(error); showToast("Could not open Reels"); });
-});
+}

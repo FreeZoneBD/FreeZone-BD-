@@ -67,6 +67,16 @@ const pageEl = $("#page");
 const steps = {};
 document.querySelectorAll("[data-step]").forEach((el) => { steps[el.dataset.step] = el; });
 
+// "Add account" mode (?add=1): someone is already signed in and wants to log into / create another account.
+// The current account stays signed in until the new login works, so cancelling changes nothing.
+const addMode = new URLSearchParams(window.location.search).get("add") === "1";
+const addBar = $("#addBar");
+const addCancel = $("#addCancel");
+if (addMode) {
+  if (addBar) addBar.hidden = false;
+  if (addCancel) addCancel.addEventListener("click", () => window.location.replace(getNextUrl()));
+}
+
 const loginEmail = $("#loginEmail");
 const loginPassword = $("#loginPassword");
 const rememberMe = $("#rememberMe");
@@ -527,13 +537,18 @@ steps.terms.addEventListener("submit", async (event) => {
 let firstAuthCheck = true;
 
 onAuthStateChanged(auth, (user) => {
-  if (user && !signingUp) { goNext(); return; }
+  if (user && !signingUp && !addMode) { goNext(); return; }
   if (firstAuthCheck) {
     firstAuthCheck = false;
     bootEl.hidden = true;
     pageEl.hidden = false;
     history.replaceState({ step: "login", n: 0 }, "");
     showStep("login", { focus: false }); // no keyboard pop-up on load
-    if (new URLSearchParams(window.location.search).get("tab") === "signup") goStep("name");
+    const startParams = new URLSearchParams(window.location.search);
+    if (startParams.get("tab") === "signup") goStep("name");
+    else if (addMode && startParams.get("email")) {
+      loginEmail.value = startParams.get("email");
+      setTimeout(() => loginPassword.focus(), 80); // the email is known: ask only for the password
+    }
   }
 });

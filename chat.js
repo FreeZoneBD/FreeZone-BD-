@@ -31,7 +31,7 @@ import {
   increment
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-import { escapeHtml, avatarHtml, timeAgo, showToast, openImageViewer, downloadImage } from "./post.js";
+import { escapeHtml, avatarHtml, timeAgo, showToast, openImageViewer, downloadImage, downloadVideo } from "./post.js";
 import { uploadToImgbb, prepareImage } from "./imgbb.js";
 import { startCall } from "./call.js";
 import { storageReady, previewNotice } from "./features.js";
@@ -2069,7 +2069,7 @@ export async function mount(container, ctx = {}) {
       } catch (error) {
         voiceSending = false;
         console.error("Chat voice send:", error);
-        showToast(error && error.code === "PERMISSION_DENIED" ? "Could not send: database rules block it" : "Could not send the voice message. Try again.");
+        showToast(error && error.code === "PERMISSION_DENIED" ? "Could not send: database rules block it" : error && ["storage-full", "sign-failed", "upload-failed", "network", "no-login", "no-storage"].includes(error.code) ? "Could not send. " + error.message : "Could not send the voice message. Try again.");
         paintVoiceReview();
       }
     }
@@ -2092,6 +2092,7 @@ export async function mount(container, ctx = {}) {
         const { uploadVideo, uploadThumb } = await import("./storage.js");
         const videoURL = await uploadVideo(video.file, {
           uid: me, kind: "chat", signal: uploadAbort.signal,
+          onPrepare: (fraction) => { uploadNote = `Making the video smaller... ${Math.round(fraction * 100)}%`; attachNote.textContent = uploadNote; },
           onProgress: (fraction) => { uploadNote = `Sending video... ${Math.round(fraction * 95)}%`; attachNote.textContent = uploadNote; }
         });
         let videoThumb = "";
@@ -2108,7 +2109,7 @@ export async function mount(container, ctx = {}) {
         if (error && error.name === "AbortError") clearPending();
         else {
           console.error("Chat video send:", error);
-          showToast(error && error.code === "PERMISSION_DENIED" ? "Could not send: database rules block it" : "Could not send the video. Try again.");
+          showToast(error && error.code === "PERMISSION_DENIED" ? "Could not send: database rules block it" : error && ["storage-full", "sign-failed", "upload-failed", "network", "no-login", "no-storage"].includes(error.code) ? "Could not send. " + error.message : "Could not send the video. Try again.");
           paintAttach();
         }
       } finally {
@@ -2461,6 +2462,7 @@ export async function mount(container, ctx = {}) {
       if ((message.text || photos.length || videoMsg || voiceMsg) && !message.reaction && !message.story) actions.push({ key: "forward", label: "Forward", icon: "forward" });
       if (message.text) actions.push({ key: "copy", label: "Copy", icon: "content_copy" });
       if (photos.length) actions.push({ key: "save", label: photos.length > 1 ? "Save photos" : "Save photo", icon: "download" });
+      if (videoMsg) actions.push({ key: "savevideo", label: "Save video", icon: "download" });
       if (message.from === me) {
         if (!message.reaction && !photos.length && !videoMsg && !voiceMsg) actions.push({ key: "edit", label: "Edit", icon: "edit" });
         actions.push({ key: "delete", label: "Delete", icon: "delete", danger: true });
@@ -2476,7 +2478,7 @@ export async function mount(container, ctx = {}) {
       else if (choice === "copy") copyText(message.text);
       else if (choice === "save") {
         for (const url of photos) await downloadImage(url);
-      } else if (choice === "edit") setEditMode({ id: message.id, from: message.from, text: message.text, createdAt: message.createdAt, story: message.story, replyTo: message.replyTo, forwarded: message.forwarded, reactions: message.reactions });
+      } else if (choice === "savevideo") downloadVideo(videoMsg.url); else if (choice === "edit") setEditMode({ id: message.id, from: message.from, text: message.text, createdAt: message.createdAt, story: message.story, replyTo: message.replyTo, forwarded: message.forwarded, reactions: message.reactions });
       else if (choice === "delete") deleteMessage(message);
     });
   };

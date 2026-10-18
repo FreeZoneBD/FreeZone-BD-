@@ -117,6 +117,24 @@ var PAT = [
 
 window.FZ_BN = {
  d: {
+"Adjust story": "স্টোরি ঠিক করুন",
+"Full screen": "পুরো স্ক্রিন",
+
+"Auto-play videos": "ভিডিও নিজে নিজে চলা",
+"Videos in your feed play by themselves, without sound, while they are on screen.": "ফিডের ভিডিও পর্দায় এলে শব্দ ছাড়া নিজে নিজে চলে।",
+"Off: a video in your feed starts only when you tap it. This also saves mobile data.": "বন্ধ: ফিডের ভিডিও চাপ দিলে তবেই চলবে। এতে মোবাইল ডেটাও বাঁচে।",
+
+"Switch account": "অ্যাকাউন্ট বদলান",
+"Log into or create another account on this phone": "এই ফোনে অন্য অ্যাকাউন্টে লগইন করুন বা নতুন খুলুন",
+"Log into another account": "অন্য অ্যাকাউন্টে লগইন করুন",
+"Remove from this list": "তালিকা থেকে সরান",
+"Current account": "বর্তমান অ্যাকাউন্ট",
+"Log into another account. You stay in your current account until the new login works.": "অন্য অ্যাকাউন্টে লগইন করুন। নতুন লগইন সফল না হওয়া পর্যন্ত আপনি বর্তমান অ্যাকাউন্টেই থাকবেন।",
+"You can keep up to 5 accounts. Remove one to add another.": "সর্বোচ্চ ৫টি অ্যাকাউন্ট রাখা যায়। নতুন যোগ করতে একটি সরান।",
+
+"more": "আরও",
+"less": "কম",
+"WhatsApp": "WhatsApp",
 "A Videos tab on every profile.": "প্রতিটি প্রোফাইলে ভিডিও ট্যাব।",
 "A photo is too large (max": "একটি ছবি অনেক বড় (সর্বোচ্চ",
 "A picture is too large (25 MB max)": "ছবিটি অনেক বড় (সর্বোচ্চ ২৫ MB)",
@@ -894,6 +912,9 @@ window.FZ_BN = {
 "Your story": "আপনার স্টোরি",
 "Your username cannot be changed. It is used in your profile link and for people to find you, so it stays the same.": "আপনার ইউজারনেম বদলানো যায় না। এটি প্রোফাইল লিংকে ও আপনাকে খুঁজে পেতে ব্যবহার হয়, তাই একই থাকে।",
 "Language": "ভাষা (Language)",
+"Original audio": "মূল অডিও",
+"more": "আরও",
+"less": "কম",
 "English": "English",
 "বাংলা": "বাংলা",
 "Choose the language of the app. The app reloads to apply it.": "অ্যাপের ভাষা বেছে নিন। প্রয়োগ করতে অ্যাপ আবার লোড হবে।",
