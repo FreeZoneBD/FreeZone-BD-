@@ -6,6 +6,7 @@
 //   4. makes the Android Back button close sheets, pages and posts like the arrow does, and exits on a double press
 //   5. opens website links (feed.html?post=...) inside the app (Android app links)
 //   7. Terms / Privacy / Guidelines opened from Settings open in this window, and Back returns to Settings
+//   8. web addresses in posts, comments and messages open in the phone's browser (linkify.js marks them)
 //   6. shows a "new version available" box (update-check.js, values from Firebase appConfig)
 (function () {
   var cap = window.Capacitor;
@@ -135,6 +136,26 @@
   document.addEventListener("click", function (event) {
     var a = event.target && event.target.closest ? event.target.closest("a[href]") : null;
     if (a && openLegal(a.href)) event.preventDefault();
+  }, true);
+
+  // 8. Web addresses inside posts, comments, messages and bios (links made by linkify.js, marked data-fz-ext) open in the phone's browser.
+  //    A link to the FreeZone BD site itself (a post, a profile) opens inside the app. The app screen stays where it is.
+  document.addEventListener("click", function (event) {
+    var a = event.target && event.target.closest ? event.target.closest("a[data-fz-ext]") : null;
+    if (!a) return;
+    event.preventDefault();
+    event.stopPropagation();
+    var href = a.href;
+    try {
+      var u = new URL(href);
+      if (u.protocol !== "https:" && u.protocol !== "http:") return;
+      if (u.hostname === "freezonebd.github.io" && LINK_KEYS.some(function (k) { return u.searchParams.get(k); })) { openLink(u.href); return; }
+      if (App && typeof App.openUrl === "function") {
+        App.openUrl({ url: u.href }).catch(function () { location.href = u.href; });
+      } else {
+        location.href = u.href; // Capacitor hands addresses of other sites to the phone's browser
+      }
+    } catch (e) { /* not a usable address: nothing happens */ }
   }, true);
 
   // 6. update message

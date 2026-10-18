@@ -15,6 +15,7 @@
 // posts/{postId}/commentsCount counts the comments (not the replies).
 // Notifications are announced with the "fz:notify" event; notification.js writes them.
 
+import { linkifyText } from "./linkify.js";
 import { commentSkeleton } from "./skeleton.js";
 import {
   ref,
@@ -73,7 +74,7 @@ function itemHtml(item, { isReply, cid, canDelete, meUid }) {
           <button type="button" class="cm-author font-semibold text-[14px] leading-5 text-on-surface truncate text-left min-w-0 ${item.uid ? "" : "pointer-events-none"}" ${profileAttr} data-act="profile">${escapeHtml(handle)}</button>
           <span class="text-slate-muted text-[13px] flex-shrink-0">· ${timeAgo(item.createdAt)}</span>
         </div>
-        <p class="text-[15px] leading-[21px] text-on-surface whitespace-pre-wrap break-words mt-0.5">${mention}${escapeHtml(item.text)}</p>
+        <p class="text-[15px] leading-[21px] text-on-surface whitespace-pre-wrap break-words mt-0.5">${mention}${linkifyText(item.text, escapeHtml)}</p>
         <div class="flex items-center gap-5 mt-1 text-[13px] font-semibold text-slate-muted">
           <button type="button" data-act="reply" class="py-1 active:opacity-60">Reply</button>
           ${canDelete ? `<button type="button" data-act="delete" class="py-1 hover:text-error active:opacity-60">Delete</button>` : ""}

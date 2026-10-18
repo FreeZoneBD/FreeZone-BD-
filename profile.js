@@ -2,6 +2,7 @@
 // Loaded on demand (dynamic import) from feed.js.
 // - Bottom nav "Profile"  -> shows the logged-in user's own profile
 // - Tapping a post's photo/name -> shows that user's profile (context.uid)
+import { linkifyText } from "./linkify.js";
 import { profileSkeleton, postSkeleton } from "./skeleton.js";
 import { setPrivate, isRequested, ensurePrivacy } from "./privacy.js";
 import {
@@ -100,14 +101,7 @@ function bigAvatar(photoURL) {
 
 // Followers / Following: tapping opens the list of people (see openFollowList)
 // Turns web addresses inside text into tappable links (the text is escaped first, so nothing can inject HTML)
-function linkify(text) {
-  return escapeHtml(text).replace(/\bhttps?:\/\/[^\s<]+/gi, (url) => {
-    const m = url.match(/[.,;:!?)\]]+$/);
-    const tail = m ? m[0] : "";
-    const clean = tail ? url.slice(0, -tail.length) : url;
-    return `<a href="${clean}" target="_blank" rel="noopener noreferrer nofollow" class="text-primary underline underline-offset-2">${clean.replace(/^https?:\/\//i, "")}</a>${tail}`;
-  });
-}
+const linkify = (text) => linkifyText(text, escapeHtml);
 
 // Location, hometown and link lines under the bio
 function aboutHtml(user) {

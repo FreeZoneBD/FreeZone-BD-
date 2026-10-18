@@ -17,6 +17,7 @@
 //   presence/{uid}                        = { online, lastSeen }   <- the green "Active now" dot (only followers can read it)
 // chatId = the two user ids sorted and joined with "_".
 
+import { linkifyText } from "./linkify.js";
 import {
   ref,
   get,
@@ -1413,7 +1414,7 @@ export async function mount(container, ctx = {}) {
           ? `<span class="fz-voice flex items-center gap-2 ${mine ? "text-white" : "text-primary"}" data-vid="${escapeHtml(message.id)}" data-vurl="${escapeHtml(voice.url)}" data-vdur="${voice.duration}"><button type="button" class="fz-vplay w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${mine ? "bg-white/20" : "bg-surface-container"}" aria-label="Play voice message"><span class="material-symbols-outlined text-[22px]">play_arrow</span></button><span class="flex items-center gap-[2px] h-7" style="width:min(140px,36vw);overflow:hidden;">${voiceBarsHtml(voice.wave)}</span><span class="fz-vtime text-[12px] tabular-nums flex-shrink-0 w-9">${formatDuration(voice.duration)}</span><button type="button" class="fz-vspeed hidden text-[11px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${mine ? "bg-white/20" : "bg-surface-container"}" aria-label="Playback speed">1x</button></span>`
           : "";
         const hasMedia = hasPhotos || !!video;
-        const captionHtml = hasMedia ? (message.text ? `<span class="block px-2.5 pt-1.5 pb-1">${escapeHtml(message.text)}</span>` : "") : "";
+        const captionHtml = hasMedia ? (message.text ? `<span class="block px-2.5 pt-1.5 pb-1">${linkifyText(message.text, escapeHtml, { own: true })}</span>` : "") : "";
 
         // "Forwarded" label and the quoted message of a reply (tap the quote to jump to the original)
         const forwardedHtml = !deleted && message.forwarded === true
@@ -1435,7 +1436,7 @@ export async function mount(container, ctx = {}) {
             ? `${forwardedHtml}${quoteHtml}${voiceHtml}`
           : hasMedia
             ? `${forwardedHtml}${quoteHtml}${photoHtml}${videoHtml}${captionHtml}`
-            : `${forwardedHtml}${quoteHtml}${storyHtml}${isReaction ? `<span class="text-[34px] leading-none">${escapeHtml(message.text)}</span>` : escapeHtml(message.text)}`;
+            : `${forwardedHtml}${quoteHtml}${storyHtml}${isReaction ? `<span class="text-[34px] leading-none">${escapeHtml(message.text)}</span>` : linkifyText(message.text, escapeHtml, { own: true })}`;
 
         const bubbleClass = deleted
           ? "border border-dashed border-slate-border text-slate-subtle italic"

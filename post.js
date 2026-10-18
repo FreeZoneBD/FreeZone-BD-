@@ -1,4 +1,5 @@
 // FreeZone BD - Post Card component
+import { linkifyText } from "./linkify.js";
 import { canSeeAccount, isRequested } from "./privacy.js";
 import { drawQR } from "./qr.js";
 import { db, auth } from "./config.js";
@@ -994,7 +995,7 @@ export function createPostCard(post, options = {}) {
   const text = post.text || "";
   const bigText = !imageUrls.length && !postVideo && text.length > 0 && text.length <= 110 && text.split("\n").length <= 2;
   const textBlock = text
-    ? `<p class="post-text ${bigText ? "text-[20px] leading-7 font-medium" : "text-[15px] leading-[22px]"} text-on-surface whitespace-pre-wrap break-words mx-4 mb-2.5" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${linkifyHashtags(text, escapeHtml)}</p>
+    ? `<p class="post-text ${bigText ? "text-[20px] leading-7 font-medium" : "text-[15px] leading-[22px]"} text-on-surface whitespace-pre-wrap break-words mx-4 mb-2.5" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${linkifyText(text, escapeHtml, { tags: true })}</p>
        <button type="button" class="more-btn block px-4 -mt-1 mb-2.5 text-slate-muted font-semibold text-[14px] text-left" hidden>${TEXT_SEE_MORE}</button>`
     : "";
 
