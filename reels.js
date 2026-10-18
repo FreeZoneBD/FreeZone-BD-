@@ -7,7 +7,7 @@
 // which also hides blocked, muted, adult, spam and heavily reported posts.
 
 import { ref, get, query, orderByChild, limitToLast, onValue, update, increment } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
-import { escapeHtml, avatarHtml, showToast, canViewPost, postVideoOf } from "./post.js";
+import { escapeHtml, avatarHtml, showToast, canViewPost, postVideoOf, getPostLink, copyPostLink, downloadVideo } from "./post.js";
 import { rankPosts, watchAction } from "./feed-algorithm.js";
 import { storageReady, previewNotice } from "./features.js";
 
@@ -23,9 +23,26 @@ const compact = (n) => {
   return String(n);
 };
 
-const HEART = `<svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.6 8.2 3.4 5 6.6 5c2 0 3.6 1.2 5.4 3.3C13.8 6.2 15.4 5 17.4 5c3.2 0 5 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>`;
+// Icons: solid white (the heart turns red when liked, the bookmark yellow when saved)
+const SOLID = (path, size = 34, extra = "") => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor" fill-rule="evenodd" aria-hidden="true" ${extra}>${path}</svg>`;
+const HEART = SOLID(`<path d="M12 21s-7.8-4.9-9.6-10C1.3 7.6 3.3 4.5 6.6 4.5c2 0 3.5 1 5.4 3 1.9-2 3.4-3 5.4-3 3.3 0 5.3 3.1 4.2 6.5C19.8 16.1 12 21 12 21z"/>`);
+const BUBBLE = SOLID(`<path d="M12 3C6.8 3 2.7 6.6 2.7 11c0 2.2 1 4.2 2.7 5.7L4.6 21l4.5-2.2c.9.2 1.9.3 2.9.3 5.2 0 9.3-3.6 9.3-8S17.2 3 12 3zM7.2 11a1.15 1.15 0 1 0 2.3 0 1.15 1.15 0 1 0-2.3 0zm3.65 0a1.15 1.15 0 1 0 2.3 0 1.15 1.15 0 1 0-2.3 0zm3.65 0a1.15 1.15 0 1 0 2.3 0 1.15 1.15 0 1 0-2.3 0z"/>`);
+const BOOKMARK = SOLID(`<path d="M6 3h12a1 1 0 0 1 1 1v17.2a.5.5 0 0 1-.8.4L12 17l-6.2 4.6a.5.5 0 0 1-.8-.4V4a1 1 0 0 1 1-1z"/>`);
+const SHARE = SOLID(`<path d="M13 4.5v4.1c-5.6.4-9.6 3.9-10.5 10.4a.4.4 0 0 0 .7.3c2.4-3.2 5.4-4.4 9.8-4.6v4.2a.8.8 0 0 0 1.3.6l7.6-7a.8.8 0 0 0 0-1.2l-7.6-7A.8.8 0 0 0 13 4.5z"/>`);
+const DOTS = `<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>`;
 
 let openNow = null; // only one Reels page at a time
+
+// In the Android app: black status / navigation bars while Reels is open (otherwise white strips show above and below the video).
+// A no-op in a browser and in an old app build without the FzBars plugin.
+function blackBars(on) {
+  try {
+    const cap = window.Capacitor;
+    if (!cap || typeof cap.isNativePlatform !== "function" || !cap.isNativePlatform()) return;
+    const plugin = (cap.Plugins && cap.Plugins.FzBars) || (cap.registerPlugin && cap.registerPlugin("FzBars"));
+    if (plugin) plugin[on ? "black" : "reset"]().catch(() => { /* not available: keep the normal bars */ });
+  } catch (error) { /* ignore */ }
+}
 
 /**
  * @param {object} o
@@ -36,6 +53,7 @@ let openNow = null; // only one Reels page at a time
  *   onShare(post)                opens the share sheet
  *   onProfile(uid)               opens a profile (it appears above Reels)
  *   onFollow(post, wasFollowing) -> Promise<boolean>   the feed's follow function (returns the new state)
+ *   savedPostIds (live object), onSave(post, wasSaved) -> Promise<boolean>   the Save (bookmark) button
  *   learn(post, action)          tells my interest profile what I did
  *   isCovered()                  true while a page / post is open above Reels (the video pauses)
  *   startPostId                  optional: start with this post
@@ -59,25 +77,39 @@ export async function openReels(o) {
       .fz-reels .fz-rl-btn { display:flex; flex-direction:column; align-items:center; gap:2px; color:#fff; font-size:12px; font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.6); -webkit-tap-highlight-color:transparent; }
       .fz-reels .fz-rl-btn > :first-child { filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); transition:transform .15s; }
       .fz-reels .fz-rl-btn:active > :first-child { transform:scale(.88); }
-      .fz-reels .fz-rl-like.liked > :first-child { color:#f91880; }
+      .fz-reels .fz-rl-like.liked > :first-child { color:#ff3040; }
+      .fz-reels .fz-rl-like.liked .fz-rl-heart-p { fill:#ff3040; }
+      .fz-reels .fz-rl-save.saved > :first-child { color:#ffc107; }
+      .fz-reels .fz-rl-plus { position:absolute; left:50%; bottom:-10px; margin-left:-10px; width:20px; height:20px; border-radius:9999px; background:#ff3040; color:#fff; display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; transition:transform .2s, opacity .2s; }
+      .fz-reels .fz-rl-plus:active { transform:scale(.85); }
+      .fz-reels .fz-rl-plus.gone { transform:scale(0); opacity:0; }
+      .fz-reels .fz-rl-disc { width:42px; height:42px; border-radius:9999px; overflow:hidden; border:2px solid rgba(255,255,255,.9); box-sizing:border-box; animation:fzRlSpin 7s linear infinite; background:rgba(128,128,128,.5); }
+      @keyframes fzRlSpin { to { transform:rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .fz-reels .fz-rl-disc { animation:none; } }
+      .fz-reels .fz-rl-more, .fz-reels .fz-rl-less { color:rgba(255,255,255,.75); font-weight:600; background:none; border:0; padding:0; font:inherit; font-weight:600; }
+      .fz-reels .fz-rl-sheet { position:absolute; inset:0; z-index:30; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; }
+      .fz-reels .fz-rl-sheet > div { width:100%; background:#1c1c1e; border-radius:18px 18px 0 0; padding:8px 0 calc(var(--fz-bottom, env(safe-area-inset-bottom, 0px)) + 10px); }
+      .fz-reels .fz-rl-sheet button { display:flex; align-items:center; gap:14px; width:100%; padding:15px 20px; color:#fff; font-size:16px; text-align:left; }
+      .fz-reels .fz-rl-sheet button:active { background:rgba(255,255,255,.1); }
       .fz-reels .fz-rl-burst { position:absolute; left:50%; top:50%; margin:-48px 0 0 -48px; width:96px; height:96px; opacity:0; pointer-events:none; color:#fff; }
       .fz-reels .fz-rl-burst.go { animation:fzRlBurst .75s ease-out; }
       @keyframes fzRlBurst { 0%{opacity:0;transform:scale(.4)} 25%{opacity:1;transform:scale(1.15)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.05)} }
       @media (prefers-reduced-motion: reduce) { .fz-reels .fz-rl-burst.go { animation:none; opacity:1; } }
     </style>
     <div class="fz-rl-list"></div>
-    <div class="fz-rl-top absolute top-0 inset-x-0 z-20 flex items-center gap-1 px-2 pointer-events-none" style="padding-top:max(.5rem, env(safe-area-inset-top)); background:linear-gradient(to bottom,rgba(0,0,0,.5),transparent); height:calc(56px + env(safe-area-inset-top));">
+    <div class="fz-rl-top absolute top-0 inset-x-0 z-20 flex items-center gap-1 px-2 pointer-events-none" style="padding-top:max(.5rem, var(--fz-top, env(safe-area-inset-top, 0px))); height:calc(56px + var(--fz-top, env(safe-area-inset-top, 0px)));">
       <button type="button" class="fz-rl-close pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center active:bg-white/15" aria-label="Back"><span class="material-symbols-outlined text-[26px]">arrow_back</span></button>
       <span class="font-semibold text-[18px]" style="text-shadow:0 1px 3px rgba(0,0,0,.6)">Reels</span>
       <button type="button" class="fz-rl-mute pointer-events-auto ml-auto w-10 h-10 rounded-full flex items-center justify-center active:bg-white/15" aria-label="Sound"><span class="material-symbols-outlined text-[24px]">volume_up</span></button>
     </div>
     <div class="fz-rl-state absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-8 pointer-events-none"></div>
-    <div class="fz-rl-hint hidden absolute left-1/2 z-20 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/60 text-[13px] pointer-events-none" style="bottom:calc(env(safe-area-inset-bottom) + 96px);">Tap the speaker for sound</div>`;
+    <div class="fz-rl-hint hidden absolute left-1/2 z-20 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/60 text-[13px] pointer-events-none" style="bottom:calc(var(--fz-bottom, env(safe-area-inset-bottom, 0px)) + 96px);">Tap the speaker for sound</div>`;
   const listEl = root.querySelector(".fz-rl-list");
   const stateEl = root.querySelector(".fz-rl-state");
   const muteBtn = root.querySelector(".fz-rl-mute");
   const hintEl = root.querySelector(".fz-rl-hint");
   document.body.appendChild(root);
+  blackBars(true);
   const prevOverflow = document.body.style.overflow;
   document.body.style.overflow = "hidden";
   openNow = root;
@@ -126,6 +158,16 @@ export async function openReels(o) {
     btn.classList.toggle("liked", iLiked(p));
     btn.querySelector(".fz-rl-n").textContent = compact(p.likesCount);
     reel.el.querySelector(".fz-rl-comment .fz-rl-n").textContent = compact(p.commentsCount);
+    reel.el.querySelector(".fz-rl-share .fz-rl-sn").textContent = compact(p.sharesCount);
+  };
+
+  const paintSave = (reel) => {
+    const btn = reel.el.querySelector(".fz-rl-save");
+    if (!btn) return;
+    const saved = !!(o.savedPostIds && o.savedPostIds[reel.post.id]);
+    btn.classList.toggle("saved", saved);
+    btn.setAttribute("aria-pressed", String(saved));
+    btn.querySelector(".fz-rl-savetext").textContent = saved ? "Saved" : "Save";
   };
 
   const buildReel = (post, video) => {
@@ -141,24 +183,28 @@ export async function openReels(o) {
       <span class="fz-rl-pause absolute inset-0 items-center justify-center pointer-events-none" style="display:none"><span class="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center"><span class="material-symbols-outlined text-[40px]" style="font-variation-settings:'FILL' 1">play_arrow</span></span></span>
       <div class="fz-rl-spin hidden absolute inset-0 items-center justify-center pointer-events-none"><div class="w-9 h-9 rounded-full border-[3px] border-white/25 border-t-white animate-spin"></div></div>
 
-      <div class="absolute right-2 z-10 flex flex-col items-center gap-5" style="bottom:calc(env(safe-area-inset-bottom) + 28px)">
-        <div class="relative">
-          <button type="button" class="fz-rl-author rounded-full" aria-label="Open profile of ${escapeHtml(handle)}" style="display:block;border:2px solid #fff;border-radius:9999px;overflow:hidden">${avatarHtml(post.photoURL, "w-11 h-11")}</button>
-          ${own ? "" : `<button type="button" class="fz-rl-follow absolute left-1/2 -bottom-2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#fe2c55] flex items-center justify-center" aria-label="Follow"><span class="material-symbols-outlined text-[16px]" style="color:#fff">add</span></button>`}
+      <div class="absolute right-2 z-20 flex flex-col items-center gap-[15px]" style="bottom:calc(var(--fz-bottom, env(safe-area-inset-bottom, 0px)) + 20px)">
+        <div class="relative" style="width:48px;height:48px;margin-bottom:12px">
+          <button type="button" class="fz-rl-author" aria-label="Open profile of ${escapeHtml(handle)}" style="display:block;width:48px;height:48px;border-radius:9999px;overflow:hidden;border:2px solid #fff;box-sizing:border-box">${avatarHtml(post.photoURL, "w-full h-full")}</button>
+          ${own ? "" : `<button type="button" class="fz-rl-plus fz-rl-follow" aria-label="Follow"><span class="material-symbols-outlined" style="font-size:17px;font-weight:700">add</span></button>`}
         </div>
         <button type="button" class="fz-rl-btn fz-rl-like" aria-label="Like">${HEART}<span class="fz-rl-n">0</span></button>
-        <button type="button" class="fz-rl-btn fz-rl-comment" aria-label="Comments"><span class="material-symbols-outlined text-[32px]" style="font-variation-settings:'FILL' 1">chat_bubble</span><span class="fz-rl-n">0</span></button>
-        <button type="button" class="fz-rl-btn fz-rl-share" aria-label="Share"><span class="material-symbols-outlined text-[32px]" style="font-variation-settings:'FILL' 1">share</span><span>Share</span></button>
+        <button type="button" class="fz-rl-btn fz-rl-comment" aria-label="Comments">${BUBBLE}<span class="fz-rl-n">0</span></button>
+        <button type="button" class="fz-rl-btn fz-rl-save" aria-label="Save post">${BOOKMARK}<span class="fz-rl-savetext">Save</span></button>
+        <button type="button" class="fz-rl-btn fz-rl-share" aria-label="Share">${SHARE}<span class="fz-rl-sn">0</span></button>
+        <button type="button" class="fz-rl-btn fz-rl-menu" aria-label="More options">${DOTS}</button>
+        <div class="fz-rl-disc" aria-hidden="true" style="margin-top:2px">${avatarHtml(post.musicCover || post.photoURL, "w-full h-full")}</div>
       </div>
 
-      <div class="absolute left-0 z-10 px-3 pr-20" style="right:0;bottom:calc(env(safe-area-inset-bottom) + 24px);background:linear-gradient(to top,rgba(0,0,0,.55),transparent);padding-top:48px;">
-        <button type="button" class="fz-rl-name font-bold text-[16px] block max-w-full truncate" style="text-shadow:0 1px 3px rgba(0,0,0,.6)">${escapeHtml(handle)}</button>
-        ${post.text ? `<p class="fz-rl-text text-[14px] leading-snug mt-1 whitespace-pre-wrap break-words" style="text-shadow:0 1px 3px rgba(0,0,0,.6);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(post.text)}</p>` : ""}
+      <div class="absolute left-0 z-10 px-3" style="right:80px;bottom:calc(var(--fz-bottom, env(safe-area-inset-bottom, 0px)) + 20px);pointer-events:none;">
+        <button type="button" class="fz-rl-name block max-w-full font-bold text-[18px] truncate text-left" style="pointer-events:auto;text-shadow:0 1px 4px rgba(0,0,0,.75)">${escapeHtml(post.name || handle)}</button>
+        ${post.text ? `<p class="fz-rl-text text-[15px] leading-snug mt-1 whitespace-pre-wrap break-words" style="text-shadow:0 1px 4px rgba(0,0,0,.75);pointer-events:auto;"></p>` : ""}
       </div>
-      <div class="fz-rl-bar absolute inset-x-0 bottom-0 z-10 h-[3px] bg-white/25"><div class="h-full bg-white" style="width:0%"></div></div>`;
+      <div class="fz-rl-bar absolute inset-x-0 bottom-0 z-10 h-[3px]"><div class="h-full bg-white" style="width:0%"></div></div>`;
     const reel = { post, video, el, vid: el.querySelector("video"), userPaused: false, errored: false };
     wireReel(reel);
     paintCounts(reel);
+    paintSave(reel);
     return reel;
   };
 
@@ -242,21 +288,77 @@ export async function openReels(o) {
     const openProfile = () => { if (post.uid !== me) o.onProfile?.(post.uid); };
     el.querySelector(".fz-rl-author").addEventListener("click", openProfile);
     el.querySelector(".fz-rl-name").addEventListener("click", openProfile);
+    // the red "+" under my photo: follow; once followed the "+" goes away. (A private account only gets a request: the "+" stays.)
     const followBtn = el.querySelector(".fz-rl-follow");
     if (followBtn) {
       if (o.followingIds && o.followingIds[post.uid]) followBtn.remove();
-      else followBtn.addEventListener("click", async () => {
+      else followBtn.addEventListener("click", async (event) => {
+        event.stopPropagation();
         followBtn.disabled = true;
         try {
           const now = await o.onFollow?.(post, false, { redraw: false });
-          if (now) followBtn.remove(); else followBtn.disabled = false;
+          if (now) { followBtn.classList.add("gone"); setTimeout(() => followBtn.remove(), 220); } else followBtn.disabled = false;
         } catch (error) { followBtn.disabled = false; }
       });
     }
-    el.querySelector(".fz-rl-text")?.addEventListener("click", (event) => {
-      const t = event.currentTarget;
-      t.style.webkitLineClamp = t.style.webkitLineClamp === "unset" ? "2" : "unset";
+    // Save (bookmark): the same "saved posts" list as everywhere in the app
+    const saveBtn = el.querySelector(".fz-rl-save");
+    saveBtn.addEventListener("click", async () => {
+      const was = !!(o.savedPostIds && o.savedPostIds[post.id]);
+      saveBtn.disabled = true;
+      try { await o.onSave?.(post, was); } catch (error) { /* the feed shows the error */ }
+      saveBtn.disabled = false;
+      paintSave(reel);
     });
+    // caption: one line with "... more", a tap opens all of it
+    const textEl = el.querySelector(".fz-rl-text");
+    if (textEl) {
+      const tr = (word) => (window.FZI18N && window.FZI18N.t ? window.FZI18N.t(word) : word);
+      const full = String(post.text);
+      const firstLine = full.split("\n")[0];
+      const needsMore = full.length > 48 || full.includes("\n");
+      const collapsed = () => {
+        textEl.textContent = "";
+        textEl.style.maxHeight = "";
+        textEl.style.overflowY = "";
+        if (!needsMore) { textEl.textContent = full; return; }
+        textEl.append(document.createTextNode(firstLine.slice(0, 48).trimEnd() + "… "));
+        const more = document.createElement("button");
+        more.type = "button"; more.className = "fz-rl-more"; more.textContent = tr("more");
+        more.addEventListener("click", (event) => { event.stopPropagation(); expanded(); });
+        textEl.append(more);
+      };
+      const expanded = () => {
+        textEl.textContent = full + " ";
+        textEl.style.maxHeight = "38vh";
+        textEl.style.overflowY = "auto";
+        const less = document.createElement("button");
+        less.type = "button"; less.className = "fz-rl-less"; less.textContent = tr("less");
+        less.addEventListener("click", (event) => { event.stopPropagation(); collapsed(); });
+        textEl.append(less);
+      };
+      collapsed();
+    }
+    el.querySelector(".fz-rl-menu").addEventListener("click", () => openMenu(reel));
+  };
+
+  // the three dots: Save video, Copy link
+  const openMenu = (reel) => {
+    if (root.querySelector(".fz-rl-sheet")) return;
+    const sheet = document.createElement("div");
+    sheet.className = "fz-rl-sheet";
+    sheet.innerHTML = `<div role="menu">
+      <button type="button" data-do="save"><span class="material-symbols-outlined">download</span><span>Save video</span></button>
+      <button type="button" data-do="copy"><span class="material-symbols-outlined">link</span><span>Copy link</span></button>
+      <button type="button" data-do="cancel"><span class="material-symbols-outlined">close</span><span>Cancel</span></button>
+    </div>`;
+    sheet.addEventListener("click", (event) => {
+      const what = event.target.closest("[data-do]")?.dataset.do;
+      if (event.target === sheet || what) sheet.remove();
+      if (what === "save") downloadVideo(reel.video.url);
+      else if (what === "copy") copyPostLink(reel.post.id);
+    });
+    root.appendChild(sheet);
   };
 
   const like = async (reel) => {
@@ -307,6 +409,7 @@ export async function openReels(o) {
       reel.post.likes = v.likes || null;
       reel.post.likesCount = v.likesCount || 0;
       reel.post.commentsCount = v.commentsCount || 0;
+      reel.post.sharesCount = v.sharesCount || 0;
       paintCounts(reel);
     }, () => {});
   };
@@ -362,6 +465,7 @@ export async function openReels(o) {
     window.removeEventListener("pagehide", close);
     reels.forEach((r) => { r.vid.pause(); r.vid.removeAttribute("src"); r.vid.load(); });
     document.body.style.overflow = prevOverflow;
+    blackBars(false);
     root.remove();
     openNow = null;
   };
@@ -407,7 +511,17 @@ export async function openReels(o) {
     if (o.startPostId) {
       const i = ordered.findIndex((p) => p.id === o.startPostId);
       if (i > 0) ordered.unshift(ordered.splice(i, 1)[0]);
-      else if (i < 0) { const one = posts.find((p) => p.id === o.startPostId); if (one) ordered.unshift(one); }
+      else if (i < 0) {
+        let one = posts.find((p) => p.id === o.startPostId);
+        if (!one) { // an older video than the newest ones loaded above
+          try {
+            const s1 = await get(ref(db, `posts/${o.startPostId}`));
+            const p1 = s1.exists() ? { ...s1.val(), id: o.startPostId } : null;
+            if (p1 && postVideoOf(p1) && !o.isBlocked?.(p1.uid) && !o.isMuted?.(p1.uid) && canViewPost(p1, me, o.followingIds || {})) one = p1;
+          } catch (error) { /* just start from the first video */ }
+        }
+        if (one) ordered.unshift(one);
+      }
     }
     ordered = ordered.slice(0, MAX_REELS);
     if (!ordered.length) return showEmpty();

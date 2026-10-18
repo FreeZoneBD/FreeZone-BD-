@@ -19,6 +19,7 @@ import { uploadToImgbb } from "./imgbb.js";
 import { openCropper } from "./crop.js";
 import { isBlocked, blockAccount, unblockAccount, openActionMenu } from "./block.js";
 import { isMuted, muteAccount, unmuteAccount } from "./mute.js";
+import { openAccountSwitcher } from "./accounts.js";
 import { escapeHtml, timeAgo, showToast, avatarHtml, updateSaveButtons, createPostCard, shareProfile, postImagesHtml, postImageUrls, postVideoOf, openImageViewer, openReportDialog, openProfileQr, canViewPost } from "./post.js";
 import { openVideoPlayer, formatDuration } from "./video-tools.js";
 
@@ -563,7 +564,11 @@ export async function mount(container, ctx = {}) {
     <div class="px-5 pt-1 pb-3 bg-background flex-shrink-0">
       <div class="flex items-start gap-4 text-left">
         <div class="min-w-0 flex-1 pt-3">
-          <h2 class="text-[26px] leading-8 font-bold text-on-surface break-words">${escapeHtml(name)}</h2>
+          ${
+            isMe
+              ? `<button type="button" class="pf-switch max-w-full flex items-center gap-0.5 text-left active:opacity-70" aria-label="Switch account"><h2 class="text-[26px] leading-8 font-bold text-on-surface break-words min-w-0">${escapeHtml(name)}</h2><span class="material-symbols-outlined text-[28px] text-on-surface flex-shrink-0">expand_more</span></button>`
+              : `<h2 class="text-[26px] leading-8 font-bold text-on-surface break-words">${escapeHtml(name)}</h2>`
+          }
           ${user.username ? `<p class="text-[17px] text-slate-muted mt-0.5">@${escapeHtml(user.username)}</p>` : ""}
           <div class="flex items-start gap-7 mt-5">
             ${blocked ? stat("Following", following ?? "–", "following-count") : statButton("Following", following ?? "–", "following-count", "following")}
@@ -1035,6 +1040,9 @@ export async function mount(container, ctx = {}) {
       }
     ]);
   }
+
+  const switchBtn = container.querySelector(".pf-switch");
+  if (switchBtn) switchBtn.addEventListener("click", () => openAccountSwitcher({ currentUid: uid }));
 
   const qrBtn = container.querySelector(".qr-profile");
   if (qrBtn) qrBtn.addEventListener("click", () => openProfileQr({ uid, name, username: user.username || "" }));

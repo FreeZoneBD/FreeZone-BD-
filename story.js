@@ -24,6 +24,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
 import { uploadToImgbb, prepareImage } from "./imgbb.js";
+import { openCropper } from "./crop.js";
 import { sendChatMessage } from "./chat.js";
 import { escapeHtml, avatarHtml, timeAgo, showToast } from "./post.js";
 import { storageReady, previewNotice } from "./features.js";
@@ -193,7 +194,7 @@ export async function mount(container, ctx = {}) {
     const yourItem = `
       <div class="${ITEM}" role="button" tabindex="0" data-action="open" data-uid="${escapeHtml(me)}" aria-label="${mine ? "View your story" : "Add a story"}">
         <div class="relative">
-          ${ringed(mine ? "unseen" : "none", photo(me_.photoURL, SIZE))}
+          ${ringed(mine ? "unseen" : "none", photo(me_.photoURL || "logo.png", SIZE))}
           <span data-action="add" role="button" aria-label="Add a story" class="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-black text-white dark:bg-white dark:text-black border-2 border-slate-surface flex items-center justify-center">
             <span class="material-symbols-outlined text-[14px] pointer-events-none">add</span>
           </span>
@@ -369,7 +370,19 @@ export async function mount(container, ctx = {}) {
       if (file.size > MAX_FILE_MB * 1024 * 1024) return showToast(`Image is too large (max ${MAX_FILE_MB} MB)`);
 
       try {
-        openComposer({ blob: await prepareImage(file) });
+        // The person sizes and places the photo (zoom, move, turn) before the story is made.
+        // "Full screen" matches the shape of this phone; the photo may also be made smaller (black bars).
+        const screen = Math.min(0.8, Math.max(0.4, window.innerWidth / Math.max(1, window.innerHeight)));
+        const blob = await openCropper(file, {
+          aspects: [{ id: "full", label: "Full screen", ratio: screen }, { id: "916", label: "9:16", ratio: 9 / 16 }],
+          fit: true,
+          fillColor: "#000",
+          maxSide: 1280,
+          title: "Adjust story",
+          doneLabel: "Next"
+        });
+        if (!blob) return; // cancelled
+        openComposer({ blob });
       } catch (error) {
         console.error(error);
         showToast("Could not open this image");

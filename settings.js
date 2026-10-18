@@ -21,6 +21,7 @@
 //
 // To add a new setting to the list, add one row to buildSections(). To add a new page, add it to PAGES.
 
+import { openAccountSwitcher, forgetAccount } from "./accounts.js";
 import {
   signOut,
   EmailAuthProvider,
@@ -45,7 +46,7 @@ import {
 import { uploadToImgbb } from "./imgbb.js";
 import { openCropper } from "./crop.js";
 import { setPrivate } from "./privacy.js";
-import { escapeHtml, avatarHtml, showToast, copyLink } from "./post.js";
+import { escapeHtml, avatarHtml, showToast, copyLink, getVideoAutoplay, setVideoAutoplay } from "./post.js";
 import { onBlocksChange, getBlockedIds, openBlockedAccounts } from "./block.js";
 import { cropToSquareBlob, syncAuthorFields } from "./profile.js";
 import { APP_NAME, getInviteLink, nativeShare } from "./app-info.js";
@@ -298,6 +299,16 @@ function buildSections({ ctx, state, go }) {
           onClick: () => go("appearance")
         },
         {
+          id: "autoplay",
+          type: "switch",
+          icon: "play_circle",
+          iconClass: "bg-primary-container/10 text-primary-container",
+          label: "Auto-play videos",
+          note: (on) => (on ? "Videos in your feed play by themselves, without sound, while they are on screen." : "Off: a video in your feed starts only when you tap it. This also saves mobile data."),
+          get: () => getVideoAutoplay(),
+          save: async (value) => { setVideoAutoplay(value); }
+        },
+        {
           id: "language",
           type: "link",
           icon: "language",
@@ -452,6 +463,15 @@ function buildSections({ ctx, state, go }) {
       title: "Log out and delete",
       rows: [
         {
+          id: "switch-account",
+          type: "link",
+          icon: "switch_account",
+          iconClass: "bg-surface-container text-on-surface-variant",
+          label: "Switch account",
+          note: () => "Log into or create another account on this phone",
+          onClick: () => openAccountSwitcher({ currentUid: ctx.auth.currentUser && ctx.auth.currentUser.uid })
+        },
+        {
           id: "logout",
           type: "link",
           icon: "logout",
@@ -467,6 +487,7 @@ function buildSections({ ctx, state, go }) {
             if (!ok) return;
             try {
               try { if (window.fzPush) await window.fzPush.unregister(); } catch (e) { /* ignore */ }
+              try { forgetAccount(ctx.auth.currentUser.uid); } catch (e) { /* ignore */ }
               await signOut(ctx.auth); // feed.js notices the sign-out and sends the person to the login page
             } catch (error) {
               console.error("Log out:", error);
@@ -1110,6 +1131,7 @@ async function deleteAccountData({ db, user, onStep }) {
 
   onStep("Deleting your login...");
   try { if (window.fzPush) await window.fzPush.unregister(true); } catch (e) { /* ignore */ }
+  try { forgetAccount(user.uid); } catch (e) { /* ignore */ }
   await deleteUser(user);
 }
 

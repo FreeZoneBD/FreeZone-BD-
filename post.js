@@ -578,6 +578,15 @@ export function postVideoOf(post) {
   return { url: post.videoURL, thumb, duration: Number(post.videoDuration) || 0 };
 }
 
+// "Auto-play videos" (Settings > Appearance): kept on this phone. When it is off, a video starts only when tapped.
+export function getVideoAutoplay() {
+  try { return localStorage.getItem("fz-autoplay") !== "off"; } catch (e) { return true; }
+}
+export function setVideoAutoplay(on) {
+  try { if (on) localStorage.removeItem("fz-autoplay"); else localStorage.setItem("fz-autoplay", "off"); } catch (e) { /* ignore */ }
+  if (!on && videoState.current) pauseVideoBox(videoState.current);
+}
+
 const videoState = { muted: true, current: null }; // sound choice is shared by all videos; only one plays at a time
 let videoObserver = null;
 
@@ -619,7 +628,7 @@ function watchVideoBox(box) {
       entries.forEach((entry) => {
         const box = entry.target;
         if (!box.isConnected) return videoObserver.unobserve(box);
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.6 && document.visibilityState === "visible" && !box.dataset.userPaused) playVideoBox(box);
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6 && document.visibilityState === "visible" && !box.dataset.userPaused && getVideoAutoplay()) playVideoBox(box);
         else if (!entry.isIntersecting || entry.intersectionRatio < 0.35) pauseVideoBox(box);
       });
     }, { threshold: [0, 0.35, 0.6, 1] });
@@ -644,7 +653,7 @@ export function postVideoHtml(video, { doubleTap = false } = {}) {
 }
 
 /** Makes a video box of a post card work: autoplay on screen, tap = sound, double tap = like (onDoubleTap). */
-export function mountPostVideo(box, { onDoubleTap } = {}) {
+export function mountPostVideo(box, { onDoubleTap, onOpen } = {}) {
   if (!box) return;
   const video = box.querySelector("video");
   const burst = box.querySelector(".fz-burst");
@@ -656,6 +665,12 @@ export function mountPostVideo(box, { onDoubleTap } = {}) {
   let timer = null;
   box.addEventListener("click", (event) => {
     event.stopPropagation();
+    if (onOpen && event.target.closest(".pv-sound")) { // the speaker button: sound on / off, without opening Reels
+      videoState.muted = !videoState.muted;
+      video.muted = videoState.muted;
+      paintVideo(box);
+      return;
+    }
     const now = Date.now();
     if (now - lastTap < 300) {
       clearTimeout(timer);
@@ -667,6 +682,7 @@ export function mountPostVideo(box, { onDoubleTap } = {}) {
     lastTap = now;
     timer = setTimeout(() => {
       lastTap = 0;
+      if (onOpen) { onOpen(); return; } // the feed: one tap opens this video in Reels
       if (video.paused) { delete box.dataset.userPaused; playVideoBox(box); return; } // a paused video starts again
       videoState.muted = !videoState.muted; // a playing video: tap = sound on / off
       video.muted = videoState.muted;
@@ -951,7 +967,7 @@ const ACT_BTN =
   "flex items-center gap-1.5 h-11 px-2 rounded-full text-on-surface font-semibold text-[14px] tabular-nums active:bg-surface-container transition-colors";
 
 export function createPostCard(post, options = {}) {
-  const { onNotInterested, currentUserUid, savedPostIds, followingIds, onOpen, onComments, onLike, onShare, onDelete, onEdit, onBoost, onAudience, onHashtag, onVote, watchVotes, onReport, onSave, onFollow, onProfile, onBlock, isBlocked: isBlockedUid, showFollowChip = true } = options;
+  const { onNotInterested, currentUserUid, savedPostIds, followingIds, onOpen, onComments, onLike, onShare, onDelete, onEdit, onBoost, onAudience, onHashtag, onVote, watchVotes, onReport, onSave, onFollow, onProfile, onBlock, isBlocked: isBlockedUid, showFollowChip = true, onOpenVideo } = options;
 
   const likedByMe = !!(post.likes && currentUserUid && post.likes[currentUserUid]);
   const likesCount = post.likesCount || 0;
@@ -1187,7 +1203,7 @@ export function createPostCard(post, options = {}) {
   });
 
   // Video: plays by itself on screen, tap for sound, a double tap likes the post (never un-likes it)
-  mountPostVideo(article.querySelector(".post-video"), { onDoubleTap: () => { if (!liked) toggleLikeNow(); } });
+  mountPostVideo(article.querySelector(".post-video"), { onDoubleTap: () => { if (!liked) toggleLikeNow(); }, onOpen: onOpenVideo ? () => onOpenVideo(post) : null });
 
   // Photos: one tap opens the viewer, a double tap likes the post (never un-likes it)
   const imagesEl = article.querySelector(".post-images");
