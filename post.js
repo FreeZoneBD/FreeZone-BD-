@@ -4,6 +4,7 @@ import { drawQR } from "./qr.js";
 import { db, auth } from "./config.js";
 import { ref as dbRef, update as dbUpdate, increment as dbIncrement } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 import { tagLineHtml } from "./tags.js";
+import { shareBase, nativeShare, nativeSaveMedia, saveVideo } from "./app-info.js";
 import { linkifyHashtags } from "./hashtags.js";
 
 export function escapeHtml(str) {
@@ -58,9 +59,7 @@ export function showToast(message) {
 }
 
 export function getPostLink(postId) {
-  const url = new URL(window.location.href);
-  url.search = "";
-  url.hash = "";
+  const url = shareBase();
   url.searchParams.set("post", postId);
   return url.toString();
 }
@@ -292,6 +291,10 @@ function openShareSheet({ link, text, title = "Share post" }) {
 
 // The phone's own share menu when it exists, otherwise our share sheet
 async function shareLink({ link, text, title }) {
+  // inside the Android app: the real system share sheet
+  const native = await nativeShare({ title: "FreeZone BD", text, url: link, dialogTitle: title });
+  if (native === "done") return true;
+  if (native === "cancelled") return false;
   if (navigator.share) {
     try {
       await navigator.share({ title: "FreeZone BD", text, url: link });
@@ -335,9 +338,7 @@ export async function sharePost(post) {
  * and the account id (?profile=...) otherwise. feed.js opens the profile when the page is loaded with either.
  */
 export function getProfileLink(user) {
-  const url = new URL(window.location.href);
-  url.search = "";
-  url.hash = "";
+  const url = shareBase();
   if (user.username) url.searchParams.set("u", user.username);
   else url.searchParams.set("profile", user.uid);
   return url.toString();
@@ -678,6 +679,11 @@ export function mountPostVideo(box, { onDoubleTap } = {}) {
 
 /** Saves a picture to the phone. Fetches the picture and downloads it as a file; if the browser blocks that, a hint is shown. */
 export async function downloadImage(url, filename = "") {
+  // inside the Android app: straight into the gallery (the web way below does nothing in the app's WebView)
+  const native = await nativeSaveMedia({ url, kind: "image" });
+  if (native.status === "done") { showToast("Photo saved to your gallery"); return true; }
+  if (native.status === "failed") { showToast("Could not save the photo: " + native.error); return false; }
+  if (native.status === "unsupported") { showToast("Saving needs Android 10 or newer on this phone"); return false; }
   try {
     const response = await fetch(url, { mode: "cors" });
     if (!response.ok) throw new Error("HTTP " + response.status);
@@ -698,6 +704,11 @@ export async function downloadImage(url, filename = "") {
     showToast("Could not save it here. Press and hold the photo to save it.");
     return false;
   }
+}
+
+/** Saves the video of a post or a chat message (gallery in the app, a download in a browser). */
+export function downloadVideo(url) {
+  return saveVideo(url, showToast);
 }
 
 /** Full-screen photo viewer: swipe or use the arrows to move between the photos, swipe down or tap X to close. */
@@ -1007,6 +1018,13 @@ export function createPostCard(post, options = {}) {
             <span class="material-symbols-outlined text-[18px]">link</span> Copy link
           </button>
           ${
+            postVideoOf(post)
+              ? `<button class="save-video-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
+                   <span class="material-symbols-outlined text-[18px]">download</span> Save video
+                 </button>`
+              : ""
+          }
+          ${
             onSave
               ? `<button class="save-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5" data-post-id="${escapeHtml(post.id)}" data-saved="${isSaved ? "1" : "0"}">
                    <span class="save-icon material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' ${isSaved ? 1 : 0};">bookmark</span>
@@ -1221,6 +1239,13 @@ export function createPostCard(post, options = {}) {
     event.stopPropagation();
     menuDropdown.hidden = true;
     copyPostLink(post.id);
+  });
+
+  article.querySelector(".save-video-btn")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    menuDropdown.hidden = true;
+    const v = postVideoOf(post);
+    if (v) downloadVideo(v.url);
   });
 
   const profileLink = article.querySelector(".profile-link");
