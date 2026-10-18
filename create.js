@@ -648,7 +648,7 @@ export function mount(container, ctx = {}) {
       if (video) {
         const { uploadVideo, uploadThumb } = await import("./storage.js");
         setProgress(0, "Uploading video", "Please keep this page open");
-        videoURL = await uploadVideo(video.file, { uid: currentUser.uid, kind: "posts", signal: controller.signal, onProgress: (f) => setProgress(f * 0.95, "Uploading video", `${Math.round(f * 100)}% of ${formatSize(video.file.size)}`) });
+        videoURL = await uploadVideo(video.file, { uid: currentUser.uid, kind: "posts", signal: controller.signal, onPrepare: (f) => setProgress(f * 0.3, "Making the video smaller", `${Math.round(f * 100)}%  (faster upload, less data)`), onProgress: (f) => setProgress(0.3 + f * 0.65, "Uploading video", `${Math.round(f * 100)}%`) });
         if (video.cover) { try { thumbURL = await uploadThumb(video.cover, { uid: currentUser.uid, kind: "posts", signal: controller.signal }); } catch (error) { if (error && error.name === "AbortError") throw error; } }
       }
 
@@ -758,7 +758,7 @@ export function mount(container, ctx = {}) {
     } catch (error) {
       if (error && error.name === "AbortError") { showToast("Upload cancelled"); setPosting(false); return; }
       console.error(error);
-      showToast(error.code === "PERMISSION_DENIED" ? "Could not post: database rules block it" : error.code === "storage-full" ? error.message : "Could not post right now. Try again.");
+      showToast(error.code === "PERMISSION_DENIED" ? "Could not post: database rules block it" : ["storage-full", "sign-failed", "upload-failed", "network", "no-login", "no-storage"].includes(error.code) ? "Could not post. " + error.message : "Could not post right now. Try again.");
       container.querySelector(".fz-p-cancel")?.classList.remove("hidden");
       setPosting(false);
     }
