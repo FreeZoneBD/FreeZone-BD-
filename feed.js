@@ -1045,9 +1045,15 @@ async function deletePost(postId) {
   if (!confirm("Delete this post? This cannot be undone.")) return;
   try {
     let oldText = "";
-    try { oldText = (await get(ref(db, `posts/${postId}/text`))).val() || ""; } catch (error) { /* index is best effort */ }
+    let files = []; // the video and its cover are removed from Cloudinary too
+    try {
+      const old = (await get(ref(db, `posts/${postId}`))).val() || {};
+      oldText = old.text || "";
+      files = [old.videoURL, old.videoThumb].filter((u) => typeof u === "string");
+    } catch (error) { /* index and file clean-up are best effort */ }
     try { await remove(ref(db, `pollVotes/${postId}`)); } catch (error) { /* only posts with a poll have votes */ }
     await remove(ref(db, `posts/${postId}`));
+    if (files.length) import("./storage.js").then((m) => m.deleteMedia(files)).catch(() => {});
     try { await update(ref(db), tagIndexUpdates(postId, oldText, "")); } catch (error) { /* a stale index entry is skipped by the tag page */ }
     if (currentDetailPostId === postId) closePostDetail();
   } catch (error) {
