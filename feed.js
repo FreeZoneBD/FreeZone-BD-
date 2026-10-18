@@ -48,6 +48,7 @@ const $ = (selector) => document.querySelector(selector);
 
 const postsContainer = $("#postsContainer");
 const emptyState = $("#emptyState");
+const postsSkeleton = $("#postsSkeleton"); // grey placeholder cards, shown until the first posts are drawn
 const navAvatar = $("#navAvatar");
 
 const postDetail = $("#postDetail");
@@ -655,7 +656,7 @@ function listenPosts() {
 
   // Tabs: For you (everyone) / Following (people I follow)
   const feedTabs = createFeedTabs({
-    before: postsContainer,
+    before: postsSkeleton || emptyState || postsContainer, // right under the stories: above the grey cards and the "not following anyone" message
     onSortChange: () => {
       gate.release();
       resetRank();
@@ -798,6 +799,12 @@ function listenPosts() {
 
   const renderPosts = () => {
     if (!shown) return;
+    postsSkeleton?.remove();
+    // Drawing the list again (a new page of older posts, a like, a follow) must not throw the person back to the top:
+    // the old height is held while the cards are rebuilt, and the place on the screen is put back afterwards.
+    const keepY = window.scrollY;
+    const keepH = postsContainer.offsetHeight;
+    if (keepY > 0 && keepH > 0) postsContainer.style.minHeight = keepH + "px";
     postsContainer.innerHTML = "";
 
     const visible = orderPosts(shown.filter((post) => !isHiddenPost(less, post.id) && !isBlocked(post.uid) && !isMuted(post.uid) && canViewPost(post, currentUser?.uid, followingIds) && inTab(post)));
@@ -860,6 +867,9 @@ function listenPosts() {
     });
     tracker.watch(postsContainer);
 
+    postsContainer.style.minHeight = "";
+    if (keepY > 0 && Math.abs(window.scrollY - keepY) > 2) window.scrollTo({ top: keepY });
+
     // Back to the remembered place: load older pages until its post is there
     if (memory.step() === "wait" && !(pager && pager.loadMore()) && !(pager && pager.loading)) memory.giveUp(feedTabs.tab);
 
@@ -892,6 +902,7 @@ function listenPosts() {
     },
     onError: (error) => {
       console.error("Could not read posts:", error.code, error.message);
+      postsSkeleton?.remove();
       postsContainer.innerHTML = "";
       if (emptyState) {
         renderEmpty(
