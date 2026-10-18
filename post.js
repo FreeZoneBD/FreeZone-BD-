@@ -1005,7 +1005,7 @@ export function createPostCard(post, options = {}) {
     commentsCount > 1 || last
       ? `<div class="px-4 pb-2.5 space-y-0.5">
            ${commentsCount > 1 ? `<button type="button" class="view-comments block text-slate-muted text-[14px] text-left">${textViewAllComments(commentsCount)}</button>` : ""}
-           ${last ? `<p class="text-[14px] leading-5 text-on-surface break-words" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"><span class="font-semibold">${escapeHtml(lastName)}</span> ${escapeHtml(last.text)}</p>` : ""}
+           ${last ? `<p class="last-comment cursor-pointer text-[14px] leading-5 text-on-surface truncate"><span class="font-semibold">${escapeHtml(lastName)}</span> ${escapeHtml(last.text)}</p>` : ""}
          </div>`
       : `<div class="h-1.5"></div>`;
 
@@ -1197,6 +1197,9 @@ export function createPostCard(post, options = {}) {
   article.querySelector(".comment-btn").addEventListener("click", openCommentsNow);
   const viewComments = article.querySelector(".view-comments");
   if (viewComments) viewComments.addEventListener("click", openCommentsNow);
+  // the one-line preview of the newest comment: tap it to read all comments
+  const lastComment = article.querySelector(".last-comment");
+  if (lastComment) lastComment.addEventListener("click", (event) => { event.stopPropagation(); openCommentsNow(event); });
 
   article.querySelector(".share-btn").addEventListener("click", (event) => {
     event.stopPropagation();
