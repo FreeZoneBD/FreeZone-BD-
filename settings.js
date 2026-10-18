@@ -48,7 +48,7 @@ import { setPrivate } from "./privacy.js";
 import { escapeHtml, avatarHtml, showToast, copyLink } from "./post.js";
 import { onBlocksChange, getBlockedIds, openBlockedAccounts } from "./block.js";
 import { cropToSquareBlob, syncAuthorFields } from "./profile.js";
-import { APP_NAME, getInviteLink } from "./app-info.js";
+import { APP_NAME, getInviteLink, nativeShare } from "./app-info.js";
 import { getThemeMode, setThemeMode, isDark } from "./theme.js";
 
 const NAME_MIN = 2;
@@ -198,6 +198,8 @@ const switchClass = (on) =>
 // Invite friends: the phone's share sheet when there is one, otherwise the link is copied
 async function inviteFriends() {
   const link = getInviteLink();
+  const native = await nativeShare({ title: APP_NAME, text: `Join me on ${APP_NAME}: connect, share and chat with friends.`, url: link, dialogTitle: "Invite friends" });
+  if (native === "done" || native === "cancelled") return;
   if (navigator.share) {
     try {
       await navigator.share({ title: APP_NAME, text: `Join me on ${APP_NAME}: connect, share and chat with friends.`, url: link });
@@ -237,6 +239,50 @@ function buildSections({ ctx, state, go }) {
       ]
     },
     {
+      title: "Notifications",
+      rows: [
+        {
+          id: "notifyMessages",
+          type: "switch",
+          icon: "chat_bubble",
+          iconClass: "bg-primary-container/10 text-primary-container",
+          label: "Message alerts",
+          note: (on) => (on ? "You get a notification when someone sends you a message." : "Off: no notification for new messages. You still see them in the app."),
+          get: () => state.notifyMessages,
+          save: async (value) => {
+            await set(ref(ctx.db, `userSettings/${ctx.currentUser.uid}/notifyMessages`), value);
+            state.notifyMessages = value;
+          }
+        },
+        {
+          id: "notifyActivity",
+          type: "switch",
+          icon: "notifications",
+          iconClass: "bg-primary-container/10 text-primary-container",
+          label: "Likes, comments and follows",
+          note: (on) => (on ? "You get a notification for likes, comments, replies and new followers." : "Off: no notification for likes, comments and follows. You still see them in the app."),
+          get: () => state.notifyActivity,
+          save: async (value) => {
+            await set(ref(ctx.db, `userSettings/${ctx.currentUser.uid}/notifyActivity`), value);
+            state.notifyActivity = value;
+          }
+        },
+        {
+          id: "notifyCalls",
+          type: "switch",
+          icon: "call",
+          iconClass: "bg-online-emerald/15 text-online-emerald",
+          label: "Call alerts",
+          note: (on) => (on ? "Your phone rings when someone calls you while the app is closed." : "Off: no ring when the app is closed. You may miss calls."),
+          get: () => state.notifyCalls,
+          save: async (value) => {
+            await set(ref(ctx.db, `userSettings/${ctx.currentUser.uid}/notifyCalls`), value);
+            state.notifyCalls = value;
+          }
+        }
+      ]
+    },
+    {
       title: "Appearance",
       rows: [
         {
@@ -250,6 +296,15 @@ function buildSections({ ctx, state, go }) {
             return mode === "system" ? "Following your phone's setting" : mode === "dark" ? "On" : "Off";
           },
           onClick: () => go("appearance")
+        },
+        {
+          id: "language",
+          type: "link",
+          icon: "language",
+          iconClass: "bg-primary-container/10 text-primary-container",
+          label: "Language",
+          note: () => (window.FZI18N && window.FZI18N.lang === "bn" ? "বাংলা" : "English"),
+          onClick: () => go("language")
         }
       ]
     },
@@ -470,10 +525,15 @@ async function renderMain(root, ctx, { go }) {
   const handle = profile.username ? `@${profile.username}` : "";
 
   // Saved values (default: on)
-  const state = { showActive: true, isPrivate: false };
+  const state = { showActive: true, isPrivate: false, notifyMessages: true, notifyActivity: true, notifyCalls: true };
   try {
     const snap = await get(ref(db, `userSettings/${currentUser.uid}/showActive`));
     state.showActive = snap.val() !== false;
+    const allSnap = await get(ref(db, `userSettings/${currentUser.uid}`));
+    const all = allSnap.val() || {};
+    state.notifyMessages = all.notifyMessages !== false;
+    state.notifyActivity = all.notifyActivity !== false;
+    state.notifyCalls = all.notifyCalls !== false;
     const privateSnap = await get(ref(db, `users/${currentUser.uid}/isPrivate`));
     state.isPrivate = privateSnap.val() === true;
   } catch (error) {
@@ -1295,6 +1355,52 @@ function renderAppearance(root, ctx) {
   });
 }
 
+function renderLanguage(root, ctx) {
+  const { ui } = ctx;
+  const current = window.FZI18N && window.FZI18N.lang === "bn" ? "bn" : "en";
+  const CHOICES = [
+    { code: "en", label: "English", note: "English" },
+    { code: "bn", label: "বাংলা", note: "Bengali" }
+  ];
+  root.innerHTML = `
+    <div class="max-w-lg mx-auto pb-12">
+      ${ui.introHtml({
+        icon: "language",
+        iconClass: "bg-primary-container/10 text-primary-container",
+        title: "Language",
+        text: "Choose the language of the app. The app reloads to apply it."
+      })}
+      <div class="lg-list px-4 mt-4 space-y-3" role="radiogroup" aria-label="Language">
+        ${CHOICES.map((c) => {
+          const on = c.code === current;
+          return `
+          <button type="button" role="radio" aria-checked="${on}" data-lang="${c.code}"
+            class="lg-choice w-full flex items-center gap-4 p-3.5 rounded-2xl border-2 text-left transition-colors ${
+              on ? "border-primary-container bg-primary-container/5" : "border-slate-border bg-slate-surface hover:bg-surface-container-low"
+            }">
+            <div class="min-w-0 flex-1">
+              <div class="font-label-lg text-label-lg text-on-surface" data-notr>${c.label}</div>
+              <p class="font-body-sm text-body-sm text-slate-muted mt-0.5" data-notr>${c.note}</p>
+            </div>
+            <span class="material-symbols-outlined flex-shrink-0 ${on ? "text-primary-container" : "text-slate-subtle"}" style="font-variation-settings:'FILL' ${on ? 1 : 0};">${
+              on ? "radio_button_checked" : "radio_button_unchecked"
+            }</span>
+          </button>`;
+        }).join("")}
+      </div>
+      <div class="px-4 mt-5">
+        ${ui.infoBox({ icon: "smartphone", html: "This choice is saved <b>on this device</b>." })}
+      </div>
+    </div>`;
+  root.querySelector(".lg-list").addEventListener("click", (event) => {
+    const button = event.target.closest(".lg-choice");
+    if (!button || button.dataset.lang === current) return;
+    if (window.FZI18N) window.FZI18N.set(button.dataset.lang);
+    showToast(button.dataset.lang === "bn" ? "ভাষা বদলানো হয়েছে" : "Language changed");
+    setTimeout(() => location.reload(), 500);
+  });
+}
+
 /* ---------------------------------------------------------------
    Pages and navigation
 ---------------------------------------------------------------- */
@@ -1304,6 +1410,7 @@ const PAGES = {
   "change-password": { title: "Change password", render: (root, ctx) => renderChangePassword(root, ctx) },
   "delete-account": { title: "Delete account", render: (root, ctx) => renderDeleteAccount(root, ctx) },
   appearance: { title: "Dark mode", render: (root, ctx) => renderAppearance(root, ctx) },
+  language: { title: "Language", render: (root, ctx) => renderLanguage(root, ctx) },
   // These three live in their own files and are loaded only when opened
   help: { title: "Help center", render: async (root, ctx) => (await import("./help.js")).render(root, ctx) },
   "report-problem": { title: "Report a problem", render: async (root, ctx) => (await import("./feedback.js")).render(root, ctx) },
