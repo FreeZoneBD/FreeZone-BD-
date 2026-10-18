@@ -2,13 +2,15 @@
 // The phone asks our Cloudflare Worker for a signed upload ticket (only signed-in people get one, and the file goes into
 // their own name), then sends the file straight to Cloudinary. The Cloudinary secret never leaves the Worker.
 //
-//   uploadVideo(file, { uid, kind, signal, onProgress }) -> https URL      kind: "posts" | "stories" | "chat"
+//   uploadVideo(file, { uid, kind, signal, onProgress, onPrepare }) -> https URL   (onPrepare: the "making it smaller" step)      kind: "posts" | "stories" | "chat"
 //   uploadThumb(blob,  { uid, kind, signal })            -> https URL      (the cover picture of a video)
 //   uploadAudio(blob,  { uid, kind, signal, onProgress }) -> https URL     (voice messages)
+//   deleteMedia(urls)                                    -> true/false     (removes the files of a deleted post or story)
 //
 // Old Firebase Storage version: Firebase now needs a paid (Blaze) plan for Storage, so it is no longer used.
 
 import { auth } from "./config.js";
+import { compressVideo } from "./video-tools.js";
 import * as appInfo from "./app-info.js"; // a namespace import: a missing PUSH_WORKER_URL is just undefined
 
 const abortError = () => Object.assign(new Error("Upload cancelled"), { name: "AbortError" });
@@ -31,7 +33,7 @@ async function getTicket(kind, type, signal) {
   let data = null;
   try { data = await res.json(); } catch (e) { /* not JSON */ }
   if (res.status === 429) throw Object.assign(new Error((data && data.error) || "Video storage is full for now. Please try again later."), { code: "storage-full" });
-  if (!res.ok || !data || !data.ok) throw Object.assign(new Error((data && data.error) || "Could not start the upload"), { code: "sign-failed", status: res.status });
+  if (!res.ok || !data || !data.ok) throw Object.assign(new Error(`Upload setup failed (${res.status}): ${(data && data.error) || "no answer from the server"}`), { code: "sign-failed", status: res.status });
   return data;
 }
 
@@ -61,7 +63,7 @@ function sendFile(blob, ticket, { signal, onProgress } = {}) {
         return resolve(url);
       }
       const why = json && json.error && json.error.message;
-      reject(Object.assign(new Error(why || `Upload failed (${xhr.status})`), { code: "upload-failed", status: xhr.status }));
+      reject(Object.assign(new Error(`Upload failed (${xhr.status}): ${why || "Cloudinary did not accept the file"}`), { code: "upload-failed", status: xhr.status }));
     };
     xhr.onerror = () => { done(); reject(Object.assign(new Error("No internet connection"), { code: "network" })); };
     xhr.onabort = () => { done(); reject(abortError()); };
@@ -74,7 +76,15 @@ async function upload(blob, kind, type, opts = {}) {
   return sendFile(blob, ticket, opts);
 }
 
-export const uploadVideo = (file, { uid, kind = "posts", signal, onProgress } = {}) => upload(file, kind, "video", { signal, onProgress });
+// A big video is first made smaller on the phone (720p, about 1.8 Mbit/s), see compressVideo. onPrepare(0..1) tells how far that is.
+export const uploadVideo = async (file, { uid, kind = "posts", signal, onProgress, onPrepare } = {}) => {
+  // the ticket comes FIRST: if the daily video limit (5) or the storage is full, the person hears it at once and does not
+  // wait for the video to be made smaller. (A ticket is valid for an hour: much longer than making a video smaller.)
+  const ticket = await getTicket(kind, "video", signal);
+  let toSend = file;
+  try { toSend = (await compressVideo(file, { signal, onProgress: onPrepare })).file; } catch (error) { if (error && error.name === "AbortError") throw error; }
+  return sendFile(toSend, ticket, { signal, onProgress });
+};
 
 export const uploadThumb = (blob, { uid, kind = "posts", signal } = {}) => upload(blob, kind, "image", { signal });
 
@@ -83,3 +93,26 @@ export const uploadAudio = (blob, { uid, kind = "chat", signal, onProgress } = {
   const base = String(blob.type || "audio/webm").split(";")[0];
   return upload(new Blob([blob], { type: base }), kind, "audio", { signal, onProgress });
 };
+
+// Removes the Cloudinary files of a deleted post or story (best effort: it never throws and never blocks the delete).
+// Only our own Cloudinary links are sent; photos kept elsewhere (imgbb) are ignored. The Worker checks the owner again.
+export async function deleteMedia(urls) {
+  try {
+    const list = (Array.isArray(urls) ? urls : [urls])
+      .filter((u) => typeof u === "string" && /^https:\/\/res\.cloudinary\.com\//.test(u))
+      .slice(0, 4);
+    const base = workerBase();
+    const user = auth && auth.currentUser;
+    if (!list.length || !base || !user) return false;
+    const idToken = await user.getIdToken();
+    const res = await fetch(`${base}/destroy`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${idToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ urls: list }),
+      keepalive: true
+    });
+    return res.ok;
+  } catch (error) {
+    return false;
+  }
+}
