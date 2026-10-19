@@ -1005,7 +1005,7 @@ export function createPostCard(post, options = {}) {
     commentsCount > 1 || last
       ? `<div class="px-4 pb-2.5 space-y-0.5">
            ${commentsCount > 1 ? `<button type="button" class="view-comments block text-slate-muted text-[14px] text-left">${textViewAllComments(commentsCount)}</button>` : ""}
-           ${last ? `<p class="last-comment cursor-pointer text-[14px] leading-5 text-on-surface truncate"><span class="font-semibold">${escapeHtml(lastName)}</span> ${escapeHtml(last.text)}</p>` : ""}
+           ${last ? `<div class="last-comment cursor-pointer flex items-center gap-2 min-w-0 pt-0.5"><span class="flex-shrink-0">${avatarHtml(last.photoURL || "", "w-5 h-5")}</span><p class="text-[14px] leading-5 text-on-surface truncate min-w-0"><span class="font-semibold">${escapeHtml(lastName)}</span> ${escapeHtml(last.text)}</p></div>` : ""}
          </div>`
       : `<div class="h-1.5"></div>`;
 
