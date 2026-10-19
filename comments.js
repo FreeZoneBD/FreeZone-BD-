@@ -59,30 +59,30 @@ function getUserInfo(db, uid) {
 /* ---------------------------------------------------------------
    Markup of one comment or reply
 ---------------------------------------------------------------- */
-function itemHtml(item, { isReply, cid, canDelete, meUid }) {
+function itemHtml(item, { isReply, cid, canDelete, meUid, replyCount = 0 }) {
   const handle = item.username ? `@${item.username}` : item.name || "FreeZone User";
+  const display = item.name || (item.username ? item.username : "FreeZone User");
   const likeCount = item.likes ? Object.keys(item.likes).length : 0;
   const liked = !!(meUid && item.likes && item.likes[meUid]);
   const mention = item.replyToName ? `<span class="font-semibold text-primary">${escapeHtml(item.replyToName)}</span> ` : "";
   const profileAttr = item.uid ? `data-profile-uid="${escapeHtml(item.uid)}"` : "";
+  const act = "h-8 px-2 -ml-2 rounded-full inline-flex items-center gap-1.5 active:bg-surface-container active:opacity-70";
 
   return `
-    <div class="cm-item flex items-start gap-2.5 ${isReply ? "pt-2.5" : "px-4 py-2.5"}" data-cid="${escapeHtml(cid)}" ${isReply ? `data-rid="${escapeHtml(item.id)}"` : ""} data-uid="${escapeHtml(item.uid || "")}">
-      <button type="button" class="cm-avatar flex-shrink-0 ${item.uid ? "" : "pointer-events-none"}" ${profileAttr} data-act="profile" aria-label="Open profile">${avatarHtml(item.photoURL || "", isReply ? "w-7 h-7" : "w-9 h-9")}</button>
+    <div class="cm-item flex items-start gap-3 ${isReply ? "pt-3" : "px-4 py-3 border-b border-slate-border/50"}" data-cid="${escapeHtml(cid)}" ${isReply ? `data-rid="${escapeHtml(item.id)}"` : ""} data-uid="${escapeHtml(item.uid || "")}">
+      <button type="button" class="cm-avatar flex-shrink-0 ${item.uid ? "" : "pointer-events-none"}" ${profileAttr} data-act="profile" aria-label="Open profile">${avatarHtml(item.photoURL || "", isReply ? "w-8 h-8" : "w-10 h-10")}</button>
       <div class="min-w-0 flex-1">
-        <div class="flex items-baseline gap-1.5 min-w-0">
-          <button type="button" class="cm-author font-semibold text-[14px] leading-5 text-on-surface truncate text-left min-w-0 ${item.uid ? "" : "pointer-events-none"}" ${profileAttr} data-act="profile">${escapeHtml(handle)}</button>
-          <span class="text-slate-muted text-[13px] flex-shrink-0">· ${timeAgo(item.createdAt)}</span>
+        <div class="flex items-baseline gap-1.5 min-w-0 whitespace-nowrap">
+          <button type="button" class="cm-author font-bold text-[15px] leading-5 text-on-surface truncate text-left min-w-0 flex-shrink ${item.uid ? "" : "pointer-events-none"}" ${profileAttr} data-act="profile">${escapeHtml(display)}</button>
+          <span class="cm-handle text-slate-muted text-[14px] truncate min-w-0 flex-shrink-[2]">${item.username ? escapeHtml(handle) : ""}</span>
+          <span class="text-slate-muted text-[14px] flex-shrink-0">· ${timeAgo(item.createdAt)}</span>
         </div>
         <p class="text-[15px] leading-[21px] text-on-surface whitespace-pre-wrap break-words mt-0.5">${mention}${linkifyText(item.text, escapeHtml)}</p>
-        <div class="flex items-center gap-5 mt-1 text-[13px] font-semibold text-slate-muted">
-          <button type="button" data-act="reply" class="py-1 active:opacity-60">Reply</button>
-          ${canDelete ? `<button type="button" data-act="delete" class="py-1 hover:text-error active:opacity-60">Delete</button>` : ""}
+        <div class="flex items-center gap-7 mt-1.5 text-[13px] text-slate-muted">
+          <button type="button" data-act="reply" class="${act}" aria-label="Reply"><span class="material-symbols-outlined text-[19px]">chat_bubble</span>${replyCount ? `<span class="tabular-nums">${replyCount}</span>` : ""}</button>
+          <button type="button" data-act="like" class="${act} ${liked ? "text-notification-rose" : ""}" aria-pressed="${liked}" aria-label="${liked ? "Unlike" : "Like"} this ${isReply ? "reply" : "comment"}">${heartSvg(liked)}${likeCount ? `<span class="tabular-nums">${likeCount}</span>` : ""}</button>
+          ${canDelete ? `<button type="button" data-act="delete" class="${act} hover:text-error" aria-label="Delete"><span class="material-symbols-outlined text-[19px]">delete</span></button>` : ""}
         </div>
-      </div>
-      <div class="flex flex-col items-center flex-shrink-0 w-8">
-        <button type="button" data-act="like" class="w-8 h-8 rounded-full flex items-center justify-center active:bg-surface-container ${liked ? "text-notification-rose" : "text-slate-muted"}" aria-pressed="${liked}" aria-label="${liked ? "Unlike" : "Like"} this ${isReply ? "reply" : "comment"}">${heartSvg(liked)}</button>
-        ${likeCount ? `<span class="text-[12px] leading-3 text-slate-muted tabular-nums">${likeCount}</span>` : ""}
       </div>
     </div>`;
 }
@@ -167,10 +167,10 @@ export function mountComments(o) {
         const canDeleteComment = me.uid && (c.uid === me.uid || postOwnerUid === me.uid);
         return `
           <div class="cm-thread" data-cid="${escapeHtml(c.id)}">
-            ${itemHtml(c, { isReply: false, cid: c.id, canDelete: canDeleteComment, meUid: me.uid })}
+            ${itemHtml(c, { isReply: false, cid: c.id, canDelete: canDeleteComment, meUid: me.uid, replyCount: replies.length })}
             ${
               replies.length
-                ? `<div class="pl-[3.9rem] pr-4 pb-1.5">
+                ? `<div class="pl-[4.25rem] pr-4 pb-2 border-b border-slate-border/50 -mt-px">
                      <button type="button" data-act="toggle" class="flex items-center gap-2 py-1 text-[13px] font-semibold text-slate-muted active:opacity-60">
                        <span class="inline-block w-6 border-t border-slate-border"></span>
                        ${open ? "Hide replies" : `View ${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}
@@ -203,8 +203,8 @@ export function mountComments(o) {
       if (!item || !item.uid || (item.photoURL && item.username)) return;
       getUserInfo(db, item.uid).then(({ photoURL, username }) => {
         if (dead || !row.isConnected) return;
-        if (!item.photoURL && photoURL) row.querySelector(".cm-avatar").innerHTML = avatarHtml(photoURL, row.dataset.rid ? "w-7 h-7" : "w-9 h-9");
-        if (!item.username && username) row.querySelector(".cm-author").textContent = `@${username}`;
+        if (!item.photoURL && photoURL) row.querySelector(".cm-avatar").innerHTML = avatarHtml(photoURL, row.dataset.rid ? "w-8 h-8" : "w-10 h-10");
+        if (!item.username && username) { const h = row.querySelector(".cm-handle"); if (h) h.textContent = `@${username}`; }
       });
     });
   }
@@ -399,34 +399,32 @@ export function openCommentsSheet({ db, postId, getMe, onProfile, isBlocked, onP
   document.body.style.overflow = "hidden";
 
   const overlay = document.createElement("div");
-  overlay.className = "fixed inset-0 z-[9997] bg-black/40 flex items-end justify-center";
+  overlay.className = "fixed inset-0 z-[9997] bg-black/40 flex items-stretch justify-center";
   overlay.style.opacity = "0";
   overlay.style.transition = "opacity .25s ease";
+  const me0 = getMe?.() || {};
   overlay.innerHTML = `
-    <div class="cs-sheet w-full max-w-lg bg-slate-surface rounded-t-3xl shadow-2xl flex flex-col" role="dialog" aria-modal="true" aria-label="Comments"
-         style="height:88vh;max-height:88vh;height:88dvh;max-height:88dvh;transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);">
-      <div class="cs-drag flex-shrink-0 cursor-grab" style="touch-action:none;">
-        <div class="pt-2.5"><div class="w-10 h-1 rounded-full bg-slate-border mx-auto"></div></div>
-        <div class="flex items-center justify-between px-4 pt-2.5 pb-2.5">
-          <div class="cs-likes flex items-center gap-2 font-semibold text-[16px] text-on-surface">
-            <span class="w-6 h-6 rounded-full bg-notification-rose text-white flex items-center justify-center">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="${HEART_PATH}"/></svg>
-            </span>
-            <span class="cs-likes-count tabular-nums">0</span>
-          </div>
-          <button type="button" class="cs-close w-9 h-9 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container" aria-label="Close comments">
-            <span class="material-symbols-outlined text-[22px]">close</span>
-          </button>
-        </div>
+    <div class="cs-sheet w-full max-w-lg bg-slate-surface flex flex-col" role="dialog" aria-modal="true" aria-label="Comments"
+         style="height:100vh;height:100dvh;transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);">
+      <div class="cs-drag flex-shrink-0 flex items-center gap-2 px-2 border-b border-slate-border/60" style="padding-top:var(--fz-top,env(safe-area-inset-top,0px));height:calc(3.5rem + var(--fz-top,env(safe-area-inset-top,0px)));">
+        <button type="button" class="cs-close w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container" aria-label="Close comments">
+          <span class="material-symbols-outlined text-[24px]">arrow_back</span>
+        </button>
+        <h2 class="font-semibold text-[18px] text-on-surface">Comments</h2>
       </div>
 
-      <div class="cs-list flex-1 min-h-0 overflow-y-auto overscroll-contain border-t border-slate-border/60 pb-2">
+      <div class="cs-list flex-1 min-h-0 overflow-y-auto overscroll-contain pb-2">
         ${commentSkeleton(5)}
       </div>
 
-      <form class="cs-form flex items-center gap-2.5 px-3 pt-2.5 border-t border-slate-border flex-shrink-0 bg-slate-surface" style="padding-bottom:calc(.625rem + var(--fz-bottom,env(safe-area-inset-bottom,0px)));" autocomplete="off">
-        <input type="text" class="cs-input flex-1 min-w-0 bg-surface-container-low rounded-full px-4 py-2.5 text-[16px] text-on-surface placeholder:text-slate-subtle outline-none focus:ring-2 focus:ring-primary-container/20" placeholder="Write a comment..." maxlength="${TEXT_MAX}" enterkeyhint="send" aria-label="Write a comment" />
-        <button type="submit" class="cs-send text-primary font-semibold text-[15px] px-2 py-2 disabled:opacity-40" disabled>Send</button>
+      <form class="cs-form px-3 pt-2.5 border-t border-slate-border flex-shrink-0 bg-slate-surface" style="padding-bottom:calc(.625rem + var(--fz-bottom,env(safe-area-inset-bottom,0px)));" autocomplete="off">
+        <div class="flex items-center gap-2 bg-surface-container-low border border-slate-border/70 rounded-full pl-1.5 pr-1.5 py-1.5 focus-within:ring-2 focus-within:ring-primary-container/20">
+          <span class="flex-shrink-0">${avatarHtml(me0.photoURL || "", "w-8 h-8")}</span>
+          <input type="text" class="cs-input flex-1 min-w-0 bg-transparent px-1 py-1.5 text-[16px] text-on-surface placeholder:text-slate-subtle outline-none" placeholder="Write a comment..." maxlength="${TEXT_MAX}" enterkeyhint="send" aria-label="Write a comment" />
+          <button type="submit" class="cs-send w-9 h-9 rounded-full flex items-center justify-center text-primary disabled:opacity-35 active:bg-surface-container flex-shrink-0" aria-label="Send" disabled>
+            <span class="material-symbols-outlined text-[22px]">send</span>
+          </button>
+        </div>
       </form>
     </div>`;
   document.body.appendChild(overlay);
@@ -460,14 +458,6 @@ export function openCommentsSheet({ db, postId, getMe, onProfile, isBlocked, onP
     }
   });
 
-  // The like count of the post at the top
-  const likesCountEl = overlay.querySelector(".cs-likes-count");
-  const stopLikes = onValue(
-    ref(db, `posts/${postId}/likesCount`),
-    (snap) => (likesCountEl.textContent = String(snap.exists() ? snap.val() : 0)),
-    () => {}
-  );
-
   /* ---- closing ---- */
   let closed = false;
   function close() {
@@ -478,7 +468,6 @@ export function openCommentsSheet({ db, postId, getMe, onProfile, isBlocked, onP
     sheet.style.transform = "translateY(100%)";
     document.body.style.overflow = previousOverflow;
     comments.destroy();
-    stopLikes();
     setTimeout(() => overlay.remove(), 320);
   }
   const onKey = (event) => {
@@ -490,30 +479,6 @@ export function openCommentsSheet({ db, postId, getMe, onProfile, isBlocked, onP
     event.stopPropagation();
     if (event.target === overlay || event.target.closest(".cs-close")) close();
   });
-
-  // Drag the top of the sheet down to close it
-  const drag = overlay.querySelector(".cs-drag");
-  let startY = null;
-  drag.addEventListener("pointerdown", (event) => {
-    if (event.target.closest(".cs-close")) return;
-    startY = event.clientY;
-    drag.setPointerCapture(event.pointerId);
-    sheet.style.transition = "none";
-  });
-  drag.addEventListener("pointermove", (event) => {
-    if (startY === null) return;
-    sheet.style.transform = `translateY(${Math.max(0, event.clientY - startY)}px)`;
-  });
-  const endDrag = (event) => {
-    if (startY === null) return;
-    const distance = event.clientY - startY;
-    startY = null;
-    sheet.style.transition = "transform .3s cubic-bezier(.2,.8,.2,1)";
-    if (distance > 110) close();
-    else sheet.style.transform = "translateY(0)";
-  };
-  drag.addEventListener("pointerup", endDrag);
-  drag.addEventListener("pointercancel", endDrag);
 
   return { close };
 }
