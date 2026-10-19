@@ -203,8 +203,8 @@ export function openVideoPlayer(video) {
   overlay.setAttribute("aria-label", "Video");
   overlay.innerHTML = `
     <video src="${esc(video.url)}" ${video.thumb ? `poster="${esc(video.thumb)}"` : ""} class="max-w-full max-h-full" controls autoplay playsinline></video>
-    <button type="button" class="fz-vp-close absolute right-3 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center" style="top:max(0.75rem, env(safe-area-inset-top));" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
-    <button type="button" class="fz-vp-save absolute right-16 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center" style="top:max(0.75rem, env(safe-area-inset-top));" aria-label="Save video"><span class="material-symbols-outlined">download</span></button>`;
+    <button type="button" class="fz-vp-close absolute right-3 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center" style="top:max(0.75rem, var(--fz-top,env(safe-area-inset-top,0px)));" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+    <button type="button" class="fz-vp-save absolute right-16 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center" style="top:max(0.75rem, var(--fz-top,env(safe-area-inset-top,0px)));" aria-label="Save video"><span class="material-symbols-outlined">download</span></button>`;
   const player = overlay.querySelector("video");
   const close = () => { player.pause(); player.removeAttribute("src"); player.load(); overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
@@ -217,7 +217,7 @@ export function openVideoPlayer(video) {
     await saveVideo(video.url, (text) => {
       const t = document.createElement("div");
       t.textContent = text;
-      t.style.cssText = "position:absolute;left:50%;bottom:calc(40px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(20,20,24,.92);color:#fff;padding:9px 16px;border-radius:99px;font:14px/1.3 system-ui,sans-serif;max-width:80%;text-align:center;pointer-events:none;";
+      t.style.cssText = "position:absolute;left:50%;bottom:calc(40px + var(--fz-bottom,env(safe-area-inset-bottom,0px)));transform:translateX(-50%);background:rgba(20,20,24,.92);color:#fff;padding:9px 16px;border-radius:99px;font:14px/1.3 system-ui,sans-serif;max-width:80%;text-align:center;pointer-events:none;";
       overlay.appendChild(t);
       setTimeout(() => t.remove(), 2200);
     });

@@ -87,17 +87,17 @@ function callScreen({ name, photoURL, video }) {
   el.className = "fixed inset-0 z-[9999] bg-[#0b0f14] text-white flex flex-col select-none";
   el.innerHTML = `
     <video class="cl-remote absolute inset-0 w-full h-full object-cover" autoplay playsinline ${video ? "" : "hidden"}></video>
-    <div class="cl-avatar relative flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center" style="padding-top:env(safe-area-inset-top);">
+    <div class="cl-avatar relative flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center" style="padding-top:var(--fz-top,env(safe-area-inset-top,0px));">
       <div class="cl-avatar-pic [&_img]:w-28 [&_img]:h-28 [&_div]:w-28 [&_div]:h-28">${avatarHtml(photoURL, "w-28 h-28")}</div>
       <div class="cl-name text-[24px] font-semibold">${escapeHtml(name)}</div>
       <div class="cl-status text-white/70 text-[15px]">Calling...</div>
     </div>
-    <div class="cl-top absolute left-0 right-0 top-0 px-4 text-center pointer-events-none" style="padding-top:max(0.75rem, env(safe-area-inset-top)); display:none;">
+    <div class="cl-top absolute left-0 right-0 top-0 px-4 text-center pointer-events-none" style="padding-top:max(0.75rem, var(--fz-top,env(safe-area-inset-top,0px))); display:none;">
       <div class="text-[16px] font-semibold drop-shadow">${escapeHtml(name)}</div>
       <div class="cl-timer text-[13px] text-white/80 drop-shadow"></div>
     </div>
-    <video class="cl-local absolute right-3 w-28 h-40 rounded-xl object-cover bg-black/40 shadow-lg ${video ? "" : "hidden"}" style="top:max(4rem, calc(env(safe-area-inset-top) + 3rem)); transform:scaleX(-1);" autoplay playsinline muted></video>
-    <div class="cl-controls relative mt-auto flex items-center justify-center gap-4 pt-4" style="padding-bottom:max(1.5rem, env(safe-area-inset-bottom));">
+    <video class="cl-local absolute right-3 w-28 h-40 rounded-xl object-cover bg-black/40 shadow-lg ${video ? "" : "hidden"}" style="top:max(4rem, calc(var(--fz-top,env(safe-area-inset-top,0px)) + 3rem)); transform:scaleX(-1);" autoplay playsinline muted></video>
+    <div class="cl-controls relative mt-auto flex items-center justify-center gap-4 pt-4" style="padding-bottom:max(1.5rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
       <button type="button" class="cl-mute w-14 h-14 rounded-full bg-white/15 flex items-center justify-center active:scale-95" aria-label="Mute"><span class="material-symbols-outlined">mic</span></button>
       ${video ? `<button type="button" class="cl-cam w-14 h-14 rounded-full bg-white/15 flex items-center justify-center active:scale-95" aria-label="Camera"><span class="material-symbols-outlined">videocam</span></button>
       <button type="button" class="cl-flip w-14 h-14 rounded-full bg-white/15 flex items-center justify-center active:scale-95" aria-label="Switch camera"><span class="material-symbols-outlined">cameraswitch</span></button>` : ""}
@@ -110,7 +110,7 @@ function callScreen({ name, photoURL, video }) {
 function incomingScreen({ name, photoURL, video }) {
   const el = document.createElement("div");
   el.className = "fixed inset-0 z-[9999] bg-[#0b0f14] text-white flex flex-col items-center justify-between select-none";
-  el.style.padding = "max(3rem, env(safe-area-inset-top)) 1.5rem max(2.5rem, env(safe-area-inset-bottom))";
+  el.style.padding = "max(3rem, var(--fz-top,env(safe-area-inset-top,0px))) 1.5rem max(2.5rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)))";
   el.innerHTML = `
     <div class="flex flex-col items-center gap-3 text-center mt-10">
       ${avatarHtml(photoURL, "w-28 h-28")}

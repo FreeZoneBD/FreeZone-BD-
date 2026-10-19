@@ -264,7 +264,7 @@ export async function mount(container, ctx = {}) {
     const sheet = document.createElement("div");
     sheet.className = "fixed inset-0 z-[9996] bg-black/50 flex items-end";
     sheet.innerHTML = `
-      <div class="w-full bg-surface rounded-t-3xl p-4 space-y-2" style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+      <div class="w-full bg-surface rounded-t-3xl p-4 space-y-2" style="padding-bottom:max(1rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
         <div class="w-10 h-1 rounded-full bg-slate-border mx-auto mb-2"></div>
         <button type="button" data-kind="photo" class="w-full flex items-center gap-3 px-3 py-3 rounded-2xl active:bg-surface-container text-on-surface font-label-lg text-label-lg"><span class="material-symbols-outlined text-primary">image</span>Photo story</button>
         <button type="button" data-kind="video" data-feature="storyVideo" data-feature-ready class="w-full flex items-center gap-3 px-3 py-3 rounded-2xl active:bg-surface-container text-on-surface font-label-lg text-label-lg"><span class="material-symbols-outlined text-primary">movie</span>Video story <span class="ml-auto text-slate-muted font-body-sm text-body-sm">up to ${LIMITS.story.sec}s</span></button>
@@ -319,7 +319,7 @@ export async function mount(container, ctx = {}) {
       const sheet = document.createElement("div");
       sheet.className = "fixed inset-0 z-[9998] bg-black/60 flex items-end";
       sheet.innerHTML = `
-        <div class="w-full max-h-[75vh] flex flex-col bg-surface rounded-t-3xl" style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+        <div class="w-full max-h-[75vh] flex flex-col bg-surface rounded-t-3xl" style="padding-bottom:max(1rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
           <div class="flex items-center justify-between px-4 pt-4 pb-2">
             <span class="font-label-lg text-label-lg text-on-surface">Add music</span>
             <button type="button" class="fz-m-close w-9 h-9 rounded-full flex items-center justify-center text-on-surface active:bg-surface-container" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
@@ -406,7 +406,7 @@ export async function mount(container, ctx = {}) {
       ${isVideo
         ? `<video src="${videoUrl}" poster="${previewUrl}" class="absolute inset-0 w-full h-full object-cover" autoplay muted loop playsinline></video>`
         : `<img src="${previewUrl}" alt="Story preview" class="absolute inset-0 w-full h-full object-cover" />`}
-      <div class="relative z-10 flex items-center justify-between px-3 pb-8 bg-gradient-to-b from-black/60 to-transparent" style="padding-top:max(0.75rem, env(safe-area-inset-top));">
+      <div class="relative z-10 flex items-center justify-between px-3 pb-8 bg-gradient-to-b from-black/60 to-transparent" style="padding-top:max(0.75rem, var(--fz-top,env(safe-area-inset-top,0px)));">
         <button type="button" class="fz-c-close w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/10" aria-label="Cancel">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -414,7 +414,7 @@ export async function mount(container, ctx = {}) {
         ${isVideo ? `<span class="w-10"></span>` : `<button type="button" class="fz-c-music h-10 px-3 max-w-[46vw] rounded-full flex items-center gap-1 text-white bg-black/40 active:scale-95 transition-transform" aria-label="Add music"><span class="material-symbols-outlined text-[20px]">music_note</span><span class="fz-c-music-text font-label-md text-label-md truncate">Music</span></button>`}
       </div>
       <div class="flex-1"></div>
-      <div class="relative z-10 px-4 pt-12 space-y-3 bg-gradient-to-t from-black/80 to-transparent" style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+      <div class="relative z-10 px-4 pt-12 space-y-3 bg-gradient-to-t from-black/80 to-transparent" style="padding-bottom:max(1rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
         <textarea class="fz-c-caption w-full resize-none rounded-2xl bg-white/10 text-white placeholder:text-white/50 px-4 py-3 text-[16px] outline-none focus:bg-white/15" rows="2" maxlength="${CAPTION_MAX}" placeholder="Add a caption (optional)"></textarea>
         <button type="button" class="fz-c-share w-full py-3 rounded-xl bg-primary-container text-white font-label-lg text-label-lg font-semibold active:scale-[.98] transition-all disabled:opacity-60">Share story</button>
       </div>`;
@@ -518,7 +518,7 @@ export async function mount(container, ctx = {}) {
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-label", "Story viewer");
     overlay.innerHTML = `
-      <div class="absolute top-0 inset-x-0 z-20 px-3 pb-8 bg-gradient-to-b from-black/70 to-transparent" style="padding-top:max(0.75rem, env(safe-area-inset-top));">
+      <div class="absolute top-0 inset-x-0 z-20 px-3 pb-8 bg-gradient-to-b from-black/70 to-transparent" style="padding-top:max(0.75rem, var(--fz-top,env(safe-area-inset-top,0px)));">
         <div class="fz-bars flex gap-1"></div>
         <div class="flex items-center justify-between mt-3">
           <div class="fz-author flex items-center gap-2.5 min-w-0"></div>
@@ -538,7 +538,7 @@ export async function mount(container, ctx = {}) {
         <div class="fz-spinner absolute w-9 h-9 rounded-full border-[3px] border-white/25 border-t-white animate-spin"></div>
       </div>
 
-      <div class="absolute bottom-0 inset-x-0 z-20 px-4 pt-12 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+      <div class="absolute bottom-0 inset-x-0 z-20 px-4 pt-12 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" style="padding-bottom:max(1rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
         <p class="fz-caption hidden text-white text-[16px] leading-snug text-center whitespace-pre-wrap break-words px-1"></p>
         <div class="fz-views hidden mt-3 items-center justify-center gap-1.5 text-white/90 text-[13px] pointer-events-auto cursor-pointer" role="button" tabindex="0" aria-label="See who viewed this story"></div>
 

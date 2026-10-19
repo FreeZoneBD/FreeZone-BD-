@@ -745,7 +745,7 @@ export function openImageViewer(urls, startIndex = 0, ctx = null) {
   const pill =
     "flex-1 h-11 rounded-full bg-white/15 text-white flex items-center justify-center gap-2 font-semibold text-[14px] tabular-nums active:bg-white/25";
   const footer = post
-    ? `<div class="iv-footer px-4 pt-3 text-white" style="padding-bottom:max(0.75rem, env(safe-area-inset-bottom));">
+    ? `<div class="iv-footer px-4 pt-3 text-white" style="padding-bottom:max(0.75rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
         <div class="flex items-center gap-3">
           <span class="iv-avatar shrink-0"></span>
           <div class="min-w-0">
@@ -768,11 +768,11 @@ export function openImageViewer(urls, startIndex = 0, ctx = null) {
           <button type="button" class="iv-share ${pill}"><span class="material-symbols-outlined">share</span></button>
         </div>
       </div>`
-    : `<div style="height:max(0.75rem, env(safe-area-inset-bottom));"></div>`;
+    : `<div style="height:max(0.75rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));"></div>`;
 
   overlay.innerHTML = `
     <style>.iv-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.iv-heart-on{font-variation-settings:'FILL' 1;color:#ff3b5c}</style>
-    <div class="flex items-center justify-between px-2 relative" style="padding-top:max(0.5rem, env(safe-area-inset-top));">
+    <div class="flex items-center justify-between px-2 relative" style="padding-top:max(0.5rem, var(--fz-top,env(safe-area-inset-top,0px)));">
       <button type="button" class="iv-close w-11 h-11 rounded-full flex items-center justify-center text-white active:bg-white/10" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
       <span class="iv-count text-white/90 text-[13px]"></span>
       <button type="button" class="iv-menu-btn w-11 h-11 rounded-full flex items-center justify-center text-white active:bg-white/10" aria-label="More"><span class="material-symbols-outlined">more_vert</span></button>

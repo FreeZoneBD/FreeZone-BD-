@@ -424,7 +424,7 @@ export function openCommentsSheet({ db, postId, getMe, onProfile, isBlocked, onP
         ${commentSkeleton(5)}
       </div>
 
-      <form class="cs-form flex items-center gap-2.5 px-3 pt-2.5 border-t border-slate-border flex-shrink-0 bg-slate-surface" style="padding-bottom:calc(.625rem + env(safe-area-inset-bottom, 0px));" autocomplete="off">
+      <form class="cs-form flex items-center gap-2.5 px-3 pt-2.5 border-t border-slate-border flex-shrink-0 bg-slate-surface" style="padding-bottom:calc(.625rem + var(--fz-bottom,env(safe-area-inset-bottom,0px)));" autocomplete="off">
         <input type="text" class="cs-input flex-1 min-w-0 bg-surface-container-low rounded-full px-4 py-2.5 text-[16px] text-on-surface placeholder:text-slate-subtle outline-none focus:ring-2 focus:ring-primary-container/20" placeholder="Write a comment..." maxlength="${TEXT_MAX}" enterkeyhint="send" aria-label="Write a comment" />
         <button type="submit" class="cs-send text-primary font-semibold text-[15px] px-2 py-2 disabled:opacity-40" disabled>Send</button>
       </form>

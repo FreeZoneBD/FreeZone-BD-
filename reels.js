@@ -72,6 +72,7 @@ export async function openReels(o) {
     <style>
       .fz-reels .fz-rl-list { position:absolute; inset:0; overflow-y:scroll; scroll-snap-type:y mandatory; overscroll-behavior:contain; scrollbar-width:none; }
       .fz-reels .fz-rl-list::-webkit-scrollbar { display:none; }
+      @media (min-width:768px) { .fz-reels .fz-rl-list { max-width:460px; margin:0 auto; } }
       .fz-reels .fz-rl-item { position:relative; height:100%; scroll-snap-align:start; scroll-snap-stop:always; overflow:hidden; background:#000; }
       .fz-reels video { position:absolute; inset:0; width:100%; height:100%; }
       .fz-reels .fz-rl-btn { display:flex; flex-direction:column; align-items:center; gap:2px; color:#fff; font-size:12px; font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.6); -webkit-tap-highlight-color:transparent; }

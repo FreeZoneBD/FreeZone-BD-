@@ -332,7 +332,7 @@ function openVideoPlayer(video) {
   overlay.setAttribute("aria-label", "Video");
   overlay.innerHTML = `
     <video src="${escapeHtml(video.url)}" poster="${escapeHtml(video.thumb)}" class="max-w-full max-h-full" controls autoplay playsinline></video>
-    <button type="button" class="fz-vp-close absolute right-3 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center" style="top:max(0.75rem, env(safe-area-inset-top));" aria-label="Close"><span class="material-symbols-outlined">close</span></button>`;
+    <button type="button" class="fz-vp-close absolute right-3 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center" style="top:max(0.75rem, var(--fz-top,env(safe-area-inset-top,0px)));" aria-label="Close"><span class="material-symbols-outlined">close</span></button>`;
   const player = overlay.querySelector("video");
   const close = () => { player.pause(); player.removeAttribute("src"); player.load(); overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
@@ -361,7 +361,7 @@ function openConversationInfo({ other, joinedAt }) {
     const handle = other.username ? `@${other.username}` : other.name;
     const row = (key, icon, label, danger) => `<button type="button" class="fz-ci w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left text-[16px] font-semibold active:bg-surface-container ${danger ? "text-error" : "text-on-surface"}" data-key="${key}"><span class="material-symbols-outlined text-[24px]">${icon}</span>${escapeHtml(label)}</button>`;
     overlay.innerHTML = `
-      <div class="w-full max-w-lg max-h-[88vh] overflow-y-auto bg-surface rounded-t-3xl shadow-2xl p-4" role="dialog" aria-modal="true" aria-label="Conversation info" style="padding-bottom:max(1rem, env(safe-area-inset-bottom));">
+      <div class="w-full max-w-lg max-h-[88vh] overflow-y-auto bg-surface rounded-t-3xl shadow-2xl p-4" role="dialog" aria-modal="true" aria-label="Conversation info" style="padding-bottom:max(1rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
         <div class="flex items-center justify-between mb-2"><span class="font-headline-sm text-headline-sm font-bold">Conversation info</span><button type="button" class="fz-ci-close w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-container" aria-label="Close"><span class="material-symbols-outlined">close</span></button></div>
         <button type="button" class="fz-ci w-full flex flex-col items-center gap-1 py-4" data-key="profile">
           ${avatarHtml(other.photoURL, "w-20 h-20")}
@@ -393,7 +393,7 @@ function openNewChatSheet({ people }) {
     const overlay = document.createElement("div");
     overlay.className = "fixed inset-0 z-[9998] flex items-end justify-center bg-black/40";
     overlay.innerHTML = `
-      <div class="w-full max-w-lg max-h-[80vh] flex flex-col bg-surface rounded-t-3xl shadow-2xl" role="dialog" aria-modal="true" aria-label="New message" style="padding-bottom:max(0.75rem, env(safe-area-inset-bottom));">
+      <div class="w-full max-w-lg max-h-[80vh] flex flex-col bg-surface rounded-t-3xl shadow-2xl" role="dialog" aria-modal="true" aria-label="New message" style="padding-bottom:max(0.75rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
           <span class="font-headline-sm text-headline-sm font-bold">New message</span>
           <button type="button" class="fz-nc-close w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-container" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
@@ -878,7 +878,7 @@ export async function mount(container, ctx = {}) {
         <div class="fz-active"></div>
         <div class="fz-convs -mx-4">${skeletonRows()}</div>
       </div>
-      <button type="button" class="fz-ib-new fixed right-5 z-20 w-14 h-14 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg shadow-primary-container/40 active:scale-90 transition-all" style="bottom:max(1.5rem, env(safe-area-inset-bottom));" aria-label="New message"><span class="material-symbols-outlined text-[28px]">add_comment</span></button>`;
+      <button type="button" class="fz-ib-new fixed right-5 z-20 w-14 h-14 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg shadow-primary-container/40 active:scale-90 transition-all" style="bottom:max(1.5rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));" aria-label="New message"><span class="material-symbols-outlined text-[28px]">add_comment</span></button>`;
 
     root.querySelector(".fz-ib-back").addEventListener("click", () => ctx.closePage?.());
     root.querySelector(".fz-ib-filter").addEventListener("click", async () => {

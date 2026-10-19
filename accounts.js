@@ -71,7 +71,7 @@ export function openAccountSwitcher({ currentUid } = {}) {
     const list = getAccounts();
     const full = list.length >= MAX_ACCOUNTS;
     overlay.innerHTML = `
-      <div class="w-full max-w-lg bg-slate-surface text-on-surface rounded-t-3xl shadow-2xl px-4 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]" role="dialog" aria-modal="true" aria-label="Switch account">
+      <div class="w-full max-w-lg bg-slate-surface text-on-surface rounded-t-3xl shadow-2xl px-4 pt-4 pb-[max(1.25rem,var(--fz-bottom,env(safe-area-inset-bottom,0px)))]" role="dialog" aria-modal="true" aria-label="Switch account">
         <div class="flex items-center gap-2 mb-2">
           <button type="button" class="ac-close w-10 h-10 -ml-1 rounded-full flex items-center justify-center active:bg-surface-container" aria-label="Close"><span class="material-symbols-outlined text-[24px]">close</span></button>
           <h2 class="flex-1 text-[18px] font-semibold">Switch account</h2>
