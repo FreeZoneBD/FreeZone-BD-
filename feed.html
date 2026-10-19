@@ -83,6 +83,12 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     body { min-height: max(884px, 100dvh); }
+    /* the app column is 720px wide at most: fills a phone or a tablet, stays centred on a laptop */
+    html .max-w-lg { max-width: 45rem; }
+    /* wide screens (laptop, tablet, phone in desktop mode): full pages such as Profile, Settings and a post open in the same centred column as the feed */
+    @media (min-width: 600px) {
+      #pageView, #postDetail { left: 0; right: 0; max-width: 45rem; margin: 0 auto; border-left: 1px solid rgba(128,128,128,.18); border-right: 1px solid rgba(128,128,128,.18); }
+    }
     [hidden] { display: none !important; }
         .liked .like-icon { font-variation-settings: 'FILL' 1; }
     /* feed post card: heart that pops up on a double tap, and the pop of the like button */
@@ -142,7 +148,7 @@
     /* Create: floating round button, bottom right, above the nav */
     .fz-fab { position: fixed; z-index: 55; width: 58px; height: 58px; border-radius: 9999px; color: #fff; display: flex; align-items: center; justify-content: center;
       background: linear-gradient(145deg, #3ab0ff 0%, #1d9bf0 45%, #0b72d6 100%);
-      right: max(16px, calc((100vw - 512px) / 2 + 16px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 16px);
+      right: max(16px, calc((100vw - 720px) / 2 + 16px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 16px);
       box-shadow: 0 8px 20px rgba(29,155,240,.42), 0 2px 6px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.35);
       -webkit-tap-highlight-color: transparent; transition: transform .15s, box-shadow .15s, filter .15s; }
     .fz-fab .fz-svg { width: 28px; height: 28px; stroke-width: 2.6; }
