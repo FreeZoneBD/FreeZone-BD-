@@ -85,6 +85,8 @@
     body { min-height: max(884px, 100dvh); }
     /* the app column is 720px wide at most: fills a phone or a tablet, stays centred on a laptop */
     html .max-w-lg { max-width: 45rem; }
+    /* in a flex column a centred child shrinks to its content: make sub pages (Language, About, Change password...) fill the column */
+    #pageViewBody > .max-w-lg, #postDetail .max-w-lg.mx-auto { width: 100%; }
     /* wide screens (laptop, tablet, phone in desktop mode): full pages such as Profile, Settings and a post open in the same centred column as the feed */
     @media (min-width: 600px) {
       #pageView, #postDetail { left: 0; right: 0; max-width: 45rem; margin: 0 auto; border-left: 1px solid rgba(128,128,128,.18); border-right: 1px solid rgba(128,128,128,.18); }
