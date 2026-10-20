@@ -237,6 +237,15 @@ function buildSections({ ctx, state, go }) {
           label: "Change password",
           note: () => "Keep your account safe with a strong password",
           onClick: () => go("change-password")
+        },
+        {
+          id: "creator",
+          type: "link",
+          icon: "workspace_premium",
+          iconClass: "bg-online-emerald/15 text-online-emerald",
+          label: "Creator Program",
+          note: () => "Apply to share in what FreeZone BD earns",
+          onClick: () => go("creator")
         }
       ]
     },
@@ -1434,7 +1443,8 @@ const PAGES = {
   "delete-account": { title: "Delete account", render: (root, ctx) => renderDeleteAccount(root, ctx) },
   appearance: { title: "Dark mode", render: (root, ctx) => renderAppearance(root, ctx) },
   language: { title: "Language", render: (root, ctx) => renderLanguage(root, ctx) },
-  // These three live in their own files and are loaded only when opened
+  // These live in their own files and are loaded only when opened
+  creator: { title: "Creator Program", render: async (root, ctx) => (await import("./creator.js")).render(root, ctx) },
   help: { title: "Help center", render: async (root, ctx) => (await import("./help.js")).render(root, ctx) },
   "report-problem": { title: "Report a problem", render: async (root, ctx) => (await import("./feedback.js")).render(root, ctx) },
   about: { title: `About ${APP_NAME}`, render: async (root, ctx) => (await import("./about.js")).render(root, ctx) }

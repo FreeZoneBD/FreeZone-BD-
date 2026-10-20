@@ -36,6 +36,7 @@ import { createInterestStore } from "./interests.js";
 import { loadLess, markNotInterested, undoNotInterested, isHiddenPost } from "./less.js";
 import { rankPosts, likedAuthorsFrom, tagsOf } from "./feed-algorithm.js";
 import { emptyKind, renderEmpty } from "./empty-state.js";
+import { startMonetized } from "./monetize.js";
 import { ensurePrivacy, privacyKnown, isPrivateUid, isRequested, setRequested, startRequests, onPrivacyChange } from "./privacy.js";
 import { createOfflineBar } from "./offline-bar.js";
 import { createScrollMemory } from "./scroll-memory.js";
@@ -179,6 +180,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   startBlocks({ db, currentUser }); // who I blocked (block.js), before any post is drawn
+  startMonetized(db); // the green tick of Creator Program members (monetize.js)
   startMutes({ db, currentUser }); // who I muted (mute.js)
   // Follow requests I sent: when one is answered, check if I follow that account now
   startRequests({

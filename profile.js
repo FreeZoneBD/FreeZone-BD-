@@ -561,8 +561,8 @@ export async function mount(container, ctx = {}) {
         <div class="min-w-0 flex-1 pt-3">
           ${
             isMe
-              ? `<button type="button" class="pf-switch max-w-full flex items-center gap-0.5 text-left active:opacity-70" aria-label="Switch account"><h2 class="text-[26px] leading-8 font-bold text-on-surface break-words min-w-0">${escapeHtml(name)}</h2><span class="material-symbols-outlined text-[28px] text-on-surface flex-shrink-0">expand_more</span></button>`
-              : `<h2 class="text-[26px] leading-8 font-bold text-on-surface break-words">${escapeHtml(name)}</h2>`
+              ? `<button type="button" class="pf-switch max-w-full flex items-center gap-0.5 text-left active:opacity-70" aria-label="Switch account"><h2 data-tick-uid="${escapeHtml(uid)}" class="text-[26px] leading-8 font-bold text-on-surface break-words min-w-0">${escapeHtml(name)}</h2><span class="material-symbols-outlined text-[28px] text-on-surface flex-shrink-0">expand_more</span></button>`
+              : `<h2 data-tick-uid="${escapeHtml(uid)}" class="text-[26px] leading-8 font-bold text-on-surface break-words">${escapeHtml(name)}</h2>`
           }
           ${user.username ? `<p class="text-[17px] text-slate-muted mt-0.5">@${escapeHtml(user.username)}</p>` : ""}
           <div class="flex items-start gap-7 mt-5">

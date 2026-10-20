@@ -198,7 +198,7 @@ export async function openReels(o) {
       </div>
 
       <div class="absolute left-0 z-10 px-3" style="right:80px;bottom:calc(var(--fz-bottom, env(safe-area-inset-bottom, 0px)) + 20px);pointer-events:none;">
-        <button type="button" class="fz-rl-name block max-w-full font-bold text-[18px] truncate text-left" style="pointer-events:auto;text-shadow:0 1px 4px rgba(0,0,0,.75)">${escapeHtml(post.name || handle)}</button>
+        <button type="button" data-tick-uid="${escapeHtml(post.uid || "")}" class="fz-rl-name block max-w-full font-bold text-[18px] truncate text-left" style="pointer-events:auto;text-shadow:0 1px 4px rgba(0,0,0,.75)">${escapeHtml(post.name || handle)}</button>
         ${post.text ? `<p class="fz-rl-text text-[15px] leading-snug mt-1 whitespace-pre-wrap break-words" style="text-shadow:0 1px 4px rgba(0,0,0,.75);pointer-events:auto;"></p>` : ""}
       </div>
       <div class="fz-rl-bar absolute inset-x-0 bottom-0 z-10 h-[3px]"><div class="h-full bg-white" style="width:0%"></div></div>`;
