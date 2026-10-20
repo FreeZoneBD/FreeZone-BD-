@@ -7,6 +7,8 @@
 //   creatorApps/{uid}   = { status: pending | approved | rejected | revoked, appliedAt, name, username, photoURL,
 //                           followers, posts, views, ageDays, reason?, reviewedAt?, reviewedBy? }
 //   monetized/{uid}     = true                                                         the tick (admin only)
+//   creatorEarnings/{month}/{uid} = { amount, v, p, f, viewers, qualified, final }       my numbers, written by the admin panel (earnings are estimates until "final")
+//   appConfig/creatorPay = { minViewers, ... }
 import {
   ref,
   get,
@@ -20,6 +22,7 @@ import {
 import { escapeHtml, showToast } from "./post.js";
 import { formSkeleton } from "./skeleton.js";
 import { tickHtml } from "./monetize.js";
+import { monthKey } from "./creatorViews.js";
 
 export const DEFAULT_RULES = { open: true, minFollowers: 100, minPosts: 10, minAgeDays: 30, minViews: 1000 };
 const DAY = 86400000;
@@ -58,6 +61,9 @@ export async function render(root, ctx) {
   let rules = { ...DEFAULT_RULES };
   let app = null;
   let stats = null;
+  let cur = null; // my earnings this month
+  let prev = null; // and last month
+  let minViewers = 5;
 
   const load = async () => {
     const [cfgSnap, appSnap, st] = await Promise.all([
@@ -68,12 +74,54 @@ export async function render(root, ctx) {
     rules = { ...DEFAULT_RULES, ...((cfgSnap && cfgSnap.val()) || {}) };
     app = appSnap ? appSnap.val() : null;
     stats = st;
+    cur = null;
+    prev = null;
+    if (app && app.status === "approved") {
+      const now = Date.now();
+      const lastMonth = monthKey(now - 31 * DAY);
+      const [c, p, pay] = await Promise.all([
+        get(ref(db, `creatorEarnings/${monthKey(now)}/${uid}`)).catch(() => null),
+        get(ref(db, `creatorEarnings/${lastMonth}/${uid}`)).catch(() => null),
+        get(ref(db, "appConfig/creatorPay/minViewers")).catch(() => null)
+      ]);
+      cur = c && c.exists() ? c.val() : null;
+      prev = p && p.exists() ? p.val() : null;
+      if (pay && pay.exists()) minViewers = Number(pay.val()) || 0;
+    }
   };
 
   const check = (label, value, need, unit = "") => {
     const ok = value >= need;
     const pct = need > 0 ? Math.min(100, Math.round((value / need) * 100)) : 100;
     return { label, value, need, unit, ok, pct };
+  };
+
+  const taka = (n) => "৳" + Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+  // My views and the estimated earnings of this month (the admin updates them; they are estimates until the month is closed)
+  const earningsHtml = () => {
+    const stat = (label, value) =>
+      `<div class="rounded-xl bg-surface-container-low px-3 py-2.5"><div class="font-body-sm text-body-sm text-slate-muted">${label}</div><div class="font-semibold text-on-surface tabular-nums">${num(value)}</div></div>`;
+    const body = cur
+      ? `<div class="flex items-end justify-between gap-3">
+           <div>
+             <div class="font-body-sm text-body-sm text-slate-muted">${cur.final ? "Earnings" : "Estimated earnings"}</div>
+             <div class="text-[28px] leading-9 font-bold text-on-surface tabular-nums">${taka(cur.amount)}</div>
+           </div>
+           <span class="px-2.5 py-1 rounded-full text-[12px] font-semibold ${cur.final ? "bg-online-emerald/15 text-online-emerald" : "bg-primary-container/10 text-primary-container"}">${cur.final ? "Final" : "Estimate"}</span>
+         </div>
+         <div class="grid grid-cols-2 gap-2 mt-3">
+           ${stat("Videos watched", cur.v)}${stat("Posts seen", cur.p)}${stat("Profile visits", cur.f)}${stat("Different viewers", cur.viewers)}
+         </div>
+         ${cur.qualified === false ? `<p class="font-body-sm text-body-sm text-slate-muted mt-3">You need at least ${num(minViewers)} different viewers in a month to earn.</p>` : ""}`
+      : `<p class="font-body-md text-body-md text-on-surface-variant">Your numbers for this month will show here after the next update.</p>`;
+    const last = prev ? `<p class="font-body-md text-body-md text-on-surface-variant mt-3">Last month: <b class="text-on-surface">${taka(prev.amount)}</b> (${prev.final ? "final" : "estimate"})</p>` : "";
+    return `
+      <section class="rounded-2xl border border-slate-border bg-slate-surface p-4">
+        <h2 class="font-label-lg text-label-lg text-on-surface font-semibold mb-3">This month</h2>
+        ${body}${last}
+        <p class="font-body-sm text-body-sm text-slate-subtle mt-3">These are estimates. The final amount depends on what the platform earns and on everybody's views. Nothing is paid out yet.</p>
+      </section>`;
   };
 
   const draw = () => {
@@ -141,6 +189,7 @@ export async function render(root, ctx) {
 
         <div class="px-4 mt-3 space-y-4">
           ${statusHtml}
+          ${status === "approved" ? earningsHtml() : ""}
 
           <section class="rounded-2xl border border-slate-border bg-slate-surface p-4">
             <h2 class="font-label-lg text-label-lg text-on-surface font-semibold">Requirements</h2>

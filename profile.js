@@ -22,6 +22,7 @@ import { openCropper } from "./crop.js";
 import { isBlocked, blockAccount, unblockAccount, openActionMenu } from "./block.js";
 import { isMuted, muteAccount, unmuteAccount } from "./mute.js";
 import { openAccountSwitcher } from "./accounts.js";
+import { recordView } from "./creatorViews.js";
 import { escapeHtml, timeAgo, showToast, avatarHtml, updateSaveButtons, createPostCard, shareProfile, postImagesHtml, postImageUrls, postVideoOf, openImageViewer, openReportDialog, openProfileQr, canViewPost } from "./post.js";
 import { openVideoPlayer, formatDuration } from "./video-tools.js";
 
@@ -513,6 +514,7 @@ export async function mount(container, ctx = {}) {
   }
 
   setPrivate(uid, user.isPrivate === true); // known before the posts below are filtered
+  if (currentUser && uid && uid !== currentUser.uid) recordView(db, currentUser.uid, uid, "f", uid); // Creator Program: a profile visit
 
   let [followers, following, posts] = await Promise.all([
     readCount(db, `followers/${uid}`),

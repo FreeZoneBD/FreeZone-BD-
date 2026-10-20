@@ -23,7 +23,7 @@ import {
   limitToFirst
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-import { escapeHtml, timeAgo, avatarHtml, createPostCard, showToast, pausePostVideos, canViewPost, updateFollowButtons, sharePost, postImagesHtml, postImageUrls } from "./post.js";
+import { escapeHtml, timeAgo, avatarHtml, createPostCard, postVideoOf, showToast, pausePostVideos, canViewPost, updateFollowButtons, sharePost, postImagesHtml, postImageUrls } from "./post.js";
 import { startBlocks, isBlocked, onBlocksChange, blockAccount } from "./block.js";
 import { startMutes, isMuted, onMutesChange } from "./mute.js";
 import { tagIndexUpdates } from "./hashtags.js";
@@ -37,6 +37,7 @@ import { loadLess, markNotInterested, undoNotInterested, isHiddenPost } from "./
 import { rankPosts, likedAuthorsFrom, tagsOf } from "./feed-algorithm.js";
 import { emptyKind, renderEmpty } from "./empty-state.js";
 import { startMonetized } from "./monetize.js";
+import { recordView } from "./creatorViews.js";
 import { ensurePrivacy, privacyKnown, isPrivateUid, isRequested, setRequested, startRequests, onPrivacyChange } from "./privacy.js";
 import { createOfflineBar } from "./offline-bar.js";
 import { createScrollMemory } from "./scroll-memory.js";
@@ -636,6 +637,11 @@ function listenPosts() {
     save: (ids) => {
       const updates = {};
       ids.forEach((id) => { updates[`posts/${id}/viewsCount`] = increment(1); });
+      // Creator Program: a view of an approved creator is counted (creatorViews.js)
+      ids.forEach((id) => {
+        const post = (latestPosts || []).find((p) => p.id === id);
+        if (post && post.uid) recordView(db, currentUser.uid, post.uid, postVideoOf(post) ? "v" : "p", id);
+      });
       return update(ref(db), updates);
     }
   });

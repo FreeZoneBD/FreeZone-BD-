@@ -7,6 +7,7 @@
 // which also hides blocked, muted, adult, spam and heavily reported posts.
 
 import { ref, get, query, orderByChild, limitToLast, onValue, update, increment } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+import { recordView } from "./creatorViews.js";
 import { escapeHtml, avatarHtml, showToast, canViewPost, postVideoOf, getPostLink, copyPostLink, downloadVideo } from "./post.js";
 import { rankPosts, watchAction } from "./feed-algorithm.js";
 import { storageReady, previewNotice } from "./features.js";
@@ -143,6 +144,7 @@ export async function openReels(o) {
       [`posts/${post.id}/playsCount`]: increment(1),
       [`posts/${post.id}/watchTimeMs`]: increment(Math.min(Math.round(ms), MAX_WATCH_MS))
     }).catch(() => { /* a play is not important enough to retry (or the rules are not updated yet) */ });
+    recordView(db, me, post.uid, "v", post.id); // Creator Program: a watched video of an approved creator
   };
   const tickWatch = () => {
     if (!watch) return;
