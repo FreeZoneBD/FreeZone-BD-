@@ -23,6 +23,7 @@ import { escapeHtml, showToast } from "./post.js";
 import { formSkeleton } from "./skeleton.js";
 import { tickHtml } from "./monetize.js";
 import { monthKey } from "./creatorViews.js";
+import { loadPayout, payoutHtml, bindPayout } from "./creator-payout.js";
 
 export const DEFAULT_RULES = { open: true, minFollowers: 100, minPosts: 10, minAgeDays: 30, minViews: 1000 };
 const DAY = 86400000;
@@ -64,6 +65,7 @@ export async function render(root, ctx) {
   let cur = null; // my earnings this month
   let prev = null; // and last month
   let minViewers = 5;
+  let payout = { open: false }; // the payout card stays hidden until the admin opens it (creator-payout.js)
 
   const load = async () => {
     const [cfgSnap, appSnap, st] = await Promise.all([
@@ -87,6 +89,9 @@ export async function render(root, ctx) {
       cur = c && c.exists() ? c.val() : null;
       prev = p && p.exists() ? p.val() : null;
       if (pay && pay.exists()) minViewers = Number(pay.val()) || 0;
+      payout = await loadPayout(db, uid).catch(() => ({ open: false }));
+    } else {
+      payout = { open: false };
     }
   };
 
@@ -120,7 +125,7 @@ export async function render(root, ctx) {
       <section class="rounded-2xl border border-slate-border bg-slate-surface p-4">
         <h2 class="font-label-lg text-label-lg text-on-surface font-semibold mb-3">This month</h2>
         ${body}${last}
-        <p class="font-body-sm text-body-sm text-slate-subtle mt-3">These are estimates. The final amount depends on what the platform earns and on everybody's views. Nothing is paid out yet.</p>
+        <p class="font-body-sm text-body-sm text-slate-subtle mt-3">These are estimates. The final amount depends on what the platform earns and on everybody's views. ${payout.open ? "Only closed months can be paid out." : "Nothing is paid out yet."}</p>
       </section>`;
   };
 
@@ -190,6 +195,7 @@ export async function render(root, ctx) {
         <div class="px-4 mt-3 space-y-4">
           ${statusHtml}
           ${status === "approved" ? earningsHtml() : ""}
+          ${status === "approved" && payout.open ? payoutHtml(payout, ui) : ""}
 
           <section class="rounded-2xl border border-slate-border bg-slate-surface p-4">
             <h2 class="font-label-lg text-label-lg text-on-surface font-semibold">Requirements</h2>
@@ -242,6 +248,8 @@ export async function render(root, ctx) {
           </section>
         </div>
       </div>`;
+
+    if (status === "approved" && payout.open) bindPayout(root, { db, uid, payout, reload: async () => { await load(); draw(); } });
 
     const applyBtn = root.querySelector(".cp-apply");
     if (applyBtn) {
