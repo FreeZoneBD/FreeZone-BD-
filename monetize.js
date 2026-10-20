@@ -52,7 +52,7 @@ function scan() {
     if (next && next.classList.contains("fz-tick")) return;
     el.after(makeTick(uid, false));
   };
-  document.querySelectorAll("article[data-author-uid] .profile-link .truncate").forEach((el) => {
+  document.querySelectorAll("article[data-author-uid] .profile-link span.font-semibold.truncate").forEach((el) => {
     const article = el.closest("article[data-author-uid]");
     after(el, article && article.dataset.authorUid);
   });
