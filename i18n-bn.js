@@ -126,6 +126,10 @@ window.FZ_BN = {
 "Off: a video in your feed starts only when you tap it. This also saves mobile data.": "বন্ধ: ফিডের ভিডিও চাপ দিলে তবেই চলবে। এতে মোবাইল ডেটাও বাঁচে।",
 
 "Switch account": "অ্যাকাউন্ট বদলান",
+"Update about the Creator Program": "ক্রিয়েটর প্রোগ্রাম নিয়ে আপডেট",
+"Welcome to the Creator Program! Your green tick is now on.": "ক্রিয়েটর প্রোগ্রামে স্বাগতম! আপনার সবুজ টিক চালু হয়েছে।",
+"Your Creator Program access is back on. Your green tick is shown again.": "আপনার ক্রিয়েটর প্রোগ্রাম আবার চালু হয়েছে। সবুজ টিক আবার দেখা যাবে।",
+
 "Only closed months can be paid out.": "শুধু বন্ধ করা মাসের আয় তোলা যাবে।",
 "These are estimates. The final amount depends on what the platform earns and on everybody's views. Only closed months can be paid out.": "এগুলো আনুমানিক হিসাব। চূড়ান্ত অঙ্ক নির্ভর করে প্ল্যাটফর্মের আয় ও সবার ভিউয়ের ওপর। শুধু বন্ধ করা মাসের আয় তোলা যাবে।",
 "Payout": "টাকা তোলা",

@@ -359,7 +359,8 @@ async function openPageView(pageKey, title) {
       closePage: closePageView,
       openPost: (postId) => openPostDetail(postId),
       onOpenSettings: () => openSettings(),
-      onOpenEditProfile: () => openSettings("edit-profile")
+      onOpenEditProfile: () => openSettings("edit-profile"),
+      onOpenCreator: () => openSettings("creator") // a Creator Program notification opens the Creator Program page
     });
   } catch (error) {
     console.error(error);

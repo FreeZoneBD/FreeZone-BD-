@@ -407,7 +407,7 @@ function openNewChatSheet({ people }) {
       const q = query.trim().toLowerCase();
       const shown = q ? people.filter((u) => `${u.name} ${u.username}`.toLowerCase().includes(q)) : people;
       listEl.innerHTML = shown.length
-        ? shown.map((u) => `<button type="button" class="fz-nc-item w-full flex items-center gap-3 px-2 py-2.5 rounded-2xl active:bg-surface-container text-left" data-uid="${escapeHtml(u.uid)}">${avatarHtml(u.photoURL, "w-11 h-11")}<span class="min-w-0"><span class="block font-label-lg text-label-lg truncate">${escapeHtml(u.name)}</span><span class="block text-[13px] text-slate-muted truncate">${u.username ? "@" + escapeHtml(u.username) : ""}</span></span></button>`).join("")
+        ? shown.map((u) => `<button type="button" class="fz-nc-item w-full flex items-center gap-3 px-2 py-2.5 rounded-2xl active:bg-surface-container text-left" data-uid="${escapeHtml(u.uid)}">${avatarHtml(u.photoURL, "w-11 h-11")}<span class="min-w-0"><span class="block font-label-lg text-label-lg truncate" data-tick-uid="${escapeHtml(u.uid)}">${escapeHtml(u.name)}</span><span class="block text-[13px] text-slate-muted truncate">${u.username ? "@" + escapeHtml(u.username) : ""}</span></span></button>`).join("")
         : `<p class="text-center text-slate-muted text-sm py-10 px-6">${people.length ? "No one found." : "Follow people to start a conversation with them."}</p>`;
     };
     paint("");
@@ -983,7 +983,7 @@ export async function mount(container, ctx = {}) {
             ${avatarWithStatus(user.photoURL, "w-14 h-14", isOnline(item.with), "w-4 h-4")}
             <div class="min-w-0 flex-1">
               <div class="flex items-baseline justify-between gap-2">
-                <span class="text-[16px] text-on-surface truncate ${unread ? "font-bold" : "font-semibold"}">${escapeHtml(user.name)}</span>
+                <span class="text-[16px] text-on-surface truncate ${unread ? "font-bold" : "font-semibold"}" data-tick-uid="${escapeHtml(item.with)}">${escapeHtml(user.name)}</span>
                 <span class="flex-shrink-0 text-[12px] ${unread ? "text-primary font-semibold" : "text-slate-subtle"}">${inboxTime(Number(item.lastAt))}</span>
               </div>
               <div class="flex items-center justify-between gap-2 mt-0.5">
@@ -1175,7 +1175,7 @@ export async function mount(container, ctx = {}) {
             <span class="fz-dot hidden absolute bottom-0 right-0 w-3 h-3 rounded-full bg-online-emerald ring-2 ring-white" aria-label="Active now"></span>
           </div>
           <div class="min-w-0">
-            <div class="text-[17px] font-bold text-on-surface truncate leading-tight">${escapeHtml(other.name)}</div>
+            <div class="text-[17px] font-bold text-on-surface truncate leading-tight" data-tick-uid="${escapeHtml(otherUid)}">${escapeHtml(other.name)}</div>
             <div class="fz-status text-[12px] text-slate-muted truncate leading-tight"></div>
           </div>
         </div>

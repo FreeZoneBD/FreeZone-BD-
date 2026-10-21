@@ -75,7 +75,7 @@ export function createSuggestCard({ people, onFollow, onProfile, onSeeAll }) {
           <button type="button" class="fz-sg-remove absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container active:scale-90 transition-all" aria-label="Remove"><span class="material-symbols-outlined text-[16px] pointer-events-none">close</span></button>
           <button type="button" class="fz-sg-open block w-full text-center">
             ${photoHtml(p)}
-            <div class="mt-2 truncate text-[14px] leading-5 text-on-surface font-semibold">${escapeHtml(p.name || "User")}</div>
+            <div class="mt-2 truncate text-[14px] leading-5 text-on-surface font-semibold" data-tick-uid="${escapeHtml(p.uid)}">${escapeHtml(p.name || "User")}</div>
             <div class="truncate text-[12px] leading-4 text-slate-muted">${p.username ? "@" + escapeHtml(p.username) : "&nbsp;"}</div>
           </button>
           <div class="fz-sg-actions mt-2">

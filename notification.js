@@ -36,7 +36,8 @@ const TYPES = {
   follow: { icon: "person_add", color: "bg-violet-500", label: "started following you" },
   reply: { icon: "reply", color: "bg-sky-500", label: "replied to your comment" },
   commentLike: { icon: "favorite", color: "bg-notification-rose", label: "liked your comment" },
-  boost: { icon: "campaign", color: "bg-amber-500", label: "" } // sent by the FreeZone team about a boost (approved, ended, refund ...)
+  boost: { icon: "campaign", color: "bg-amber-500", label: "" }, // sent by the FreeZone team about a boost (approved, ended, refund ...)
+  creator: { icon: "workspace_premium", color: "bg-online-emerald", label: "" } // sent by the FreeZone team about the Creator Program (approved, turned off ...)
 };
 
 const snippet = (text) => {
@@ -357,15 +358,18 @@ export function mount(container, ctx = {}) {
     const type = TYPES[n.type];
     if (!type) return "";
 
-    const isBoost = n.type === "boost";
+    const isCreator = n.type === "creator";
+    const isBoost = n.type === "boost" || isCreator; // messages from the FreeZone team look alike
     const who = isBoost ? "FreeZone Team" : n.fromUsername ? `@${n.fromUsername}` : n.fromName || "Someone";
     const isNew = isFresh(n);
     const sentence = isBoost
-      ? `<span class="font-semibold">Boost</span> · ${escapeHtml(n.text || "Update about your boost")}`
+      ? isCreator
+        ? `<span class="font-semibold">Creator Program</span> · ${escapeHtml(n.text || "Update about the Creator Program")}`
+        : `<span class="font-semibold">Boost</span> · ${escapeHtml(n.text || "Update about your boost")}`
       : `<span class="font-semibold">${escapeHtml(who)}</span> ${type.label}`;
     const quote = !isBoost && n.text ? `<p class="fz-n-quote text-[14px] leading-5 text-slate-muted mt-0.5">“${escapeHtml(n.text)}”</p>` : "";
     const picture = isBoost
-      ? `<div class="w-14 h-14 rounded-full flex items-center justify-center text-white" style="background:linear-gradient(135deg,#f59e0b,#ef4444);"><span class="material-symbols-outlined text-[28px]" style="font-variation-settings:'FILL' 1;">campaign</span></div>`
+      ? `<div class="w-14 h-14 rounded-full flex items-center justify-center text-white" style="background:${isCreator ? "linear-gradient(135deg,#16a34a,#0d9488)" : "linear-gradient(135deg,#f59e0b,#ef4444)"};"><span class="material-symbols-outlined text-[28px]" style="font-variation-settings:'FILL' 1;">${isCreator ? "workspace_premium" : "campaign"}</span></div>`
       : avatarHtml(n.fromPhotoURL || "", "w-14 h-14");
     const badge = isBoost
       ? ""
@@ -520,6 +524,7 @@ export function mount(container, ctx = {}) {
 
     if (["like", "comment", "reply", "commentLike"].includes(n.type) && n.postId) ctx.openPost?.(n.postId);
     else if (n.type === "follow") ctx.onOpenProfile?.(n.from);
+    else if (n.type === "creator") ctx.onOpenCreator?.();
     else if (n.type === "boost") import("./boost.js").then((m) => m.openMyBoosts()).catch(() => showToast("Could not open My boosts"));
   });
 }

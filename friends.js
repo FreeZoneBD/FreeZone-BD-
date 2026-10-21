@@ -485,7 +485,7 @@ export async function mount(container, context = {}) {
     <div class="fz-row flex items-center gap-3 pl-4 pr-2 py-3 bg-slate-surface rounded-2xl border border-slate-border active:bg-surface-container-low cursor-pointer" data-uid="${escapeHtml(user.uid)}">
       ${avatarHtml(user.photoURL, "w-12 h-12")}
       <div class="min-w-0 flex-1">
-        <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(user.name)}</div>
+        <div class="font-label-lg text-label-lg text-on-surface truncate" data-tick-uid="${escapeHtml(user.uid)}">${escapeHtml(user.name)}</div>
         ${user.username ? `<div class="font-body-sm text-body-sm text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
       </div>
       ${followButtonHtml(!!followingIds[user.uid], followsMe(user.uid), isRequested(user.uid))}
@@ -498,7 +498,7 @@ export async function mount(container, context = {}) {
     <div class="fz-row flex items-center gap-3 pl-4 pr-2 py-3 bg-slate-surface rounded-2xl border border-slate-border active:bg-surface-container-low cursor-pointer" data-uid="${escapeHtml(user.uid)}">
       ${avatarHtml(user.photoURL, "w-12 h-12")}
       <div class="min-w-0 flex-1">
-        <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(user.name)}</div>
+        <div class="font-label-lg text-label-lg text-on-surface truncate" data-tick-uid="${escapeHtml(user.uid)}">${escapeHtml(user.name)}</div>
         ${user.username ? `<div class="font-body-sm text-body-sm text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
         <div class="font-body-sm text-body-sm text-primary/80 truncate">${escapeHtml(user.reason)}</div>
       </div>

@@ -111,7 +111,7 @@ const personRow = (p, following) => `
   <div class="fz-s-person flex items-center gap-3 px-4 py-2.5 cursor-pointer active:bg-surface-container-low transition-colors" data-uid="${escapeHtml(p.uid)}">
     ${avatarHtml(p.photoURL, "w-14 h-14")}
     <div class="min-w-0 flex-1">
-      <div class="text-[16px] leading-5 font-semibold text-on-surface truncate">${escapeHtml(p.name)}</div>
+      <div class="text-[16px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(p.uid)}">${escapeHtml(p.name)}</div>
       <div class="text-[14px] leading-5 text-slate-muted truncate">${p.username ? "@" + escapeHtml(p.username) : ""}${p.place ? `${p.username ? " · " : ""}${escapeHtml(p.place)}` : ""}</div>
       ${p.bio ? `<div class="text-[13px] leading-4 text-slate-muted truncate mt-0.5">${escapeHtml(String(p.bio).slice(0, 80))}</div>` : ""}
     </div>
@@ -206,7 +206,7 @@ export async function mount(container, ctx = {}) {
       html += `<div class="fz-s-pymk flex gap-3 overflow-x-auto px-4 pb-2 pt-1" style="scrollbar-width:none;">${suggestions.map((p) => `
         <div class="fz-s-card flex-shrink-0 w-[148px] rounded-2xl border border-slate-border bg-slate-surface p-3 text-center cursor-pointer active:bg-surface-container-low" data-uid="${escapeHtml(p.uid)}">
           <div class="flex justify-center">${avatarHtml(p.photoURL, "w-[72px] h-[72px]")}</div>
-          <div class="mt-2 text-[15px] leading-5 font-semibold text-on-surface truncate">${escapeHtml(p.name || p.username || "FreeZone User")}</div>
+          <div class="mt-2 text-[15px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(p.uid)}">${escapeHtml(p.name || p.username || "FreeZone User")}</div>
           <div class="text-[13px] leading-4 text-slate-muted truncate h-4">${p.username ? "@" + escapeHtml(p.username) : ""}</div>
           <div class="mt-2.5">${followBtn(!!followingIds[p.uid], isRequested(p.uid), true)}</div>
         </div>`).join("")}</div>`;
