@@ -466,6 +466,15 @@ function buildSections({ ctx, state, go }) {
           label: "Community guidelines",
           note: () => "How to keep the community safe and friendly",
           onClick: () => openPage("guidelines.html")
+        },
+        {
+          id: "creator-terms",
+          type: "link",
+          icon: "workspace_premium",
+          iconClass: "bg-surface-container text-on-surface-variant",
+          label: "Creator Program Terms",
+          note: () => "Rules for earning and payouts",
+          onClick: () => openPage("creator-terms.html")
         }
       ]
     },

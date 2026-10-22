@@ -125,7 +125,10 @@ window.FZ_BN = {
 "Videos in your feed play by themselves, without sound, while they are on screen.": "ফিডের ভিডিও পর্দায় এলে শব্দ ছাড়া নিজে নিজে চলে।",
 "Off: a video in your feed starts only when you tap it. This also saves mobile data.": "বন্ধ: ফিডের ভিডিও চাপ দিলে তবেই চলবে। এতে মোবাইল ডেটাও বাঁচে।",
 
-"Switch account": "অ্যাকাউন্ট বদলান",
+"Read the Creator Program Terms": "ক্রিয়েটর প্রোগ্রামের শর্তাবলি পড়ুন",
+  "Creator Program Terms": "ক্রিয়েটর প্রোগ্রামের শর্তাবলি",
+  "Rules for earning and payouts": "আয় ও পেমেন্টের নিয়ম",
+  "Switch account": "অ্যাকাউন্ট বদলান",
 "Update about the Creator Program": "ক্রিয়েটর প্রোগ্রাম নিয়ে আপডেট",
 "Welcome to the Creator Program! Your green tick is now on.": "ক্রিয়েটর প্রোগ্রামে স্বাগতম! আপনার সবুজ টিক চালু হয়েছে।",
 "Your Creator Program access is back on. Your green tick is shown again.": "আপনার ক্রিয়েটর প্রোগ্রাম আবার চালু হয়েছে। সবুজ টিক আবার দেখা যাবে।",

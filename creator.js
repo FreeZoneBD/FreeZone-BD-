@@ -245,6 +245,7 @@ export async function render(root, ctx) {
               <li>Uses fake accounts or tricks to raise views or followers.</li>
               <li>Breaks the Community Guidelines in any other serious way.</li>
             </ul>
+            <a href="creator-terms.html" target="_blank" rel="noopener" class="inline-block mt-3 font-label-md text-label-md text-primary font-semibold">Read the Creator Program Terms</a>
           </section>
         </div>
       </div>`;

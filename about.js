@@ -51,6 +51,7 @@ export function render(root, ctx) {
           ${linkRow("description", "Terms of Service", "terms.html")}
           ${linkRow("privacy_tip", "Privacy Policy", "privacy.html")}
           ${linkRow("diversity_3", "Community Guidelines", "guidelines.html")}
+          ${linkRow("workspace_premium", "Creator Program Terms", "creator-terms.html")}
         </div>
 
         <p class="text-center font-body-sm text-body-sm text-slate-subtle mt-8">&copy; ${new Date().getFullYear()} ${escapeHtml(APP_NAME)}. Made in Bangladesh.</p>
