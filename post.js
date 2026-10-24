@@ -644,8 +644,8 @@ export function postVideoHtml(video, { doubleTap = false } = {}) {
   const burst = doubleTap
     ? `<div class="fz-burst" aria-hidden="true"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.6 8.2 3.4 5 6.6 5c2 0 3.6 1.2 5.4 3.3C13.8 6.2 15.4 5 17.4 5c3.2 0 5 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg></div>`
     : "";
-  return `<div class="post-video relative overflow-hidden bg-black cursor-pointer" style="aspect-ratio:4/5;max-height:min(600px,125vw);" ${doubleTap ? 'data-double-tap="1"' : ""}>
-    <video src="${escapeHtml(video.url)}" ${video.thumb ? `poster="${escapeHtml(video.thumb)}"` : ""} class="absolute inset-0 w-full h-full" style="object-fit:contain;" muted loop playsinline preload="none"></video>
+  return `<div class="post-video relative overflow-hidden bg-black cursor-pointer" style="aspect-ratio:4/5;width:100%;max-height:min(640px,125vw);" ${doubleTap ? 'data-double-tap="1"' : ""}>
+    <video src="${escapeHtml(video.url)}" ${video.thumb ? `poster="${escapeHtml(video.thumb)}"` : ""} class="absolute inset-0 w-full h-full" style="object-fit:cover;" muted loop playsinline preload="${video.thumb ? "none" : "metadata"}"></video>
     <span class="pv-play absolute inset-0 items-center justify-center pointer-events-none" style="display:flex;"><span class="w-14 h-14 rounded-full bg-black/55 text-white flex items-center justify-center"><span class="material-symbols-outlined text-[34px]" style="font-variation-settings:'FILL' 1;">play_arrow</span></span></span>
     ${video.duration ? `<span class="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/60 text-white text-[12px]">${Math.floor(video.duration / 60)}:${String(Math.round(video.duration % 60)).padStart(2, "0")}</span>` : ""}
     <span class="pv-sound absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">volume_off</span></span>
@@ -658,9 +658,17 @@ export function mountPostVideo(box, { onDoubleTap, onOpen } = {}) {
   if (!box) return;
   const video = box.querySelector("video");
   const burst = box.querySelector(".fz-burst");
-  video.addEventListener("loadedmetadata", () => {
-    if (video.videoWidth && video.videoHeight) box.style.aspectRatio = String(Math.min(1.4, Math.max(0.75, video.videoWidth / video.videoHeight)).toFixed(3));
-  });
+  // The box takes the whole width and the height of the video itself (no bars at the sides). Only very tall or very wide videos
+  // are kept between 4:5 and 1.91:1 (like Instagram); the picture then fills the box and a little of the edge is cut. Tap opens it whole in Reels.
+  const fitBox = (w, h) => {
+    if (w > 0 && h > 0) box.style.aspectRatio = String(Math.min(1.91, Math.max(0.8, w / h)).toFixed(3));
+  };
+  video.addEventListener("loadedmetadata", () => fitBox(video.videoWidth, video.videoHeight));
+  if (video.getAttribute("poster")) { // the cover picture has the video's shape and loads before the video does
+    const cover = new Image();
+    cover.onload = () => { if (!video.videoWidth) fitBox(cover.naturalWidth, cover.naturalHeight); };
+    cover.src = video.getAttribute("poster");
+  }
   video.addEventListener("error", () => { if (video.getAttribute("src")) { box.querySelector(".pv-sound")?.remove(); box.querySelector(".pv-play").style.display = "none"; } });
   let lastTap = 0;
   let timer = null;
