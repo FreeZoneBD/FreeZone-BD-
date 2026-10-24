@@ -255,7 +255,7 @@ Edit profile (ছবি, নাম ৬০ দিনে একবার, বা�
 
 ## ৬. Creator Program (আয়)
 
-ছোট পরিসরে চালু। ইউজার আবেদন করে, অ্যাডমিন অনুমোদন দেয়, অনুমোদিত ক্রিয়েটর নামের পাশে **সবুজ টিক** পায় ও আয় গণনায় আসে। টাকা তোলার অংশ **ডিফল্টে বন্ধ**, অ্যাডমিন একটি সুইচ দিলে চালু হয়।
+ছোট পরিসরে চালু, **আপাতত শুধু বাংলাদেশের জন্য** (পেমেন্ট বাংলাদেশের bKash/Nagad নম্বরে); পরে সবার জন্য চালুর পরিকল্পনা। এটি Creator Program পেজের ওপরে ও `creator-terms.html`-এ লেখা আছে; দেশ চেনা হয় Worker-এর `/country` দিয়ে (Cloudflare নেটওয়ার্ক ঠিকানা থেকে দেশের ২ অক্ষরের কোড দেয়): বাংলাদেশের (`BD`) বাইরে হলে আবেদনের বাটন বন্ধ ও "Not open in your country yet" বার্তা; দেশ জানা না গেলে কাউকে আটকানো হয় না। আবেদন করলে Worker (`/creator-country`) দেশটি `creatorApps/{uid}/country`-তে লিখে দেয় (শুধু Worker লিখতে পারে, ইউজার নকল করতে পারে না) এবং অ্যাডমিনের Creators পেজে দেখায় (`BD` ছাড়া লাল)। VPN ব্যবহার করলে ফল ভুল হতে পারে, তাই অনুমোদনের আগে অ্যাডমিন দেশ দেখে নেন। খোলা দেশের তালিকা `creator.js`-এর `OPEN_COUNTRIES`-এ; সবার জন্য খুলতে সেটি খালি `[]` নয়, `wrongCountry` শর্ত বাদ দিন বা সব দেশ যোগ করুন। ইউজার আবেদন করে, অ্যাডমিন অনুমোদন দেয়, অনুমোদিত ক্রিয়েটর নামের পাশে **সবুজ টিক** পায় ও আয় গণনায় আসে। টাকা তোলার অংশ **ডিফল্টে বন্ধ**, অ্যাডমিন একটি সুইচ দিলে চালু হয়।
 
 ### ৬.১ ইউজারের দিক (Settings > Creator Program, `creator.js`)
 
@@ -415,9 +415,10 @@ cd android && ./gradlew assembleRelease bundleRelease
 
 আলাদা সাইট; ইউজার অ্যাপের একই Firebase প্রজেক্ট ও ডেটাবেস। `admin-site/README.md`-এ আলাদা সেটআপ গাইড আছে।
 
-**পেজ** (`page-*.js`, `main.js`-এ নিবন্ধিত): Dashboard · Reports · Feedback · Users · Posts · **Creators** · **Creator earnings** · **Creator payouts** · Boosts · Music · Cloud usage · Features · Announcements · Admins · Action log।
+**পেজ** (`page-*.js`, `main.js`-এ নিবন্ধিত): Dashboard · Reports · Feedback · Users · **User lookup** · Posts · **Creators** · **Creator earnings** · **Creator payouts** · Boosts · Music · Cloud usage · Features · Announcements · Admins · Action log।
 
 - **Users:** সাসপেন্ড/চালু; Sync usernames now।
+- **User lookup** (`page-lookup.js`): User ID বা @username দিলে এক পেজে সব তথ্য, শুধু পড়া: প্রোফাইল ও অবস্থা, অ্যাকাউন্টের স্বাস্থ্য (ইউজারনেম রেজিস্ট্রি মিলছে কি না ইত্যাদি), কার্যকলাপ ও সাম্প্রতিক পোস্ট, Creator Program (আবেদন, দেশ, টিক, এই মাসের ভিউ ও আয়), টাকা তোলার অনুরোধ, Boost, তার বিরুদ্ধে রিপোর্ট, তার নিজের পাঠানো মেসেজ, তার ওপর অ্যাডমিনের কাজ। ইমেইল দেখা যায় না (Firebase Authentication-এ থাকে)। চ্যাট, সেভ করা পোস্ট ও ব্যক্তিগত সেটিং Rules-এ অ্যাডমিনের জন্যও বন্ধ।
 - **Posts:** ফিডের মতো কার্ড; Details ও Delete।
 - **Announcements:** ঘোষণা ব্যানার ও রক্ষণাবেক্ষণ মোড।
 - **Features:** ভিডিও/Reels `on / soon / hidden`।
@@ -605,6 +606,17 @@ URL prefix `https://freezonebd.github.io/` দিয়ে প্রপার্
 **আইকন চৌকো/অক্ষর দেখাচ্ছে** — Material Symbols ফন্ট লোড হয়নি (ইন্টারনেট বা ব্লক)।
 
 ---
+
+## ১৬ক. সমস্যা মনিটরিং (Admin > Problems)
+
+ওয়েবসাইট বা অ্যাপে কোনো সমস্যা হলে `web/errors.js` সেটা ধরে `errorLogs` নোডে ছোট রেকর্ড রাখে। অ্যাডমিন প্যানেলের **Problems** পেজে দেখা যায়: কী সমস্যা, কোন পেজ/ফাইল:লাইন, কতবার, কতজন ইউজার, Website না App, অ্যাপ ভার্সন, শেষ কখন, আর কোন ইউজার (User ID → User lookup-এ বসিয়ে দেখা যায়)।
+
+- ধরা পড়ে: JavaScript এরর, ব্যর্থ কাজ (promise), Firebase "permission denied", Worker কল ব্যর্থ/৫xx।
+- ধরা পড়ে না: অ্যাপের নেটিভ Android ক্র্যাশ (এর জন্য Firebase Crashlytics লাগবে), ফোন অফলাইন থাকলে হওয়া সমস্যা।
+- পাসওয়ার্ড, মেসেজ, টোকেন পাঠানো হয় না; ইমেইল/টোকেনের মতো লেখা `***` করে দেওয়া হয়।
+- একই সমস্যা একই ফোন থেকে ১০ মিনিটে একবার, আর এক ভিজিটে সর্বোচ্চ ৮টি।
+- সমাধান হলে "Mark as fixed" চাপলে ওই সমস্যার রেকর্ড মুছে যায়।
+- Rules-এ `errorLogs`: যে কেউ নতুন রেকর্ড লিখতে পারে (সাইজ সীমিত), পড়া/মোছা শুধু অ্যাডমিন। তাই rules আবার Publish করতে হবে।
 
 ## ১৭. নিরাপত্তা
 
