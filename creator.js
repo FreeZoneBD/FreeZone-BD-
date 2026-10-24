@@ -24,6 +24,27 @@ import { formSkeleton } from "./skeleton.js";
 import { tickHtml } from "./monetize.js";
 import { monthKey } from "./creatorViews.js";
 import { loadPayout, payoutHtml, bindPayout } from "./creator-payout.js";
+import { PUSH_WORKER_URL } from "./app-info.js";
+import { auth } from "./config.js";
+
+// Which country is this phone in? The Worker reads it from the network address ("" when it cannot be known: then nobody is blocked).
+// The program is open only in Bangladesh for now (OPEN_COUNTRIES). A VPN can change the answer, so the admin also sees the country on the application.
+const OPEN_COUNTRIES = ["BD"];
+async function workerPost(path) {
+  const base = String(PUSH_WORKER_URL || "").replace(/\/+$/, "");
+  if (!base || !auth.currentUser) return null;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 5000);
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const res = await fetch(base + path, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: "{}", signal: ctl.signal });
+    return res.ok ? await res.json() : null;
+  } catch (error) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export const DEFAULT_RULES = { open: true, minFollowers: 100, minPosts: 10, minAgeDays: 30, minViews: 1000 };
 const DAY = 86400000;
@@ -65,6 +86,7 @@ export async function render(root, ctx) {
   let cur = null; // my earnings this month
   let prev = null; // and last month
   let minViewers = 5;
+  let country = ""; // 2-letter code of where this phone is ("" = unknown)
   let payout = { open: false }; // the payout card stays hidden until the admin opens it (creator-payout.js)
 
   const load = async () => {
@@ -75,6 +97,7 @@ export async function render(root, ctx) {
     ]);
     rules = { ...DEFAULT_RULES, ...((cfgSnap && cfgSnap.val()) || {}) };
     app = appSnap ? appSnap.val() : null;
+    if (!country) { const r = await workerPost("/country"); country = (r && r.country) || ""; }
     stats = st;
     cur = null;
     prev = null;
@@ -139,6 +162,7 @@ export async function render(root, ctx) {
     const allOk = checks.every((c) => c.ok);
     const status = app && app.status;
 
+    const wrongCountry = !!country && !OPEN_COUNTRIES.includes(country);
     let statusHtml;
     if (status === "approved") {
       statusHtml = ui.infoBox({
@@ -168,6 +192,12 @@ export async function render(root, ctx) {
           app.reason ? `<br>Reason: ${escapeHtml(app.reason)}` : ""
         }<br>You can apply again when you meet the rules.`
       });
+    } else if (wrongCountry) {
+      statusHtml = ui.infoBox({
+        icon: "public",
+        tone: "info",
+        html: `<b class="text-on-surface">Not open in your country yet.</b><br>The Creator Program is open only in Bangladesh for now. We will open it for everyone later.`
+      });
     } else if (rules.open === false) {
       statusHtml = ui.infoBox({ icon: "lock_clock", tone: "info", html: `<b class="text-on-surface">Applications are closed right now.</b><br>Please check again later.` });
     } else {
@@ -180,7 +210,7 @@ export async function render(root, ctx) {
       });
     }
 
-    const canApply = (!status || status === "rejected") && rules.open !== false && allOk;
+    const canApply = (!status || status === "rejected") && rules.open !== false && allOk && !wrongCountry;
     const showApply = !status || status === "rejected";
 
     root.innerHTML = `
@@ -193,6 +223,10 @@ export async function render(root, ctx) {
         })}
 
         <div class="px-4 mt-3 space-y-4">
+          <div class="rounded-2xl border border-primary-container/30 bg-primary-container/10 p-3.5 flex items-start gap-3">
+            <span class="material-symbols-outlined text-primary-container text-[22px] flex-shrink-0">public</span>
+            <p class="font-body-md text-body-md text-on-surface">The Creator Program is open only in Bangladesh for now. We plan to open it for everyone later.</p>
+          </div>
           ${statusHtml}
           ${status === "approved" ? earningsHtml() : ""}
           ${status === "approved" && payout.open ? payoutHtml(payout, ui) : ""}
@@ -270,6 +304,7 @@ export async function render(root, ctx) {
             views: stats.views,
             ageDays: stats.ageDays
           });
+          workerPost("/creator-country"); // the Worker saves the country next to the application (the admin sees it)
           showToast("Application sent");
           await load();
           draw();
