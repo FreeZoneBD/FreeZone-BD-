@@ -1,12 +1,14 @@
 // FreeZone BD - the offline message.
-// A thin bar under the header: "You're offline" while there is no connection, and a short green "Back online" when it returns.
+// A small pill above the bottom menu: "Offline" while there is no connection, and a short green "Online" when it returns.
+// It floats in the middle at the bottom, so it never covers the header or a post and does not move the layout.
 // Offline = the phone says so (navigator.onLine) OR the database has been disconnected for a few seconds (the phone can be wrong).
-// createOfflineBar({ top, graceMs, backMs }) -> { setDatabase(connected), el, offline }
-export function createOfflineBar({ top = 64, graceMs = 4000, backMs = 2500, parent = document.body } = {}) {
+// createOfflineBar({ graceMs, backMs }) -> { setDatabase(connected), el, offline }
+export function createOfflineBar({ graceMs = 4000, backMs = 2500, parent = document.body } = {}) {
   const el = document.createElement("div");
-  el.className = "fz-offline fixed left-0 right-0 z-[60] text-center text-[13px] font-semibold py-1.5 px-3 text-white";
-  el.style.top = top + "px";
-  el.style.display = "none";
+  el.className = "fz-offline fixed z-[60] text-center font-semibold text-white";
+  el.style.cssText = "left:50%;transform:translateX(-50%);bottom:calc(var(--fz-bottom,env(safe-area-inset-bottom,0px)) + 76px);" +
+    "font-size:12px;line-height:1;padding:7px 14px;border-radius:999px;max-width:70vw;white-space:nowrap;pointer-events:none;" +
+    "box-shadow:0 2px 8px rgba(0,0,0,.25);display:none;";
   el.setAttribute("role", "status");
   el.setAttribute("aria-live", "polite");
   parent.appendChild(el);
@@ -25,12 +27,12 @@ export function createOfflineBar({ top = 64, graceMs = 4000, backMs = 2500, pare
     if (isOffline()) {
       wasOffline = true;
       el.style.background = "#475569";
-      el.textContent = "You're offline. Showing what is already loaded.";
+      el.textContent = "Offline";
       el.style.display = "";
     } else if (wasOffline) {
       wasOffline = false;
       el.style.background = "#16a34a";
-      el.textContent = "Back online";
+      el.textContent = "Online";
       el.style.display = "";
       backTimer = setTimeout(() => { el.style.display = "none"; }, backMs);
     } else {
