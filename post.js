@@ -1,5 +1,6 @@
 // FreeZone BD - Post Card component
 import { linkifyText } from "./linkify.js";
+import { fzConfirm } from "./dialog.js";
 import { canSeeAccount, isRequested } from "./privacy.js";
 import { drawQR } from "./qr.js";
 import { db, auth } from "./config.js";
@@ -1299,7 +1300,7 @@ export function createPostCard(post, options = {}) {
     unfollowBtn.addEventListener("click", async (event) => {
       event.stopPropagation();
       menuDropdown.hidden = true;
-      if (!confirm(`Unfollow ${followHandle}?`)) return;
+      if (!(await fzConfirm(`Unfollow ${followHandle}?`, { confirmLabel: "Unfollow", danger: true }))) return;
       await onFollow(post, true);
     });
   }
@@ -1464,7 +1465,7 @@ export function createPostCard(post, options = {}) {
         exitEditMode();
       } catch (error) {
         console.error(error);
-        alert("Could not save the edit. Please try again.");
+        showToast("Could not save the edit. Please try again.");
       } finally {
         editSaveBtn.disabled = false;
       }

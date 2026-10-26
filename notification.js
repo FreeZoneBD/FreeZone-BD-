@@ -26,6 +26,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
 import { escapeHtml, avatarHtml, timeAgo, showToast } from "./post.js";
+import { fzConfirm } from "./dialog.js";
 
 const LIST_LIMIT = 50; // newest notifications shown
 const SNIPPET_MAX = 100; // characters of a post or comment shown in a notification
@@ -487,7 +488,7 @@ export function mount(container, ctx = {}) {
     }
     if (event.target.closest(".fz-n-clear")) {
       closeMenus();
-      if (!items.length || !confirm("Remove all notifications?")) return;
+      if (!items.length || !(await fzConfirm("Remove all notifications?", { confirmLabel: "Remove all", danger: true }))) return;
       const updates = {};
       items.forEach((n) => {
         updates[`notifications/${me}/${n.id}`] = null;

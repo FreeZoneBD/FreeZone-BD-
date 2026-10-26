@@ -28,6 +28,7 @@ import { openCropper } from "./crop.js";
 import { rowSkeleton } from "./skeleton.js";
 import { sendChatMessage } from "./chat.js";
 import { escapeHtml, avatarHtml, timeAgo, showToast } from "./post.js";
+import { fzConfirm } from "./dialog.js";
 import { storageReady, previewNotice } from "./features.js";
 import { LIMITS, checkVideoFile, captureFrame, formatDuration, formatSize } from "./video-tools.js";
 
@@ -1089,7 +1090,7 @@ export async function mount(container, ctx = {}) {
 
     deleteBtn.addEventListener("click", async () => {
       paused = true;
-      if (!confirm("Delete this story?")) {
+      if (!(await fzConfirm("Delete this story?", { confirmLabel: "Delete", danger: true }))) {
         paused = false;
         return;
       }

@@ -12,6 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
 import { uploadToImgbb, prepareImage } from "./imgbb.js";
+import { fzConfirm } from "./dialog.js";
 import { openCropper } from "./crop.js";
 import { escapeHtml, avatarHtml, showToast, AUDIENCES, openAudienceSheet } from "./post.js";
 import { openEmojiPicker } from "./emoji.js";
@@ -470,9 +471,9 @@ export function mount(container, ctx = {}) {
     scheduleSave();
   });
 
-  container.querySelector(".fz-draft-discard").addEventListener("click", () => {
+  container.querySelector(".fz-draft-discard").addEventListener("click", async () => {
     if (posting) return;
-    if (!confirm("Discard this draft?")) return;
+    if (!(await fzConfirm("Discard this draft?", { confirmLabel: "Discard", danger: true }))) return;
     clearTimeout(draftTimer);
     textEl.value = "";
     images.forEach((image) => URL.revokeObjectURL(image.url));
@@ -701,7 +702,7 @@ export function mount(container, ctx = {}) {
           const message = urls.length
             ? `${failed}টি ছবি আপলোড হয়নি। বাকি ${urls.length}টি ছবি নিয়ে পোস্ট করবেন?\n\n${failed} photo(s) failed to upload. Post with the other ${urls.length}?`
             : "ছবি আপলোড হয়নি। ছবি ছাড়া শুধু লেখা পোস্ট করবেন?\n\nImage upload failed. Post the text without the photos?";
-          if ((!text && !urls.length) || !confirm(message)) {
+          if ((!text && !urls.length) || !(await fzConfirm(message, { confirmLabel: "Post" }))) {
             setPosting(false);
             return;
           }

@@ -16,6 +16,7 @@
 // Notifications are announced with the "fz:notify" event; notification.js writes them.
 
 import { linkifyText } from "./linkify.js";
+import { fzConfirm } from "./dialog.js";
 import { commentSkeleton } from "./skeleton.js";
 import {
   ref,
@@ -285,7 +286,7 @@ export function mountComments(o) {
     }
 
     if (act === "delete") {
-      if (!confirm(rid ? "Delete this reply?" : "Delete this comment and its replies?")) return;
+      if (!(await fzConfirm(rid ? "Delete this reply?" : "Delete this comment and its replies?", { confirmLabel: "Delete", danger: true }))) return;
       try {
         if (rid) {
           await remove(ref(db, `posts/${postId}/comments/${cid}/replies/${rid}`));

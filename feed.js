@@ -1,5 +1,6 @@
 // FreeZone BD - Feed (Phase 2) - FIXED
 import { auth, db } from "./config.js";
+import { fzConfirm } from "./dialog.js";
 import { initTheme } from "./theme.js";
 initTheme();
 
@@ -1079,7 +1080,7 @@ async function editPost(postId, newText) {
 }
 
 async function deletePost(postId) {
-  if (!confirm("Delete this post? This cannot be undone.")) return;
+  if (!(await fzConfirm("Delete this post? This cannot be undone.", { confirmLabel: "Delete", danger: true }))) return;
   try {
     let oldText = "";
     let files = []; // the video and its cover are removed from Cloudinary too
@@ -1095,7 +1096,7 @@ async function deletePost(postId) {
     if (currentDetailPostId === postId) closePostDetail();
   } catch (error) {
     console.error(error);
-    alert("Could not delete the post. Please try again.");
+    showToast("Could not delete the post. Please try again.");
   }
 }
 

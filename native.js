@@ -2,7 +2,7 @@
 // In a normal browser this file does nothing at all. Inside the Android app it:
 //   1. marks the page   <html class="fz-native">   (other code and CSS can use it)
 //   2. makes room for the status bar and the gesture bar (the app is edge-to-edge on Android 15 / 16)
-//   3. hides the Boost button for now (paid promotion needs Google Play Billing in the store version)
+//   3. (Boost is shown like on the website: this build is not for Google Play, so no Play Billing is needed)
 //   4. makes the Android Back button close sheets, pages and posts like the arrow does, and exits on a double press
 //   5. opens website links (feed.html?post=...) inside the app (Android app links)
 //   7. Terms / Privacy / Guidelines opened from Settings open in this window, and Back returns to Settings
@@ -33,8 +33,6 @@
     "html.fz-native .pf-top{padding-top:var(--fz-top);height:calc(2.75rem + var(--fz-top));}",
     "html.fz-native .fz-inbox-head,html.fz-native .fz-convhead{padding-top:var(--fz-top);height:calc(3.5rem + var(--fz-top));}",
     "html.fz-native .fz-s-top{padding-top:var(--fz-top);}",
-    // Boost (paid) is not offered in the Android version until Google Play Billing is added
-    "html.fz-native .boost-btn{display:none !important;}",
     // no grey flash when tapping, no text selection on buttons
     "html.fz-native{-webkit-tap-highlight-color:transparent;}",
     "html.fz-native button{-webkit-user-select:none;user-select:none;}"
