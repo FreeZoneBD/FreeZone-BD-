@@ -24,6 +24,15 @@ export const PLANS = [
   { days: 60, price: 500 },
   { days: 120, price: 1000 }
 ];
+// The admin sets the packages (config/boost/plans); these are used until the admin saves his own
+export function planList(cfg) {
+  const raw = cfg && cfg.plans && typeof cfg.plans === "object" ? Object.values(cfg.plans) : [];
+  const list = raw
+    .map((p) => ({ days: Number(p && p.days), price: Number(p && p.price) }))
+    .filter((p) => Number.isInteger(p.days) && p.days >= 1 && p.days <= 3650 && Number.isInteger(p.price) && p.price >= 1)
+    .sort((a, b) => a.days - b.days);
+  return list.length ? list : PLANS;
+}
 export const REFUND_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BTN_MAX = 24;
@@ -156,7 +165,8 @@ export async function openBoost({ post }) {
     return;
   }
 
-  const st = { plan: PLANS[0], btnText: "", link: "", method: methods[0], trxId: "", sender: "", shot: "", uploading: false, sending: false };
+  const plans = planList(cfg);
+  const st = { plan: plans[0], btnText: "", link: "", method: methods[0], trxId: "", sender: "", shot: "", uploading: false, sending: false };
 
   const stepPlan = () => {
     sheet.setTitle("Choose a package");
@@ -166,7 +176,7 @@ export async function openBoost({ post }) {
         ${postPreviewHtml(post)}
         <p class="text-[14px] text-slate-muted">Your post will be shown to people between other posts, marked <b>Sponsored</b>, with a button that goes to your link.</p>
         <div class="space-y-2.5 bs-plans">
-          ${PLANS.map((p) => `
+          ${plans.map((p) => `
             <button type="button" data-days="${p.days}" class="bs-plan w-full flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition-colors">
               <span class="bs-radio w-5 h-5 rounded-full border-2 shrink-0"></span>
               <span class="flex-1"><span class="block font-bold text-[16px]">${p.days} days</span><span class="block text-[13px] text-slate-muted">${taka(Math.round(p.price / p.days * 10) / 10)} per day</span></span>
@@ -187,7 +197,7 @@ export async function openBoost({ post }) {
     sheet.body.querySelector(".bs-plans").addEventListener("click", (e) => {
       const b = e.target.closest(".bs-plan");
       if (!b) return;
-      st.plan = PLANS.find((p) => p.days === Number(b.dataset.days));
+      st.plan = plans.find((p) => p.days === Number(b.dataset.days)) || st.plan;
       paint();
     });
     sheet.body.querySelector(".bs-next").addEventListener("click", stepButton);
