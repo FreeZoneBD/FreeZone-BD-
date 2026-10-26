@@ -16,7 +16,7 @@
 //   boostLive/{boostId} = { postId, uid, btnText, link (https), startAt, endAt, impressions, clicks }
 // The post itself is read from posts/{postId}, so it is always the current text and picture.
 
-import { db } from "./config.js";
+import { db, auth } from "./config.js";
 
 import { ref, get, update, increment, query, orderByChild, startAt } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
@@ -217,6 +217,19 @@ function track(adId, field) {
   update(ref(db, `boostLive/${adId}`), { [field]: increment(1) }).catch(() => {});
 }
 
+// "People reached": each signed-in person is counted once per boost (boostSeen/{boost}/{uid} stops a second count)
+const REACH_KEY = "fz_boost_reach";
+function trackReach(adId) {
+  const me = auth.currentUser && auth.currentUser.uid;
+  if (!me) return;
+  let done = {};
+  try { done = JSON.parse(localStorage.getItem(REACH_KEY) || "{}") || {}; } catch (e) { done = {}; }
+  if (done[adId]) return;
+  done[adId] = Date.now();
+  try { localStorage.setItem(REACH_KEY, JSON.stringify(done)); } catch (e) { /* storage blocked: the rules still count a person only once */ }
+  update(ref(db), { [`boostSeen/${adId}/${me}`]: true, [`boostLive/${adId}/reach`]: increment(1) }).catch(() => {});
+}
+
 function watchImpression(slot, adId, placement) {
   const key = `${adId}:${placement}`;
   if (countedImpressions.has(key) || !("IntersectionObserver" in window)) return;
@@ -237,6 +250,7 @@ function watchImpression(slot, adId, placement) {
           countedImpressions.add(key);
           if (!slot.dataset.own) {
             track(adId, "impressions");
+            trackReach(adId);
             recordShown(adId); // my own views of my own ad do not use up the daily limit
           }
           observer.disconnect();

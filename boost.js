@@ -16,7 +16,7 @@ import { ref, get, set, update, remove, push, query, orderByChild, equalTo, serv
 
 import { db, auth } from "./config.js";
 import { uploadToImgbb, prepareImage } from "./imgbb.js";
-import { escapeHtml, showToast } from "./post.js";
+import { escapeHtml, showToast, postVideoOf } from "./post.js";
 
 // Must match database.rules.json (the rules reject any other price)
 export const PLANS = [
@@ -96,7 +96,7 @@ const FIELD = "w-full rounded-xl border border-slate-border bg-slate-surface px-
 const LABEL = "text-[13px] font-semibold text-slate-muted mb-1.5";
 
 function postPreviewHtml(post) {
-  const img = (post.imageURLs && post.imageURLs[0]) || post.imageURL || post.thumbURL || (post.video && (post.video.thumbURL || post.video.poster)) || "";
+  const img = (post.imageURLs && post.imageURLs[0]) || post.imageURL || post.thumbURL || (post.video && (post.video.thumbURL || post.video.poster)) || ((postVideoOf(post) || {}).thumb) || "";
   const text = (post.text || "").trim();
   return `
     <div class="flex gap-3 items-center rounded-xl border border-slate-border bg-slate-surface p-2.5">
@@ -413,8 +413,9 @@ export async function openMyBoosts() {
           b.status === "active" || b.status === "expired" || b.status === "refund_requested" || b.status === "refunded" ? get(ref(db, `boostLive/${b.id}`)) : null,
           get(ref(db, `posts/${b.postId}`))
         ]);
-        if (live && live.exists()) { b.views = live.val().impressions || 0; b.clicks = live.val().clicks || 0; }
+        if (live && live.exists()) { b.views = live.val().impressions || 0; b.clicks = live.val().clicks || 0; b.reach = live.val().reach || 0; }
         if (p.exists()) b.post = { id: b.postId, ...p.val() };
+        b.isVideo = !!(b.post && postVideoOf(b.post));
       } catch (e) { /* the card is shown without numbers */ }
     }));
     if (!list.length) {
@@ -425,12 +426,34 @@ export async function openMyBoosts() {
     sheet.body.querySelectorAll(".bs-refund").forEach((b) => b.addEventListener("click", () => askRefund(list.find((x) => x.id === b.dataset.id))));
   };
 
+  // report: how many people saw it, how many times it was shown, visits, and how long is left
+  const reportHtml = (b) => {
+    const n = (v) => Number(v || 0).toLocaleString("en-US");
+    const rate = b.views > 0 ? ((b.clicks / b.views) * 100).toFixed(1).replace(/\.0$/, "") + "%" : "0%";
+    const box = (value, label, icon) => `<div class="rounded-xl bg-surface-container-low px-2 py-2 text-center"><div class="material-symbols-outlined text-[18px] text-slate-muted">${icon}</div><div class="text-[16px] font-bold text-on-surface leading-tight">${value}</div><div class="text-[11.5px] text-slate-muted leading-tight">${label}</div></div>`;
+    let time = "";
+    if (b.status === "active" && b.endAt) {
+      const total = Math.max(1, (b.endAt - (b.startAt || b.approvedAt || b.createdAt)));
+      const left = b.endAt - Date.now();
+      const used = Math.min(100, Math.max(0, 100 - (left / total) * 100));
+      const text = left <= 0 ? "Ending now" : left >= DAY_MS ? `${Math.ceil(left / DAY_MS)} days left` : `${Math.max(1, Math.ceil(left / 3600000))} hours left`;
+      time = `<div class="mt-2.5"><div class="flex justify-between text-[12.5px]"><b class="text-on-surface">${text}</b><span class="text-slate-muted">until ${dateText(b.endAt)}</span></div><div class="h-1.5 rounded-full bg-surface-container mt-1 overflow-hidden"><div class="h-full rounded-full bg-primary-container" style="width:${used.toFixed(0)}%"></div></div></div>`;
+    }
+    const extra = b.isVideo && b.post && Number(b.post.viewsCount) ? `<div class="text-[12px] text-slate-muted mt-1.5">This ${b.isVideo ? "video" : "post"} has ${n(b.post.viewsCount)} views in total (including people who found it without the boost).</div>` : "";
+    return `<div class="mt-2.5 grid grid-cols-4 gap-1.5">
+        ${box(n(b.reach), "People reached", "groups")}
+        ${box(n(b.views), "Times shown", "visibility")}
+        ${box(n(b.clicks), "Visits", "ads_click")}
+        ${box(rate, "Visit rate", "percent")}
+      </div>${time}${extra}`;
+  };
+
   const cardHtml = (b) => {
     const s = STATUS[b.status] || STATUS.pending;
     const now = Date.now();
     let info = "";
     if (b.status === "pending") info = `We are checking your payment.`;
-    if (b.status === "active") info = `Running until <b>${dateText(b.endAt)}</b>.`;
+    if (b.status === "active") info = `Running now.`;
     if (b.status === "rejected") info = `${b.adminNote ? escapeHtml(b.adminNote) : "This boost was not approved."}`;
     if (b.status === "expired") info = `Ended on ${dateText(b.endAt)}. To run it again, make a new boost.`;
     if (b.status === "refund_requested") info = `We got your refund request and will send the money back.`;
@@ -441,12 +464,12 @@ export async function openMyBoosts() {
         ? `<button type="button" data-id="${b.id}" class="bs-refund mt-2 w-full h-10 rounded-xl border border-slate-border text-[14px] font-semibold">Request a refund</button><div class="text-[12px] text-slate-muted mt-1">You can ask for a refund until ${dateText(b.refundUntil)}.</div>`
         : `<div class="text-[12px] text-slate-muted mt-2">The ${REFUND_DAYS}-day refund time is over, so a refund is not possible.</div>`;
     }
-    const stats = b.views != null ? `<div class="flex gap-4 text-[13px] mt-2 text-slate-muted"><span><b class="text-on-surface">${b.views}</b> views</span><span><b class="text-on-surface">${b.clicks}</b> clicks</span></div>` : "";
+    const stats = b.views != null ? reportHtml(b) : "";
     return `
       <div class="rounded-2xl border border-slate-border bg-slate-surface p-3.5">
         <div class="flex items-center justify-between gap-2 mb-2">
           <span class="px-2.5 py-0.5 rounded-full text-[12px] font-bold ${s.cls}">${s.label}</span>
-          <span class="text-[13px] text-slate-muted">${b.days} days · ${taka(b.price)}</span>
+          <span class="text-[13px] text-slate-muted">${b.isVideo ? "Video · " : ""}${b.days} days · ${taka(b.price)}</span>
         </div>
         ${b.post ? postPreviewHtml(b.post) : `<div class="text-[13px] text-slate-muted">The post was deleted</div>`}
         <div class="text-[13.5px] mt-2">${info}</div>

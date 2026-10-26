@@ -1254,6 +1254,8 @@ function openReelsAt(startPostId) {
     onFollow: toggleFollow,
     savedPostIds,
     onSave: toggleSavePost,
+    onBoost: boostPost,
+    onMyBoosts: () => import("./boost.js").then((m) => m.openMyBoosts()).catch(() => showToast("Could not open the boost report")),
     learn: (post, action) => learnHook?.(post, action),
     isCovered: () => !pageView.hidden || !postDetail.hidden
   })).catch((error) => { console.error(error); showToast("Could not open Reels"); });

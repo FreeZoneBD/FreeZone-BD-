@@ -348,11 +348,14 @@ export async function openReels(o) {
   // the three dots: Save video, Copy link
   const openMenu = (reel) => {
     if (root.querySelector(".fz-rl-sheet")) return;
+    const mine = reel.post.uid === me;
     const sheet = document.createElement("div");
     sheet.className = "fz-rl-sheet";
     sheet.innerHTML = `<div role="menu">
       <button type="button" data-do="save"><span class="material-symbols-outlined">download</span><span>Save video</span></button>
       <button type="button" data-do="copy"><span class="material-symbols-outlined">link</span><span>Copy link</span></button>
+      ${mine && o.onBoost ? `<button type="button" data-do="boost"><span class="material-symbols-outlined">campaign</span><span>Boost this video</span></button>
+      <button type="button" data-do="report"><span class="material-symbols-outlined">monitoring</span><span>Boost report</span></button>` : ""}
       <button type="button" data-do="cancel"><span class="material-symbols-outlined">close</span><span>Cancel</span></button>
     </div>`;
     sheet.addEventListener("click", (event) => {
@@ -360,6 +363,8 @@ export async function openReels(o) {
       if (event.target === sheet || what) sheet.remove();
       if (what === "save") downloadVideo(reel.video.url);
       else if (what === "copy") copyPostLink(reel.post.id);
+      else if (what === "boost") o.onBoost(reel.post);
+      else if (what === "report" && o.onMyBoosts) o.onMyBoosts();
     });
     root.appendChild(sheet);
   };
