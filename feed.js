@@ -501,6 +501,8 @@ async function openHashtag(tag) {
       postActions: postActions(),
       onOpenProfile: (uid) => openUserProfile(uid),
       tag,
+      setHeader: showPageHeader, // the tag page draws its own top bar (back + search box + tabs)
+      goBack: () => pageViewBack && pageViewBack.click(),
       setTitle: (text) => (pageViewTitle.textContent = text)
     });
   } catch (error) {
