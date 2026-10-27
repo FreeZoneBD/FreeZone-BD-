@@ -14,6 +14,7 @@ export async function mount(container, ctx = {}) {
   const { db, currentUser, followingIds = {}, postActions = {} } = ctx;
   const tag = normalizeTag(ctx.tag);
   ctx.setTitle?.(`#${tag}`);
+  ctx.setHeader?.(false); // this page has its own top bar
 
   if (!db || !currentUser || !tag) {
     container.innerHTML = `<p class="text-center text-slate-muted text-sm py-16 px-6">This tag is not available.</p>`;
@@ -48,18 +49,30 @@ export async function mount(container, ctx = {}) {
   // Tabs like Twitter / Facebook search: Top, Latest, People, Media
   const TABS = [["top", "Top"], ["latest", "Latest"], ["people", "People"], ["media", "Media"]];
   container.innerHTML = `
-    <div class="px-4 pt-4 pb-3">
-      <h2 class="font-headline-md text-headline-md text-on-surface font-semibold break-words">#${escapeHtml(tag)}</h2>
-      <p class="font-body-md text-body-md text-slate-muted">${posts.length} post${posts.length === 1 ? "" : "s"}</p>
-    </div>
-    <div class="ht-tabs sticky top-0 z-10 flex border-b border-slate-border bg-background" role="tablist">
-      ${TABS.map(([key, label]) => `<button type="button" role="tab" data-tab="${key}" class="ht-tab flex-1 py-3 text-[15px] font-semibold text-slate-muted border-b-[3px] border-transparent">${label}</button>`).join("")}
+    <div class="ht-top sticky top-0 z-10" style="background:rgba(255,255,255,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);">
+      <div class="flex items-center gap-2 px-3 pt-2.5 pb-1.5">
+        <button type="button" class="ht-back flex-shrink-0 flex items-center justify-center rounded-full bg-white active:scale-95" aria-label="Back" style="width:42px;height:42px;box-shadow:0 1px 4px rgba(0,0,0,.12);">
+          <span class="material-symbols-outlined text-[22px] text-on-surface">arrow_back</span>
+        </button>
+        <div class="flex-1 min-w-0 flex items-center gap-2 rounded-full bg-white pl-3.5 pr-1.5" style="height:44px;box-shadow:0 1px 4px rgba(0,0,0,.12);">
+          <span class="material-symbols-outlined text-[20px] text-slate-muted">search</span>
+          <span class="flex-1 min-w-0 truncate font-semibold text-[16px]" style="color:#0560e6;">#${escapeHtml(tag)}</span>
+          <button type="button" class="ht-clear flex items-center justify-center rounded-full bg-surface-container text-slate-muted active:scale-95" aria-label="Close" style="width:32px;height:32px;"><span class="material-symbols-outlined text-[18px]">close</span></button>
+        </div>
+      </div>
+      <p class="px-5 pb-2 text-[13px] text-slate-muted">${posts.length} post${posts.length === 1 ? "" : "s"}</p>
+      <div class="ht-tabs flex gap-2 px-3 pb-2.5 overflow-x-auto" role="tablist" style="scrollbar-width:none;">
+        ${TABS.map(([key, label]) => `<button type="button" role="tab" data-tab="${key}" class="ht-tab px-[18px] py-2 rounded-full bg-white text-[14px] font-semibold text-slate-muted whitespace-nowrap" style="box-shadow:0 1px 3px rgba(0,0,0,.08);">${label}</button>`).join("")}
+      </div>
     </div>
     <div class="ht-list flex flex-col gap-2 pb-10"></div>`;
   const list = container.querySelector(".ht-list");
+  const goBack = () => ctx.goBack?.();
+  container.querySelector(".ht-back").addEventListener("click", goBack);
+  container.querySelector(".ht-clear").addEventListener("click", goBack);
   if (!posts.length) {
     list.innerHTML = `<p class="text-center text-slate-muted font-body-md text-body-md py-10 px-6">No posts with #${escapeHtml(tag)} yet. Be the first: write a post with this tag.</p>`;
-    container.querySelector(".ht-tabs").hidden = true;
+    container.querySelector(".ht-tabs").hidden = true; // nothing to switch between
     return;
   }
   const cardOptions = { ...postActions, currentUserUid: currentUser.uid, savedPostIds: ctx.savedPostIds, followingIds, isBlocked };
@@ -121,10 +134,11 @@ export async function mount(container, ctx = {}) {
     current = key;
     container.querySelectorAll(".ht-tab").forEach((b) => {
       const on = b.dataset.tab === key;
-      b.classList.toggle("text-on-surface", on);
+      b.classList.toggle("text-white", on);
+      b.classList.toggle("bg-white", !on);
       b.classList.toggle("text-slate-muted", !on);
-      b.classList.toggle("border-primary-container", on);
-      b.classList.toggle("border-transparent", !on);
+      b.style.background = on ? "#0560e6" : "";
+      b.style.boxShadow = on ? "0 4px 12px rgba(5,96,230,.35)" : "0 1px 3px rgba(0,0,0,.08)";
       b.setAttribute("aria-selected", String(on));
     });
     list.innerHTML = "";
@@ -132,4 +146,5 @@ export async function mount(container, ctx = {}) {
   };
   container.querySelectorAll(".ht-tab").forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
   show("top");
-}
+      }
+    
