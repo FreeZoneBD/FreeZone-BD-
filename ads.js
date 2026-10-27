@@ -34,6 +34,7 @@ const POSITIONS = {
   profile: { firstAfter: 5, gaps: [6, 5] }
 };
 
+const MAX_READ = 60; // boosts whose post is read in one load (others get their turn on the next load)
 const CACHE_MS = 5 * 60 * 1000; // re-read the boosts from Firebase at most every 5 minutes
 const IMAGE_TIMEOUT_MS = 6000; // give up on a post whose picture does not load in time
 const VISIBLE_MS = 1000; // counted as "seen" after 1 second at least half visible
@@ -92,8 +93,14 @@ function loadData() {
     }
 
     // The posts. A deleted, private or followers-only post is not shown.
+    // However many boosts are running, the same rule: each load looks at up to MAX_READ of them, and the ones that have
+    // been shown the LEAST for their running time come first (a little random mix), so every paid boost gets its turn.
+    const DAY = 86400000;
+    const rate = (b) => (Number(b.impressions) || 0) / Math.max(0.25, (now - b.startAt) / DAY);
+    const jitter = new Map(live.map((b) => [b.boostId, Math.random()]));
+    live.sort((x, y) => (rate(x) * (0.8 + 0.4 * jitter.get(x.boostId))) - (rate(y) * (0.8 + 0.4 * jitter.get(y.boostId))));
     const ads = await Promise.all(
-      live.slice(0, 40).map(async (boost) => {
+      live.slice(0, MAX_READ).map(async (boost) => {
         try {
           const postSnap = await get(ref(db, `posts/${boost.postId}`));
           if (!postSnap.exists()) return null;
