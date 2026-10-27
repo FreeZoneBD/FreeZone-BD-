@@ -752,7 +752,7 @@ export async function mount(container, ctx = {}) {
       tile.className = "vd-tile relative block overflow-hidden bg-black active:opacity-80";
       tile.style.aspectRatio = "3 / 4";
       tile.setAttribute("aria-label", `Play video ${index + 1} of ${items.length}`);
-      tile.innerHTML = `${video.thumb ? `<img src="${escapeHtml(video.thumb)}" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()" />` : ""}
+      tile.innerHTML = `${video.thumb ? `<img src="${escapeHtml(video.thumb)}" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()" />` : `<video src="${escapeHtml(video.url)}#t=0.1" muted playsinline preload="metadata" class="absolute inset-0 w-full h-full object-cover pointer-events-none"></video>`}
         <span class="absolute top-1.5 right-1.5 text-white drop-shadow"><span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1;">play_arrow</span></span>
         ${video.duration ? `<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[11px]">${formatDuration(video.duration)}</span>` : ""}`;
       tile.addEventListener("click", () => {

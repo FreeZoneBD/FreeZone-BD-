@@ -20,7 +20,7 @@ import { db, auth } from "./config.js";
 
 import { ref, get, update, increment, query, orderByChild, startAt } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-import { escapeHtml, showToast, avatarHtml, postImageUrls, postVideoOf, timeAgo, createPostCard } from "./post.js";
+import { escapeHtml, showToast, avatarHtml, postImageUrls, postVideoOf, timeAgo, createPostCard, postVideoHtml, mountPostVideo } from "./post.js";
 import { pickAdsForSlots } from "./feed-algorithm.js";
 
 /* ---------------------------------------------------------------
@@ -203,7 +203,7 @@ function mediaOf(post) {
   const photos = postImageUrls(post);
   if (photos && photos.length) return { url: photos[0], more: photos.length - 1, video: false };
   const video = postVideoOf(post);
-  if (video && video.thumb) return { url: video.thumb, more: 0, video: true };
+  if (video) return { url: video.thumb || "", more: 0, video: true }; // a video without a cover picture still shows (its first frame)
   return null;
 }
 
@@ -292,7 +292,7 @@ export function countReelAdClick(adId) { track(adId, "clicks"); }
 /* ---------------------------------------------------------------
    The Sponsored card
 ---------------------------------------------------------------- */
-function buildAdCard(ad, media, imageSize) {
+function buildAdCard(ad, media, imageSize, onOpen) {
   const post = ad.post;
   const who = post.name || "FreeZone User";
   const text = (post.text || "").trim();
@@ -316,12 +316,13 @@ function buildAdCard(ad, media, imageSize) {
       </button>
     </div>
     <div class="fz-ad-open ${ad.canOpen ? "cursor-pointer" : ""}">
-      ${text ? `<p class="fz-ad-text font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-wrap break-words px-4 pt-3" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;">${escapeHtml(text)}</p>
+      ${text ? `<p class="fz-ad-text font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-wrap break-words px-4 pt-3 ${media ? "" : "pb-3"}" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;">${escapeHtml(text)}</p>
         ${text.length > 120 || text.split("\n").length > 3 ? `<button type="button" class="fz-ad-more block px-4 pt-0.5 font-body-sm text-body-sm text-slate-muted font-semibold">See more</button>` : ""}` : ""}
       ${
         media && imageSize
-          ? `<div class="relative mt-3 bg-surface-container"><img src="${escapeHtml(media.url)}" alt="" class="w-full object-cover block" style="aspect-ratio:${ratio};max-height:24rem;" />
-               ${media.video ? `<span class="absolute inset-0 flex items-center justify-center"><span class="w-14 h-14 rounded-full bg-black/55 text-white flex items-center justify-center"><span class="material-symbols-outlined text-[34px]">play_arrow</span></span></span>` : ""}
+          ? media.video
+            ? `<div class="mt-3">${postVideoHtml(postVideoOf(post))}</div>` // the same video box as a normal post: plays on the screen, tap = Reels
+            : `<div class="relative mt-3 bg-surface-container"><img src="${escapeHtml(media.url)}" alt="" class="w-full object-cover block" style="aspect-ratio:${ratio};max-height:24rem;" />
                ${media.more > 0 ? `<span class="absolute right-2 top-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[12px] font-semibold">+${media.more}</span>` : ""}
              </div>`
           : ""
@@ -332,6 +333,8 @@ function buildAdCard(ad, media, imageSize) {
       <span class="flex-shrink-0 px-4 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>
     </a>
   `;
+  const videoBox = card.querySelector(".post-video");
+  if (videoBox) mountPostVideo(videoBox, { onOpen: () => { if (onOpen) onOpen(post); } });
   const more = card.querySelector(".fz-ad-more");
   if (more) {
     more.addEventListener("click", (event) => {
@@ -371,7 +374,7 @@ function createSlot(ad, media, imageSize, placement, context) {
 
   const inner = document.createElement("div");
   inner.className = "fz-ad-inner";
-  const card = buildAdCard(ad, media, imageSize);
+  const card = buildAdCard(ad, media, imageSize, ad.canOpen ? context.onOpen : null);
   inner.appendChild(card);
   slot.appendChild(inner);
 
