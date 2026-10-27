@@ -11,12 +11,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 import { escapeHtml, avatarHtml, createPostCard, canViewPost, pollOptionsOf, showToast } from "./post.js";
 import { isBlocked } from "./block.js";
-import { ensurePrivacy, isRequested } from "./privacy.js";
+import { ensurePrivacy, isRequested, privacyKnown } from "./privacy.js";
 import { isMuted } from "./mute.js";
 import { extractTags, normalizeTag } from "./hashtags.js";
 import { pickSuggestions } from "./suggest.js";
 
-const SCAN = 400;          // how many newest posts are searched
+const SCAN = 200;          // how many newest posts are searched
 const PAGE = 15;           // post results shown at a time
 const PEOPLE_LIMIT = 20;   // people found per search
 const PEOPLE_MIN = 2;      // letters needed before people are searched
@@ -176,7 +176,7 @@ export async function mount(container, ctx = {}) {
   const note = (html, icon = "") => {
     body.innerHTML = `<div class="text-center text-slate-muted text-[15px] py-16 px-8">${icon ? `<span class="material-symbols-outlined text-[44px] opacity-60 block mb-2">${icon}</span>` : ""}${html}</div>`;
   };
-  const visiblePosts = () => (posts || []).filter((post) => !isBlocked(post.uid) && !isMuted(post.uid) && canViewPost(post, me, followingIds));
+  const visiblePosts = () => (posts || []).filter((post) => privacyKnown(post.uid) && !isBlocked(post.uid) && !isMuted(post.uid) && canViewPost(post, me, followingIds)); // an author whose privacy is not checked yet stays hidden
 
   const renderHome = () => {
     const recent = readRecent();
@@ -377,7 +377,8 @@ export async function mount(container, ctx = {}) {
     const list = [];
     snap.forEach((child) => { list.push({ id: child.key, ...child.val() }); });
     posts = list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    await ensurePrivacy(db, posts.map((post) => post.uid));
+    // Show the results now; the private-account check (one small read per author) finishes in the background
+    ensurePrivacy(db, posts.map((post) => post.uid)).then((learned) => { if (learned) render(); }).catch(() => {});
   } catch (error) {
     console.error(error);
     loadError = true;

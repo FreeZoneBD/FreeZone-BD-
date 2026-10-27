@@ -184,8 +184,9 @@ async function buildSuggestions({ db, me, followingIds, followerIds, followingLi
   // 1. Followers you do not follow back
   followerIds.filter((id) => !followingIds[id]).slice(0, 10).forEach((id) => add(id, null, 100, "Follows you"));
 
+  // Sources 2, 3 and 4 are read AT THE SAME TIME (one wait instead of three one after another)
   // 2. Friends of friends
-  try {
+  const sourceFriendsOfFriends = (async () => { try {
     const seeds = followingList.slice(0, 8);
     const lists = await Promise.all(
       seeds.map((id) =>
@@ -223,10 +224,10 @@ async function buildSuggestions({ db, me, followingIds, followerIds, followingLi
     });
   } catch (error) {
     console.warn("Suggestions: friends of friends failed:", error?.code || error);
-  }
+  } })();
 
   // 3. Recently active people (their name and photo come with the post, so no extra reads)
-  try {
+  const sourceRecentPosts = (async () => { try {
     const snap = await get(query(ref(db, "posts"), orderByChild("createdAt"), limitToLast(40)));
     anySourceWorked = true;
     const posts = [];
@@ -241,10 +242,10 @@ async function buildSuggestions({ db, me, followingIds, followerIds, followingLi
     });
   } catch (error) {
     console.warn("Suggestions: recent posts failed:", error?.code || error);
-  }
+  } })();
 
   // 4. New members
-  try {
+  const sourceNewMembers = (async () => { try {
     const snap = await get(query(ref(db, "users"), orderByChild("createdAt"), limitToLast(12)));
     anySourceWorked = true;
     const users = [];
@@ -257,7 +258,8 @@ async function buildSuggestions({ db, me, followingIds, followerIds, followingLi
     });
   } catch (error) {
     console.warn("Suggestions: new members failed:", error?.code || error);
-  }
+  } })();
+  await Promise.all([sourceFriendsOfFriends, sourceRecentPosts, sourceNewMembers]);
 
   if (!anySourceWorked && !candidates.size) throw new Error("Suggestions failed");
 
