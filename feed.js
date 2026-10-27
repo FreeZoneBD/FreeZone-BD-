@@ -108,7 +108,19 @@ onAuthStateChanged(auth, async (user) => {
 
   currentUser = user;
 
-  const profileSnap = await get(ref(db, `users/${user.uid}`));
+  // My own profile is kept on this phone, so the app still opens without internet
+  const profileKey = "fz_profile_" + user.uid;
+  let profileSnap;
+  try {
+    profileSnap = await get(ref(db, `users/${user.uid}`));
+    try { if (profileSnap.exists()) localStorage.setItem(profileKey, JSON.stringify(profileSnap.val())); } catch (error) { /* storage full or blocked */ }
+  } catch (error) {
+    let kept = null;
+    try { kept = JSON.parse(localStorage.getItem(profileKey) || "null"); } catch (e) { kept = null; }
+    // No internet and no saved copy: do nothing (never make a new empty profile from here)
+    if (!kept) { postsSkeleton?.remove(); showToast("No internet. Open the app once with internet first."); return; }
+    profileSnap = { exists: () => true, val: () => kept };
+  }
   if (profileSnap.exists()) {
     currentProfile = profileSnap.val();
   } else {
@@ -887,9 +899,26 @@ function listenPosts() {
   onMutesChange(applyList);
   onPrivacyChange(applyList); // a request was sent or answered
 
+  // The last feed is kept on this phone: with no internet (or a very slow one) it is shown while the real posts load
+  const FEED_COPY = "fz_feed_copy_v1";
+  const keepFeed = (posts) => {
+    try { localStorage.setItem(FEED_COPY, JSON.stringify(posts.slice(0, 20).map((post) => { const { comments, ...rest } = post; return rest; }))); } catch (error) { /* storage full or blocked */ }
+  };
+  setTimeout(() => {
+    if (latestPosts) return; // the real posts came
+    let kept = null;
+    try { kept = JSON.parse(localStorage.getItem(FEED_COPY) || "null"); } catch (error) { kept = null; }
+    if (Array.isArray(kept) && kept.length) {
+      latestPosts = kept;
+      hasMore = false;
+      applyList();
+    }
+  }, 2500);
+
   pager = createFeedPager({
     db,
     onData: (posts, state) => {
+      if (posts.length) keepFeed(posts);
       const show = () => {
         latestPosts = posts;
         hasMore = state.hasMore;

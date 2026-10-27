@@ -156,6 +156,15 @@
     } catch (e) { /* not a usable address: nothing happens */ }
   }, true);
 
+  // 5b. offline: a service worker keeps a copy of the app code and pictures, so the app opens without internet
+  try {
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./sw.js").catch(function () { /* the app works without it */ });
+      });
+    }
+  } catch (e) { /* ignore */ }
+
   // 6. update message
   try { import("./update-check.js").catch(function () { /* ignore */ }); } catch (e) { /* ignore */ }
 })();
