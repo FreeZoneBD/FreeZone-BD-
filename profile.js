@@ -745,7 +745,8 @@ export async function mount(container, ctx = {}) {
     const grid = document.createElement("div");
     grid.className = "grid gap-0.5 px-3 sm:px-4";
     grid.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
-    items.forEach(({ video }, index) => {
+    const videoPosts = items.map((item) => item.post);
+    items.forEach(({ video, post }, index) => {
       const tile = document.createElement("button");
       tile.type = "button";
       tile.className = "vd-tile relative block overflow-hidden bg-black active:opacity-80";
@@ -754,7 +755,11 @@ export async function mount(container, ctx = {}) {
       tile.innerHTML = `${video.thumb ? `<img src="${escapeHtml(video.thumb)}" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()" />` : ""}
         <span class="absolute top-1.5 right-1.5 text-white drop-shadow"><span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1;">play_arrow</span></span>
         ${video.duration ? `<span class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/60 text-white text-[11px]">${formatDuration(video.duration)}</span>` : ""}`;
-      tile.addEventListener("click", () => openVideoPlayer(video));
+      tile.addEventListener("click", () => {
+        // full-screen Reels with only this person's videos (the older small player is the fallback)
+        if (ctx.postActions?.onOpenReels) ctx.postActions.onOpenReels(post.id, videoPosts);
+        else openVideoPlayer(video);
+      });
       grid.appendChild(tile);
     });
     tabContent.appendChild(grid);

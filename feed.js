@@ -303,6 +303,7 @@ function postActions() {
     onDelete: deletePost,
     onEdit: editPost,
     onBoost: boostPost,
+    onOpenReels: (startPostId, posts) => openReelsAt(startPostId, { posts }), // a profile's Videos tab: Reels with only that person's videos
     onAudience: setAudience,
     onHashtag: openHashtag,
     onVote: votePoll,
@@ -1235,11 +1236,12 @@ function openComments(postId) {
 registerFeature("reels", () => openReelsAt(""));
 
 // startPostId = the video the person tapped in the feed: Reels opens on it
-function openReelsAt(startPostId) {
+function openReelsAt(startPostId, extra = {}) {
   if (!currentUser) return;
   pausePostVideos(); // a video of the feed behind Reels must not keep playing
   import("./reels.js").then((module) => module.openReels({
     startPostId,
+    ...extra,
     db,
     currentUser,
     followingIds,

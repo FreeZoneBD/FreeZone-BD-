@@ -11,6 +11,7 @@ import { recordView } from "./creatorViews.js";
 import { escapeHtml, avatarHtml, showToast, canViewPost, postVideoOf, getPostLink, copyPostLink, downloadVideo } from "./post.js";
 import { rankPosts, watchAction } from "./feed-algorithm.js";
 import { storageReady, previewNotice } from "./features.js";
+import { reelAds, countReelAdSeen, countReelAdClick } from "./ads.js";
 
 const LOAD = 300; // the newest posts looked at
 const MAX_REELS = 60;
@@ -135,6 +136,7 @@ export async function openReels(o) {
     if (!watch) return;
     const { reel, ms } = watch;
     watch = null;
+    if (reel.ad) return; // a Sponsored video is counted by its boost (ads.js), not as a normal play
     if (ms < MIN_WATCH_MS) return;
     const post = reel.post;
     const action = watchAction({ ...post }, ms);
@@ -208,6 +210,31 @@ export async function openReels(o) {
     wireReel(reel);
     paintCounts(reel);
     paintSave(reel);
+    return reel;
+  };
+
+  // A Sponsored reel: the boosted video with a "Sponsored" tag and the owner's button
+  const makeAdReel = (ad) => {
+    const reel = buildReel({ ...ad.post }, postVideoOf(ad.post));
+    reel.ad = ad;
+    const bottom = "var(--fz-bottom, env(safe-area-inset-bottom, 0px))";
+    // like other apps: a small "Ad" label above a blue full-width button at the bottom
+    const tag = document.createElement("span");
+    tag.className = "absolute left-3 z-20 px-2 py-0.5 rounded-md bg-black/45 text-[12px] font-semibold";
+    tag.style.cssText += `bottom:calc(${bottom} + 70px);`;
+    tag.textContent = "Ad";
+    const cta = document.createElement("a");
+    cta.href = ad.link;
+    cta.target = "_blank";
+    cta.rel = "noopener noreferrer sponsored";
+    cta.className = "fz-rl-cta absolute left-3 z-20 flex items-center justify-center gap-1 rounded-lg text-white font-bold text-[16px]";
+    cta.style.cssText += `right:80px;height:44px;bottom:calc(${bottom} + 16px);background:#0a84e8;`;
+    cta.innerHTML = `<span></span><span aria-hidden="true">\u203a</span>`;
+    cta.firstChild.textContent = ad.btnText;
+    cta.addEventListener("click", (event) => { event.stopPropagation(); countReelAdClick(ad.id); });
+    reel.el.append(tag, cta);
+    const caption = reel.el.querySelector(".fz-rl-name")?.parentElement;
+    if (caption) caption.style.bottom = `calc(${bottom} + 102px)`; // the name and text sit above the "Ad" label
     return reel;
   };
 
@@ -409,7 +436,12 @@ export async function openReels(o) {
     paintPause(reel);
     if (!o.isCovered?.()) play(reel);
     watch = { reel, ms: 0, last: performance.now() };
-    o.learn?.(reel.post, "view");
+    if (reel.ad) {
+      // counted as seen after 1.5 seconds on the screen (once)
+      setTimeout(() => { if (!closed && reels[active] === reel && !reel.adCounted) { reel.adCounted = true; countReelAdSeen(reel.ad.id); } }, 1500);
+    } else {
+      o.learn?.(reel.post, "view");
+    }
     // live numbers (likes, comments) of the reel on the screen; a deleted post leaves the list
     unsubActive = onValue(ref(db, `posts/${reel.post.id}`), (snap) => {
       if (!snap.exists()) { showToast("This video was removed"); removeReel(reel); return; }
@@ -501,21 +533,32 @@ export async function openReels(o) {
   };
 
   try {
-    const snap = await get(query(ref(db, "posts"), orderByChild("createdAt"), limitToLast(LOAD)));
-    if (closed) return;
     const posts = [];
-    snap.forEach((child) => {
-      const post = { ...child.val(), id: child.key };
-      if (!postVideoOf(post)) return;
-      if (o.isBlocked?.(post.uid) || o.isMuted?.(post.uid)) return;
-      if (!canViewPost(post, me, o.followingIds || {})) return;
-      posts.push(post);
-    });
-    // the feed algorithm orders them (and drops adult, spam and heavily reported ones)
-    let ordered = posts;
-    try {
-      ordered = rankPosts(posts, { me, followingIds: o.followingIds || {}, followerIds: o.followerIds || {}, chattedIds: o.chattedIds || {} });
-    } catch (error) { ordered = posts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); }
+    let ordered;
+    if (Array.isArray(o.posts)) {
+      // one person's videos (the Videos tab of a profile): only these play, newest first
+      o.posts.forEach((p) => {
+        if (!p || !p.id || !postVideoOf(p)) return;
+        if (!canViewPost(p, me, o.followingIds || {})) return;
+        posts.push(p);
+      });
+      ordered = posts.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } else {
+      const snap = await get(query(ref(db, "posts"), orderByChild("createdAt"), limitToLast(LOAD)));
+      if (closed) return;
+      snap.forEach((child) => {
+        const post = { ...child.val(), id: child.key };
+        if (!postVideoOf(post)) return;
+        if (o.isBlocked?.(post.uid) || o.isMuted?.(post.uid)) return;
+        if (!canViewPost(post, me, o.followingIds || {})) return;
+        posts.push(post);
+      });
+      // the feed algorithm orders them (and drops adult, spam and heavily reported ones)
+      ordered = posts;
+      try {
+        ordered = rankPosts(posts, { me, followingIds: o.followingIds || {}, followerIds: o.followerIds || {}, chattedIds: o.chattedIds || {} });
+      } catch (error) { ordered = posts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); }
+    }
     if (o.startPostId) {
       const i = ordered.findIndex((p) => p.id === o.startPostId);
       if (i > 0) ordered.unshift(ordered.splice(i, 1)[0]);
@@ -536,6 +579,24 @@ export async function openReels(o) {
 
     showState("");
     reels = ordered.map((post) => buildReel(post, postVideoOf(post)));
+    // a boosted video after every 10 to 12 reels (it never comes first, and never twice in a row)
+    try {
+      const ads = await reelAds({ me, isBlocked: o.isBlocked });
+      if (closed) return;
+      if (ads.length && reels.length >= 10) {
+        const merged = [];
+        let gap = 10 + Math.floor(Math.random() * 3), count = 0, n = 0;
+        reels.forEach((r, i) => {
+          merged.push(r);
+          count++;
+          if (count >= gap && i < reels.length - 1) {
+            merged.push(makeAdReel(ads[n % ads.length]));
+            n++; count = 0; gap = 10 + Math.floor(Math.random() * 3);
+          }
+        });
+        reels = merged;
+      }
+    } catch (error) { /* no ads: the reels play as they are */ }
     reels.forEach((r) => { listEl.appendChild(r.el); observer?.observe(r.el); });
     if (!observer) activate(0);
     applyMute();

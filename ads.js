@@ -266,6 +266,30 @@ function watchImpression(slot, adId, placement) {
 }
 
 /* ---------------------------------------------------------------
+   Reels: boosted VIDEOS can come up between the reels (reels.js asks for them here)
+---------------------------------------------------------------- */
+export async function reelAds({ me, isBlocked } = {}) {
+  try {
+    const all = await loadData();
+    const hidden = getHiddenIds();
+    const now = Date.now();
+    const list = all.filter((ad) =>
+      !hidden.has(ad.id) && now >= ad.startAt && now <= ad.endAt &&
+      postVideoOf(ad.post) && ad.post.uid !== me && !(isBlocked && isBlocked(ad.post.uid)));
+    for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; } // a different order each time
+    return list;
+  } catch (error) {
+    return []; // the reels are never held back by ads
+  }
+}
+export function countReelAdSeen(adId) {
+  track(adId, "impressions");
+  trackReach(adId);
+  recordShown(adId);
+}
+export function countReelAdClick(adId) { track(adId, "clicks"); }
+
+/* ---------------------------------------------------------------
    The Sponsored card
 ---------------------------------------------------------------- */
 function buildAdCard(ad, media, imageSize) {
