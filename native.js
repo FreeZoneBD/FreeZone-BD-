@@ -147,7 +147,7 @@
     try {
       var u = new URL(href);
       if (u.protocol !== "https:" && u.protocol !== "http:") return;
-      if (u.hostname === "freezonebd.github.io" && LINK_KEYS.some(function (k) { return u.searchParams.get(k); })) { openLink(u.href); return; }
+      if ((u.hostname === SITE_HOST || u.hostname === location.hostname) && LINK_KEYS.some(function (k) { return u.searchParams.get(k); })) { openLink(u.href); return; }
       if (App && typeof App.openUrl === "function") {
         App.openUrl({ url: u.href }).catch(function () { location.href = u.href; });
       } else {
@@ -164,6 +164,10 @@
       });
     }
   } catch (e) { /* ignore */ }
+
+  // The website address comes from SITE_URL in app-info.js (the ONE place to change when the domain changes)
+  var SITE_HOST = location.hostname;
+  try { import("./app-info.js").then(function (m) { try { SITE_HOST = new URL(m.SITE_URL).hostname; } catch (e) { /* keep */ } }).catch(function () { /* keep */ }); } catch (e) { /* keep */ }
 
   // 6. update message
   try { import("./update-check.js").catch(function () { /* ignore */ }); } catch (e) { /* ignore */ }
