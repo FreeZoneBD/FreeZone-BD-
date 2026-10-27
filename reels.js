@@ -61,9 +61,9 @@ function blackBars(on) {
  *   startPostId                  optional: start with this post
  */
 export async function openReels(o) {
-  if (openNow) return;
+  if (openNow) { o.onClose?.(); return; }
   const { db, currentUser } = o;
-  if (!db || !currentUser) return;
+  if (!db || !currentUser) { o.onClose?.(); return; }
   const me = currentUser.uid;
 
   const root = document.createElement("div");
@@ -508,6 +508,7 @@ export async function openReels(o) {
     blackBars(false);
     root.remove();
     openNow = null;
+    try { o.onClose?.(); } catch (error) { /* closing is never blocked */ }
   };
   const onKey = (event) => {
     if (o.isCovered?.()) return;

@@ -1239,6 +1239,10 @@ registerFeature("reels", () => openReelsAt(""));
 function openReelsAt(startPostId, extra = {}) {
   if (!currentUser) return;
   pausePostVideos(); // a video of the feed behind Reels must not keep playing
+  // Reels opened from a page (e.g. the Videos tab of a profile): the page is layered above Reels, so it steps aside
+  // while Reels is open and comes back when Reels closes (unless another page took its place meanwhile)
+  let pageBack = null;
+  if (!pageView.hidden) { pageBack = pageViewBody.firstElementChild; pageView.hidden = true; }
   import("./reels.js").then((module) => module.openReels({
     startPostId,
     ...extra,
@@ -1259,6 +1263,7 @@ function openReelsAt(startPostId, extra = {}) {
     onBoost: boostPost,
     onMyBoosts: () => import("./boost.js").then((m) => m.openMyBoosts()).catch(() => showToast("Could not open the boost report")),
     learn: (post, action) => learnHook?.(post, action),
-    isCovered: () => !pageView.hidden || !postDetail.hidden
-  })).catch((error) => { console.error(error); showToast("Could not open Reels"); });
+    isCovered: () => !pageView.hidden || !postDetail.hidden,
+    onClose: () => { if (pageBack && pageView.hidden && pageViewBody.firstElementChild === pageBack) pageView.hidden = false; }
+  })).catch((error) => { console.error(error); if (pageBack && pageView.hidden) pageView.hidden = false; showToast("Could not open Reels"); });
 }
