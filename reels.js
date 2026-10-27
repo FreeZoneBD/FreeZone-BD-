@@ -579,25 +579,36 @@ export async function openReels(o) {
     if (!ordered.length) return showEmpty();
 
     showState("");
-    reels = ordered.map((post) => buildReel(post, postVideoOf(post)));
-    // a boosted video after every 10 to 12 reels (it never comes first, and never twice in a row)
-    try {
-      const ads = await reelAds({ me, isBlocked: o.isBlocked });
-      if (closed) return;
-      if (ads.length && reels.length >= 10) {
-        const merged = [];
-        let gap = 10 + Math.floor(Math.random() * 3), count = 0, n = 0;
-        reels.forEach((r, i) => {
-          merged.push(r);
-          count++;
-          if (count >= gap && i < reels.length - 1) {
-            merged.push(makeAdReel(ads[n % ads.length]));
-            n++; count = 0; gap = 10 + Math.floor(Math.random() * 3);
-          }
-        });
-        reels = merged;
-      }
-    } catch (error) { /* no ads: the reels play as they are */ }
+    // Boosted videos (from other people):
+    //  - a boosted video that is in this list anyway is shown as the Sponsored reel (label + button), in its own place
+    //  - the other boosted videos come after every 10 to 12 reels (never first, never next to another ad)
+    //  - with only a few videos (less than 10) one boosted video still comes, after the last reel
+    let ads = [];
+    try { ads = await reelAds({ me, isBlocked: o.isBlocked }); } catch (error) { ads = []; }
+    if (closed) return;
+    const adOfPost = new Map(ads.map((ad) => [ad.post.id, ad]));
+    const used = new Set();
+    reels = ordered.map((post) => {
+      const ad = adOfPost.get(post.id);
+      if (ad) { used.add(ad.id); return makeAdReel(ad); }
+      return buildReel(post, postVideoOf(post));
+    });
+    const spare = ads.filter((ad) => !used.has(ad.id));
+    if (spare.length) {
+      const merged = [];
+      let gap = 10 + Math.floor(Math.random() * 3), count = 0, n = 0;
+      reels.forEach((r, i) => {
+        merged.push(r);
+        count++;
+        const next = reels[i + 1];
+        if (count >= gap && next && !r.ad && !next.ad) {
+          merged.push(makeAdReel(spare[n % spare.length]));
+          n++; count = 0; gap = 10 + Math.floor(Math.random() * 3);
+        }
+      });
+      if (!merged.some((r) => r.ad)) merged.push(makeAdReel(spare[0])); // a short list: one ad at the end
+      reels = merged;
+    }
     reels.forEach((r) => { listEl.appendChild(r.el); observer?.observe(r.el); });
     if (!observer) activate(0);
     applyMute();
