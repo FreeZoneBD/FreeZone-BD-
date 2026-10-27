@@ -446,8 +446,8 @@ function decorateOwn(original, ad) {
   link.href = ad.link;
   link.target = "_blank";
   link.rel = "noopener noreferrer sponsored";
-  link.innerHTML = `<span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(host)}</span>
-    <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
+  link.innerHTML = `<span class="font-body-md text-body-md text-on-surface font-semibold truncate">${escapeHtml(host)}</span>
+    <span class="flex-shrink-0 px-4 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
   original.after(link);
 }
 
@@ -638,8 +638,8 @@ export async function markSponsored(wrap, postId, { me } = {}) {
     link.href = ad.link;
     link.target = "_blank";
     link.rel = "noopener noreferrer sponsored";
-    link.innerHTML = `<span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(host)}</span>
-      <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
+    link.innerHTML = `<span class="font-body-md text-body-md text-on-surface font-semibold truncate">${escapeHtml(host)}</span>
+      <span class="flex-shrink-0 px-4 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
     link.addEventListener("click", () => {
       if (!(me && ad.post.uid === me)) track(ad.id, "clicks");
     });
