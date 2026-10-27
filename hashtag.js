@@ -120,7 +120,7 @@ export async function mount(container, ctx = {}) {
           + (!video && photos.length > 1 ? `<span class="absolute top-1.5 right-1.5 px-1.5 rounded-full bg-black/60 text-white text-[11px]">+${photos.length - 1}</span>` : "");
         tile.addEventListener("click", () => {
           if (video && postActions.onOpenReels) postActions.onOpenReels(p.id, videoPosts);
-          else postActions.onOpen?.(p);
+          else postActions.onOpen?.(p.id); // onOpen wants the post id, not the post
         });
         grid.appendChild(tile);
       });
@@ -146,5 +146,4 @@ export async function mount(container, ctx = {}) {
   };
   container.querySelectorAll(".ht-tab").forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
   show("top");
-      }
-    
+}
