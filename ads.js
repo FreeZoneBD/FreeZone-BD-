@@ -26,10 +26,12 @@ import { pickAdsForSlots } from "./feed-algorithm.js";
 /* ---------------------------------------------------------------
    Settings
 ---------------------------------------------------------------- */
+// The same everywhere (For you, Following, profiles): one ad after the 5th post, then after 6 more posts, then after 5 more,
+// then 6 ... so there are always 5 or 6 posts between two ads and two ads are never next to each other.
 const POSITIONS = {
-  feed: { firstAfter: 3, every: 4 }, // "For you": after the 3rd post, then after every 4 more
-  feedFollowing: { firstAfter: 5, every: 5 }, // "Following": after the 5th post, then after every 5 more
-  profile: { firstAfter: 2, every: 6 }
+  feed: { firstAfter: 5, gaps: [6, 5] },
+  feedFollowing: { firstAfter: 5, gaps: [6, 5] },
+  profile: { firstAfter: 5, gaps: [6, 5] }
 };
 
 const CACHE_MS = 5 * 60 * 1000; // re-read the boosts from Firebase at most every 5 minutes
@@ -421,7 +423,7 @@ export function clearAds(container) {
     restoreReplaced(slot);
     slot.remove();
   });
-  container.querySelectorAll(":scope > .fz-ad-decor").forEach((el) => el.remove());
+  container.querySelectorAll(".fz-ad-decor").forEach((el) => el.remove());
 }
 
 // The person who boosted the post sees their own post: the real card (with its three-dot menu: edit, delete, ...)
@@ -441,6 +443,7 @@ function decorateOwn(original, ad) {
     badge.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="rgb(var(--c-primary-container))"/><path d="M7 12.5l3.2 3.2L17 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     nameEl.after(badge);
   }
+  original.querySelectorAll(".fz-ad-decor").forEach((el) => el.remove()); // never two bars on one post
   const link = document.createElement("a");
   link.className = "fz-ad-decor fz-ad-link flex items-center justify-between gap-3 px-4 py-3 bg-surface-container-low";
   link.href = ad.link;
@@ -448,7 +451,10 @@ function decorateOwn(original, ad) {
   link.rel = "noopener noreferrer sponsored";
   link.innerHTML = `<span class="font-body-md text-body-md text-on-surface font-semibold truncate">${escapeHtml(host)}</span>
     <span class="flex-shrink-0 px-4 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>`;
-  original.after(link);
+  // like Facebook: the link bar sits ABOVE the like / comment / share row (under the picture)
+  const actionRow = original.querySelector(".like-btn")?.parentElement;
+  if (actionRow && actionRow.parentElement) actionRow.before(link);
+  else original.after(link);
 }
 
 /**
@@ -530,18 +536,20 @@ export async function insertAds(container, { placement = "feed", context = {} } 
       else others.push(ad);
     }
 
-    // Ad spots between the posts: after the 3rd post, then every 5th (feed). The boosted posts that are already in the
+    // Ad spots between the posts: after the 5th post, then after 6 more, then 5 more ... (all lists). The boosted posts that are already in the
     // list do not count as posts: on the feed they move to an ad spot instead of staying wherever they were ranked.
     const relocate = placement === "feed" && !context.inPlaceOnly;
     const moving = new Set(others.map(originalOf));
     const spotKey = placement === "feed" && context.tab && context.tab !== "foryou" ? "feedFollowing" : placement;
-    const { firstAfter, every } = POSITIONS[spotKey] || POSITIONS.feed;
+    const { firstAfter, gaps } = POSITIONS[spotKey] || POSITIONS.feed;
     const posts = Array.from(container.children).filter((el) => el.tagName === "ARTICLE" && el.style.display !== "none" && !moving.has(el));
     const anchors = [];
+    let nextSpot = firstAfter, gapIndex = 0;
     posts.forEach((post, index) => {
       const position = index + 1;
-      const isSpot = position === firstAfter || (position > firstAfter && (position - firstAfter) % every === 0);
-      if (isSpot && position < posts.length) anchors.push(post);
+      if (position !== nextSpot) return;
+      if (position < posts.length) anchors.push(post); // never after the very last post (the next page brings the next spot)
+      nextSpot += gaps[gapIndex++ % gaps.length];
     });
     // A short feed (e.g. "Following" with only a few posts) has no spot yet: the ad goes after the last post instead of nowhere
     if (!anchors.length && placement === "feed" && posts.length >= 1) anchors.push(posts[posts.length - 1]);
@@ -612,6 +620,21 @@ export async function insertAds(container, { placement = "feed", context = {} } 
   } catch (error) {
     // Ads must never break the page
     console.warn("Ads: skipped because of an error:", error);
+  } finally {
+    try { removeAdjacentAds(container); } catch (error) { /* never breaks the page */ }
+  }
+}
+
+// Two ads are never shown next to each other: if two Sponsored cards end up side by side, the second goes
+// (its post comes back as a normal post)
+function removeAdjacentAds(container) {
+  if (!container) return;
+  let previousWasAd = false;
+  for (const el of Array.from(container.children)) {
+    if (el.style && el.style.display === "none") continue; // posts hidden because an ad replaced them
+    const isAd = el.classList.contains("fz-ad-slot");
+    if (isAd && previousWasAd) { restoreReplaced(el); el.remove(); continue; }
+    previousWasAd = isAd;
   }
 }
 
@@ -645,7 +668,9 @@ export async function markSponsored(wrap, postId, { me } = {}) {
     });
 
     wrap.prepend(label);
-    wrap.append(link);
+    const actionRow = wrap.querySelector(".like-btn")?.parentElement;
+    if (actionRow && actionRow.parentElement) actionRow.before(link); // above like / comment / share
+    else wrap.append(link);
   } catch (error) {
     console.warn("Sponsored label skipped:", error);
   }
