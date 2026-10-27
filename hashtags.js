@@ -26,19 +26,30 @@ export function extractTags(text) {
   return found;
 }
 
-/** Same text as escaped HTML, with every tag turned into a tappable <a class="hashtag">. `escapeHtml` is passed in to avoid a circular import. */
+// #tags and @usernames (letters, digits, _ and . ; 2 to 20 characters)
+const LINK_RE = /#([\p{L}\p{M}\p{N}_]{2,30})|@([A-Za-z0-9_.]{2,20})/gu;
+
+/** Same text as escaped HTML, with every #tag a tappable <a class="hashtag"> and every @username a tappable <a class="mention">, both blue.
+ *  `escapeHtml` is passed in to avoid a circular import. */
 export function linkifyHashtags(text, escapeHtml) {
   const source = String(text || "");
   let html = "";
   let last = 0;
   let count = 0;
-  for (const match of source.matchAll(TAG_RE)) {
-    // "abc#tag" inside a word (like an address or a link) is not a tag
+  for (const match of source.matchAll(LINK_RE)) {
+    // "abc#tag" / "name@site.com" inside a word (like an address or a link) is not a tag or a mention
     if (insideWord(source, match.index)) continue;
-    const tag = normalizeTag(match[1]);
     html += escapeHtml(source.slice(last, match.index));
-    html += `<a href="#" class="hashtag text-primary font-semibold" data-tag="${escapeHtml(tag)}">${escapeHtml(match[0])}</a>`;
-    last = match.index + match[0].length;
+    if (match[1]) {
+      const tag = normalizeTag(match[1]);
+      html += `<a href="#" class="hashtag text-primary font-semibold" data-tag="${escapeHtml(tag)}">${escapeHtml(match[0])}</a>`;
+      last = match.index + match[0].length;
+    } else {
+      const name = match[2].replace(/\.+$/, ""); // a full stop at the end belongs to the sentence
+      if (name.length < 2) continue;
+      html += `<a href="#" class="mention text-primary font-semibold" data-user="${escapeHtml(name.toLowerCase())}">@${escapeHtml(name)}</a>`;
+      last = match.index + 1 + name.length;
+    }
     if (++count >= 50) break;
   }
   return html + escapeHtml(source.slice(last));

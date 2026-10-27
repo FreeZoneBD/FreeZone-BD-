@@ -421,6 +421,7 @@ async function openProfileByUsername(username) {
   }
 }
 
+window.fzOpenProfile = (uid) => openUserProfile(uid); // lets @mentions in any text open a profile
 async function openUserProfile(uid, { backTo = null } = {}) {
   if (!uid || !currentUser) return;
 
@@ -498,6 +499,7 @@ async function openHashtag(tag) {
       savedPostIds,
       followingIds,
       postActions: postActions(),
+      onOpenProfile: (uid) => openUserProfile(uid),
       tag,
       setTitle: (text) => (pageViewTitle.textContent = text)
     });

@@ -4,7 +4,7 @@ import { fzConfirm } from "./dialog.js";
 import { canSeeAccount, isRequested } from "./privacy.js";
 import { drawQR } from "./qr.js";
 import { db, auth } from "./config.js";
-import { ref as dbRef, update as dbUpdate, increment as dbIncrement } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+import { ref as dbRef, update as dbUpdate, increment as dbIncrement, get as dbGet } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 import { tagLineHtml } from "./tags.js";
 import { shareBase, nativeShare, nativeSaveMedia, saveVideo } from "./app-info.js";
 import { linkifyHashtags } from "./hashtags.js";
@@ -1189,6 +1189,16 @@ export function createPostCard(post, options = {}) {
   article.addEventListener(
     "click",
     (event) => {
+      const mention = event.target.closest(".mention");
+      if (mention) { // @username: open that person's profile (their posts and videos)
+        event.preventDefault();
+        event.stopPropagation();
+        const open = onProfile || window.fzOpenProfile;
+        dbGet(dbRef(db, `usernames/${mention.dataset.user}`))
+          .then((snap) => { if (snap.exists() && typeof snap.val() === "string") open?.(snap.val()); else showToast("This user was not found"); })
+          .catch(() => showToast("Could not open this profile. Try again."));
+        return;
+      }
       const link = event.target.closest(".hashtag");
       if (!link) return;
       event.preventDefault();
@@ -1406,7 +1416,7 @@ export function createPostCard(post, options = {}) {
     // tapping the opened text folds it (links and hashtags keep working)
     postTextEl.addEventListener("click", (event) => {
       if (!expanded) return;
-      if (event.target.closest("a, button, [data-hashtag], [data-tag], .hashtag")) return;
+      if (event.target.closest("a, button, [data-hashtag], [data-tag], .hashtag, .mention")) return;
       event.stopPropagation();
       collapse();
     });

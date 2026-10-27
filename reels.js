@@ -347,19 +347,32 @@ export async function openReels(o) {
       const full = String(post.text);
       const firstLine = full.split("\n")[0];
       const needsMore = full.length > 48 || full.includes("\n");
+      // #tags and @names are light blue (the normal blue is too dark on a video)
+      const rich = (text) => {
+        let last = 0;
+        for (const m of text.matchAll(/(?:^|(?<=[\s(]))(#[\p{L}\p{M}\p{N}_]{2,30}|@[A-Za-z0-9_.]{2,20})/gu)) {
+          if (m.index > last) textEl.append(document.createTextNode(text.slice(last, m.index)));
+          const span = document.createElement("span");
+          span.textContent = m[1]; span.style.cssText = "color:#6db3ff;font-weight:600";
+          textEl.append(span);
+          last = m.index + m[1].length;
+        }
+        if (last < text.length) textEl.append(document.createTextNode(text.slice(last)));
+      };
       const collapsed = () => {
         textEl.textContent = "";
         textEl.style.maxHeight = "";
         textEl.style.overflowY = "";
-        if (!needsMore) { textEl.textContent = full; return; }
-        textEl.append(document.createTextNode(firstLine.slice(0, 48).trimEnd() + "… "));
+        if (!needsMore) { rich(full); return; }
+        rich(firstLine.slice(0, 48).trimEnd() + "… ");
         const more = document.createElement("button");
         more.type = "button"; more.className = "fz-rl-more"; more.textContent = tr("more");
         more.addEventListener("click", (event) => { event.stopPropagation(); expanded(); });
         textEl.append(more);
       };
       const expanded = () => {
-        textEl.textContent = full + " ";
+        textEl.textContent = "";
+        rich(full + " ");
         textEl.style.maxHeight = "38vh";
         textEl.style.overflowY = "auto";
         const less = document.createElement("button");
