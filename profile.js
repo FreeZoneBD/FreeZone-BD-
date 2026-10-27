@@ -521,7 +521,8 @@ export async function mount(container, ctx = {}) {
     readCount(db, `following/${uid}`),
     (async () => {
       try {
-        const snap = await get(ref(db, "posts"));
+        // only this person's posts (the "uid" index), not every post of everyone
+        const snap = await get(query(ref(db, "posts"), orderByChild("uid"), equalTo(uid)));
         const list = [];
         snap.forEach((child) => {
           const post = child.val();
@@ -767,7 +768,7 @@ export async function mount(container, ctx = {}) {
 
   let firstSnapshot = true;
   const unsubscribePosts = onValue(
-    ref(db, "posts"),
+    query(ref(db, "posts"), orderByChild("uid"), equalTo(uid)),
     (snap) => {
       // The profile was closed or re-rendered: stop listening
       if (!tabContent.isConnected) {

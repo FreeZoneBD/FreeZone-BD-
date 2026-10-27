@@ -136,50 +136,37 @@ onAuthStateChanged(auth, async (user) => {
     ? `<img class="w-full h-full object-cover" src="${escapeHtml(currentProfile.photoURL)}" alt="avatar" />`
     : `<svg class="fz-svg" aria-hidden="true"><use href="#i-person"/></svg>`;
 
-  // One-time cleanup of data saved in older versions of the app (safe to run every time)
-  try {
-    const moves = {};
-    const oldSaved = await get(ref(db, `users/${user.uid}/savedPosts`));
-    if (oldSaved.exists()) {
-      Object.entries(oldSaved.val()).forEach(([postId, value]) => {
-        moves[`savedPosts/${user.uid}/${postId}`] = typeof value === "number" ? value : Date.now();
-      });
-      moves[`users/${user.uid}/savedPosts`] = null; // saved posts must stay private
-    }
-    if (profileSnap.exists() && profileSnap.val().email !== undefined) {
-      moves[`users/${user.uid}/email`] = null; // emails must not be readable by other users
-    }
-    if (Object.keys(moves).length) await update(ref(db), moves);
-  } catch (error) {
-    console.warn("Cleanup of old data skipped:", error?.code || error);
-  }
+  // The small lists the feed needs are read ALL AT ONCE (one wait instead of five one after another),
+  // so the first posts appear sooner on a slow connection.
+  const safeGet = (path) => get(ref(db, path)).catch((error) => { console.warn("Could not read " + path + ":", error?.code || error); return null; });
+  const [oldSaved, savedSnap, followingSnap, followersSnap, chatsSnap] = await Promise.all([
+    safeGet(`users/${user.uid}/savedPosts`),
+    safeGet(`savedPosts/${user.uid}`),
+    safeGet(`following/${user.uid}`),
+    safeGet(`followers/${user.uid}`),
+    safeGet(`userChats/${user.uid}`)
+  ]);
 
-  try {
-    const savedSnap = await get(ref(db, `savedPosts/${user.uid}`));
-    savedPostIds = savedSnap.exists() ? savedSnap.val() : {};
-  } catch (error) {
-    console.error("Could not load saved posts:", error);
-    savedPostIds = {};
-  }
+  savedPostIds = savedSnap && savedSnap.exists() ? savedSnap.val() : {};
+  followingIds = followingSnap && followingSnap.exists() ? followingSnap.val() : {};
+  followerIds = followersSnap && followersSnap.exists() ? followersSnap.val() : {};
+  chattedIds = {};
+  if (chatsSnap) chatsSnap.forEach((child) => { const other = child.val() && child.val().with; if (other) chattedIds[other] = true; });
 
-  try {
-    const followingSnap = await get(ref(db, `following/${user.uid}`));
-    followingIds = followingSnap.exists() ? followingSnap.val() : {};
-  } catch (error) {
-    console.error("Could not load following list:", error);
-    followingIds = {};
+  // One-time cleanup of data saved in older versions of the app (safe to run every time). It no longer holds the feed back.
+  const moves = {};
+  if (oldSaved && oldSaved.exists()) {
+    Object.entries(oldSaved.val()).forEach(([postId, value]) => {
+      const when = typeof value === "number" ? value : Date.now();
+      moves[`savedPosts/${user.uid}/${postId}`] = when;
+      if (savedPostIds[postId] === undefined) savedPostIds[postId] = when; // still shown as saved right away
+    });
+    moves[`users/${user.uid}/savedPosts`] = null; // saved posts must stay private
   }
-
-  // For the feed algorithm: who follows me and who I chat with (small reads; the feed works without them)
-  try {
-    const [followersSnap, chatsSnap] = await Promise.all([get(ref(db, `followers/${user.uid}`)), get(ref(db, `userChats/${user.uid}`))]);
-    followerIds = followersSnap.exists() ? followersSnap.val() : {};
-    chattedIds = {};
-    chatsSnap.forEach((child) => { const other = child.val() && child.val().with; if (other) chattedIds[other] = true; });
-  } catch (error) {
-    followerIds = {};
-    chattedIds = {};
+  if (profileSnap.exists() && profileSnap.val().email !== undefined) {
+    moves[`users/${user.uid}/email`] = null; // emails must not be readable by other users
   }
+  if (Object.keys(moves).length) update(ref(db), moves).catch((error) => console.warn("Cleanup of old data skipped:", error?.code || error));
 
   startBlocks({ db, currentUser }); // who I blocked (block.js), before any post is drawn
   startMonetized(db); // the green tick of Creator Program members (monetize.js)
