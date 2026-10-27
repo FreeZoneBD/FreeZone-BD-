@@ -308,7 +308,7 @@ function buildAdCard(ad, media, imageSize) {
         ${avatarHtml(post.photoURL, "w-10 h-10")}
         <div class="min-w-0">
           <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(who)}</div>
-          <div class="font-body-sm text-body-sm text-slate-muted">Sponsored${post.createdAt ? ` · ${escapeHtml(timeAgo(post.createdAt))}` : ""}</div>
+          <div class="font-body-sm text-body-sm text-slate-muted flex items-center gap-1"><span>Ad</span><span aria-hidden="true">·</span><span class="material-symbols-outlined text-[14px]" aria-label="Public">public</span></div>
         </div>
       </div>
       <button type="button" class="fz-ad-hide w-8 h-8 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container active:scale-95 transition-all flex-shrink-0" aria-label="Hide this ad">
@@ -316,7 +316,8 @@ function buildAdCard(ad, media, imageSize) {
       </button>
     </div>
     <div class="fz-ad-open ${ad.canOpen ? "cursor-pointer" : ""}">
-      ${text ? `<p class="fz-ad-text font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-wrap break-words px-4 pt-3" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden;">${escapeHtml(text)}</p>` : ""}
+      ${text ? `<p class="fz-ad-text font-body-md text-body-md text-on-surface leading-relaxed whitespace-pre-wrap break-words px-4 pt-3" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;">${escapeHtml(text)}</p>
+        ${text.length > 120 || text.split("\n").length > 3 ? `<button type="button" class="fz-ad-more block px-4 pt-0.5 font-body-sm text-body-sm text-slate-muted font-semibold">See more</button>` : ""}` : ""}
       ${
         media && imageSize
           ? `<div class="relative mt-3 bg-surface-container"><img src="${escapeHtml(media.url)}" alt="" class="w-full object-cover block" style="aspect-ratio:${ratio};max-height:24rem;" />
@@ -327,10 +328,20 @@ function buildAdCard(ad, media, imageSize) {
       }
     </div>
     <a class="fz-ad-link flex items-center justify-between gap-3 px-4 py-3 ${media || text ? "" : "mt-1"} bg-surface-container-low" href="${escapeHtml(ad.link)}" target="_blank" rel="noopener noreferrer sponsored">
-      <span class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(host)}</span>
-      <span class="flex-shrink-0 px-4 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>
+      <span class="font-body-md text-body-md text-on-surface font-semibold truncate">${escapeHtml(host)}</span>
+      <span class="flex-shrink-0 px-4 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md font-semibold">${escapeHtml(ad.btnText)}</span>
     </a>
   `;
+  const more = card.querySelector(".fz-ad-more");
+  if (more) {
+    more.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const p = card.querySelector(".fz-ad-text");
+      p.style.webkitLineClamp = "unset";
+      p.style.display = "block";
+      more.remove();
+    });
+  }
   return card;
 }
 
