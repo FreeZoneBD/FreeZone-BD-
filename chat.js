@@ -879,7 +879,7 @@ export async function mount(container, ctx = {}) {
         <div class="fz-active"></div>
         <div class="fz-convs -mx-4">${skeletonRows()}</div>
       </div>
-      <button type="button" class="fz-ib-new fixed right-5 z-20 w-12 h-12 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg shadow-primary-container/40 active:scale-90 transition-all" style="bottom:max(1.5rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));" aria-label="New message"><span class="material-symbols-outlined text-[28px]">add_comment</span></button>`;
+      <button type="button" class="fz-ib-new fixed z-20 w-12 h-12 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg shadow-primary-container/40 active:scale-90 transition-all" style="right:max(1.25rem, calc((100vw - 45rem) / 2 + 1.25rem));bottom:max(1.5rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));" aria-label="New message"><span class="material-symbols-outlined text-[28px]">add_comment</span></button>`;
 
     root.querySelector(".fz-ib-back").addEventListener("click", () => ctx.closePage?.());
     root.querySelector(".fz-ib-filter").addEventListener("click", async () => {
