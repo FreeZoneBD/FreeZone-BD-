@@ -288,10 +288,10 @@ function confirmRemoveFollower(user) {
     overlay.innerHTML = `
       <div class="w-full max-w-lg bg-slate-surface rounded-t-3xl sm:rounded-3xl shadow-2xl p-5" role="dialog" aria-modal="true" aria-label="Remove follower">
         <div class="flex items-center gap-3 mb-3">
-          ${avatarHtml(user.photoURL, "w-12 h-12")}
+          ${avatarHtml(user.photoURL, "w-11 h-11")}
           <div class="min-w-0">
             <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(user.name)}</div>
-            ${user.username ? `<div class="font-body-sm text-body-sm text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
+            ${user.username ? `<div class="text-[13px] leading-[18px] text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
           </div>
         </div>
         <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Remove follower?</h2>
@@ -333,7 +333,7 @@ function openRowSheet(user, actions) {
           ${avatarHtml(user.photoURL, "w-11 h-11")}
           <div class="min-w-0">
             <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(user.name)}</div>
-            ${user.username ? `<div class="font-body-sm text-body-sm text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
+            ${user.username ? `<div class="text-[13px] leading-[18px] text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
           </div>
         </div>
         ${actions
@@ -375,8 +375,8 @@ function skeletonRows(count = 6) {
   return Array.from({ length: count })
     .map(
       () => `
-    <div class="flex items-center gap-3 px-4 py-3 bg-slate-surface rounded-2xl border border-slate-border">
-      <div class="skeleton w-12 h-12 rounded-full flex-shrink-0"></div>
+    <div class="flex items-center gap-3 px-4 py-2.5 border-b border-slate-border/60">
+      <div class="skeleton w-11 h-11 rounded-full flex-shrink-0"></div>
       <div class="flex-1 space-y-2">
         <div class="skeleton h-3.5 w-1/2 rounded"></div>
         <div class="skeleton h-3 w-1/3 rounded"></div>
@@ -400,13 +400,13 @@ function emptyState(icon, title, text) {
 
 function followButtonHtml(isFollowing, followsMe, requested = false) {
   if (!isFollowing && requested) {
-    return `<button type="button" class="fz-follow flex-shrink-0 min-w-[84px] px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold active:scale-95 transition-all disabled:opacity-60">Requested</button>`;
+    return `<button type="button" class="fz-follow flex-shrink-0 px-2.5 h-8 text-[14px] text-slate-muted font-semibold active:opacity-60 transition-all disabled:opacity-60">Requested</button>`;
   }
   if (isFollowing) {
-    return `<button type="button" class="fz-follow flex-shrink-0 min-w-[84px] px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold active:scale-95 transition-all disabled:opacity-60">Following</button>`;
+    return `<button type="button" class="fz-follow flex-shrink-0 px-2.5 h-8 text-[14px] text-slate-muted font-semibold active:opacity-60 transition-all disabled:opacity-60">Following</button>`;
   }
   const label = followsMe ? "Follow back" : "Follow";
-  return `<button type="button" class="fz-follow flex-shrink-0 min-w-[84px] px-3.5 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold active:scale-95 transition-all disabled:opacity-60">${label}</button>`;
+  return `<button type="button" class="fz-follow flex-shrink-0 px-2.5 h-8 text-[14px] text-primary font-bold active:opacity-60 transition-all disabled:opacity-60">${label}</button>`;
 }
 
 /* ---------------------------------------------------------------
@@ -436,23 +436,23 @@ export async function mount(container, context = {}) {
 
   container.innerHTML = `
     <div class="fz-friends flex flex-col min-h-full">
-      <div class="sticky top-0 z-10 bg-background px-3 sm:px-4 pt-3 pb-2 space-y-3">
+      <div class="sticky top-0 z-10 bg-background px-4 pt-2 pb-2 space-y-2">
         <div class="fz-searchwrap relative">
           <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-muted pointer-events-none">search</span>
-          <input type="search" class="fz-search w-full bg-slate-surface border border-slate-border focus:border-primary-container focus:ring-2 focus:ring-primary-container/15 rounded-full py-2.5 pl-11 pr-4 text-[16px] outline-none" placeholder="Filter this list by name or @username" autocomplete="off" autocapitalize="none" spellcheck="false" />
+          <input type="search" class="fz-search w-full bg-surface-container border-0 focus:ring-2 focus:ring-primary-container/20 rounded-full py-2 pl-11 pr-4 text-[15px] outline-none" placeholder="Filter this list by name or @username" autocomplete="off" autocapitalize="none" spellcheck="false" />
           <button type="button" class="fz-qr absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full items-center justify-center text-primary hover:bg-surface-container active:scale-95 transition-all" style="display:none" aria-label="Find by QR code" title="Find by QR code">
             <span class="material-symbols-outlined text-[22px]">qr_code_scanner</span>
           </button>
           <input type="file" accept="image/*" class="fz-qr-file" style="display:none" />
         </div>
-        <div class="fz-tabs flex gap-2 overflow-x-auto -mx-3 px-3 pb-1" style="scrollbar-width:none;">
+        <div class="fz-tabs flex gap-2 overflow-x-auto -mx-4 px-4 pb-1" style="scrollbar-width:none;">
           <button type="button" class="fz-tab" data-tab="suggestions">Suggested</button>
           <button type="button" class="fz-tab" data-tab="followers">Followers <span class="fz-count opacity-80" data-count="followers"></span></button>
           <button type="button" class="fz-tab" data-tab="following">Following <span class="fz-count opacity-80" data-count="following"></span></button>
           <button type="button" class="fz-tab" data-tab="find">Find</button>
         </div>
       </div>
-      <div class="fz-list px-3 sm:px-4 pt-1 pb-10 space-y-2.5">${skeletonRows()}</div>
+      <div class="fz-list pt-0 pb-10">${skeletonRows()}</div>
     </div>
   `;
 
@@ -469,8 +469,8 @@ export async function mount(container, context = {}) {
     container.querySelectorAll(".fz-tab").forEach((btn) => {
       const on = btn.dataset.tab === activeTab;
       btn.className =
-        "fz-tab flex-shrink-0 px-4 py-2 rounded-full font-label-lg text-label-lg font-semibold whitespace-nowrap border transition-all " +
-        (on ? "bg-primary-container text-white border-transparent" : "bg-slate-surface text-on-surface border-slate-border");
+        "fz-tab flex-shrink-0 px-3.5 h-8 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all " +
+        (on ? "bg-primary-container text-white" : "bg-surface-container text-on-surface");
     });
     Object.values(tabs).forEach((tab) => {
       const el = container.querySelector(`.fz-count[data-count="${tab.key}"]`);
@@ -484,11 +484,11 @@ export async function mount(container, context = {}) {
   };
 
   const rowHtml = (user) => `
-    <div class="fz-row flex items-center gap-3 pl-4 pr-2 py-3 bg-slate-surface rounded-2xl border border-slate-border active:bg-surface-container-low cursor-pointer" data-uid="${escapeHtml(user.uid)}">
-      ${avatarHtml(user.photoURL, "w-12 h-12")}
+    <div class="fz-row flex items-center gap-3 pl-4 pr-1 py-2.5 border-b border-slate-border/60 active:bg-surface-container-low cursor-pointer" data-uid="${escapeHtml(user.uid)}">
+      ${avatarHtml(user.photoURL, "w-11 h-11")}
       <div class="min-w-0 flex-1">
-        <div class="font-label-lg text-label-lg text-on-surface truncate" data-tick-uid="${escapeHtml(user.uid)}">${escapeHtml(user.name)}</div>
-        ${user.username ? `<div class="font-body-sm text-body-sm text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
+        <div class="text-[15px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(user.uid)}">${escapeHtml(user.name)}</div>
+        ${user.username ? `<div class="text-[13px] leading-[18px] text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
       </div>
       ${followButtonHtml(!!followingIds[user.uid], followsMe(user.uid), isRequested(user.uid))}
       <button type="button" class="fz-menu-open flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container" aria-label="More options">
@@ -497,12 +497,12 @@ export async function mount(container, context = {}) {
     </div>`;
 
   const suggestRowHtml = (user) => `
-    <div class="fz-row flex items-center gap-3 pl-4 pr-2 py-3 bg-slate-surface rounded-2xl border border-slate-border active:bg-surface-container-low cursor-pointer" data-uid="${escapeHtml(user.uid)}">
-      ${avatarHtml(user.photoURL, "w-12 h-12")}
+    <div class="fz-row flex items-center gap-3 pl-4 pr-1 py-2.5 border-b border-slate-border/60 active:bg-surface-container-low cursor-pointer" data-uid="${escapeHtml(user.uid)}">
+      ${avatarHtml(user.photoURL, "w-11 h-11")}
       <div class="min-w-0 flex-1">
-        <div class="font-label-lg text-label-lg text-on-surface truncate" data-tick-uid="${escapeHtml(user.uid)}">${escapeHtml(user.name)}</div>
-        ${user.username ? `<div class="font-body-sm text-body-sm text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
-        <div class="font-body-sm text-body-sm text-primary/80 truncate">${escapeHtml(user.reason)}</div>
+        <div class="text-[15px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(user.uid)}">${escapeHtml(user.name)}</div>
+        ${user.username ? `<div class="text-[13px] leading-[18px] text-slate-muted truncate">@${escapeHtml(user.username)}</div>` : ""}
+        <div class="text-[13px] leading-[18px] text-slate-muted truncate">${escapeHtml(user.reason)}</div>
       </div>
       ${followButtonHtml(!!followingIds[user.uid], followsMe(user.uid), isRequested(user.uid))}
       <button type="button" class="fz-dismiss flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-slate-subtle hover:bg-surface-container" aria-label="Remove suggestion">
@@ -526,8 +526,8 @@ export async function mount(container, context = {}) {
         `<div class="text-center"><button type="button" class="fz-refresh px-5 py-2 rounded-full bg-surface-container text-on-surface font-label-md text-label-md font-semibold">Refresh</button></div>`;
     } else {
       listEl.innerHTML =
-        `<div class="flex items-center justify-between px-1 pb-1">
-           <h3 class="font-label-lg text-label-lg text-on-surface">People you may know</h3>
+        `<div class="flex items-center justify-between px-4 pt-2 pb-1">
+           <h3 class="text-[13px] text-slate-muted">People you may know</h3>
            <button type="button" class="fz-refresh flex items-center gap-1 text-primary font-label-md text-label-md font-semibold">
              <span class="material-symbols-outlined text-[18px]">refresh</span> Refresh
            </button>

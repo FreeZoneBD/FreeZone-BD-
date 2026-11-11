@@ -63,7 +63,8 @@ async function readUser(db, uid) {
     const user = snap.exists()
       ? { uid, name: snap.val().name || "FreeZone User", username: snap.val().username || "", photoURL: snap.val().photoURL || "" }
       : null;
-    userCache.set(uid, user);
+    // An empty answer is not remembered, so the next try asks again
+    if (user && snap.val().name) userCache.set(uid, user);
     return user;
   } catch (error) {
     return null;
@@ -98,7 +99,7 @@ function skeletonRows(count = 5) {
   return Array.from({ length: count })
     .map(
       () => `
-    <div class="flex items-center gap-3 px-4 py-3 bg-slate-surface rounded-2xl border border-slate-border">
+    <div class="flex items-center gap-3 px-4 py-2.5">
       <div class="skeleton w-12 h-12 rounded-full flex-shrink-0"></div>
       <div class="flex-1 space-y-2">
         <div class="skeleton h-3.5 w-1/2 rounded"></div>
@@ -864,21 +865,21 @@ export async function mount(container, ctx = {}) {
     ctx.setHeader?.(false); // the inbox draws its own header
 
     root.innerHTML = `
-      <div class="fz-inbox-head sticky top-0 z-10 bg-background grid grid-cols-[96px_1fr_96px] items-center px-3 h-14 border-b border-slate-border/60">
+      <div class="fz-inbox-head sticky top-0 z-10 bg-background grid grid-cols-[96px_1fr_96px] items-center px-3 h-12 border-b border-slate-border/60">
         <button type="button" class="fz-ib-back w-10 h-10 -ml-1 rounded-full flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all" aria-label="Back"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button>
         <h1 class="text-center font-headline-sm text-headline-sm font-bold">Chat</h1>
         <button type="button" class="fz-ib-filter justify-self-end h-9 pl-3.5 pr-2 rounded-full border border-slate-border flex items-center gap-0.5 text-[15px] active:scale-95 transition-all" aria-label="Filter chats"><span class="fz-ib-filter-label">${inboxFilter === "unread" ? "Unread" : "All"}</span><span class="material-symbols-outlined text-[20px]">expand_more</span></button>
       </div>
-      <div class="px-4 pt-3 pb-24 space-y-2">
-        <div class="fz-inbox-search flex items-center gap-2 bg-surface-container-low rounded-full px-4 border border-transparent focus-within:border-primary-container focus-within:ring-2 focus-within:ring-primary-container/15 transition-all">
-          <span class="material-symbols-outlined text-[22px] text-slate-subtle">search</span>
-          <input class="fz-inbox-q flex-1 min-w-0 bg-transparent py-3 text-[16px] outline-none" type="search" maxlength="60" placeholder="Search" autocomplete="off" />
+      <div class="px-4 pt-2 pb-24 space-y-1">
+        <div class="fz-inbox-search flex items-center gap-2 bg-surface-container rounded-full px-3.5 focus-within:ring-2 focus-within:ring-primary-container/20 transition-all">
+          <span class="material-symbols-outlined text-[20px] text-slate-subtle">search</span>
+          <input class="fz-inbox-q flex-1 min-w-0 bg-transparent py-2 text-[15px] outline-none" type="search" maxlength="60" placeholder="Search" autocomplete="off" />
           <button type="button" class="fz-inbox-x w-7 h-7 rounded-full items-center justify-center text-slate-subtle hover:bg-surface-container" aria-label="Clear" style="display:none"><span class="material-symbols-outlined text-[18px] pointer-events-none">close</span></button>
         </div>
         <div class="fz-active"></div>
         <div class="fz-convs -mx-4">${skeletonRows()}</div>
       </div>
-      <button type="button" class="fz-ib-new fixed right-5 z-20 w-14 h-14 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg shadow-primary-container/40 active:scale-90 transition-all" style="bottom:max(1.5rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));" aria-label="New message"><span class="material-symbols-outlined text-[28px]">add_comment</span></button>`;
+      <button type="button" class="fz-ib-new fixed right-5 z-20 w-12 h-12 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg shadow-primary-container/40 active:scale-90 transition-all" style="bottom:max(1.5rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)));" aria-label="New message"><span class="material-symbols-outlined text-[28px]">add_comment</span></button>`;
 
     root.querySelector(".fz-ib-back").addEventListener("click", () => ctx.closePage?.());
     root.querySelector(".fz-ib-filter").addEventListener("click", async () => {
@@ -979,15 +980,15 @@ export async function mount(container, ctx = {}) {
           const user = item.user || { name: "FreeZone User", username: "", photoURL: "" };
           const unread = Number(item.unread) || 0;
           return `
-          <div role="button" tabindex="0" class="fz-conv w-full flex items-center gap-3 pl-4 pr-2 py-3 active:bg-surface-container-low text-left cursor-pointer" data-uid="${escapeHtml(item.with)}">
-            ${avatarWithStatus(user.photoURL, "w-14 h-14", isOnline(item.with), "w-4 h-4")}
+          <div role="button" tabindex="0" class="fz-conv w-full flex items-center gap-3 pl-4 pr-1 py-2 active:bg-surface-container-low text-left cursor-pointer" data-uid="${escapeHtml(item.with)}">
+            ${avatarWithStatus(user.photoURL, "w-12 h-12", isOnline(item.with), "w-3.5 h-3.5")}
             <div class="min-w-0 flex-1">
               <div class="flex items-baseline justify-between gap-2">
-                <span class="text-[16px] text-on-surface truncate ${unread ? "font-bold" : "font-semibold"}" data-tick-uid="${escapeHtml(item.with)}">${escapeHtml(user.name)}</span>
+                <span class="text-[15px] text-on-surface truncate ${unread ? "font-bold" : "font-semibold"}" data-tick-uid="${escapeHtml(item.with)}">${escapeHtml(user.name)}</span>
                 <span class="flex-shrink-0 text-[12px] ${unread ? "text-primary font-semibold" : "text-slate-subtle"}">${inboxTime(Number(item.lastAt))}</span>
               </div>
               <div class="flex items-center justify-between gap-2 mt-0.5">
-                <span class="text-[15px] truncate ${unread ? "text-on-surface font-medium" : "text-slate-muted"}">${item.lastFrom === me ? "You: " : ""}${escapeHtml(item.lastMessage)}</span>
+                <span class="text-[13.5px] truncate ${unread ? "text-on-surface font-medium" : "text-slate-muted"}">${item.lastFrom === me ? "You: " : ""}${escapeHtml(item.lastMessage)}</span>
                 ${unread ? `<span class="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary-container text-white text-[11px] font-bold flex items-center justify-center">${unread > 99 ? "99+" : unread}</span>` : ""}
               </div>
             </div>
@@ -1040,6 +1041,18 @@ export async function mount(container, ctx = {}) {
         items = list;
         loaded = true;
         paintConversations();
+
+        // Someone's info came back empty: ask again a few times (3s, 7s, 12s) and repaint
+        const missing = () => list.filter((item) => !item.user || !item.user.name || item.user.name === "FreeZone User");
+        [3000, 7000, 12000].forEach((wait) => {
+          setTimeout(async () => {
+            if (stale(token) || items !== list) return;
+            const todo = missing();
+            if (!todo.length) return;
+            await Promise.all(todo.map(async (item) => { const u = await readUser(db, item.with); if (u) item.user = u; }));
+            if (!stale(token) && items === list) paintConversations();
+          }, wait);
+        });
       },
       (error) => {
         console.error("Chat inbox:", error);

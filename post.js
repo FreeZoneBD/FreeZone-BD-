@@ -947,6 +947,16 @@ function ensureGlobalMenuCloser() {
 const TEXT_SEE_MORE = "আরও দেখুন";
 const textViewAllComments = (count) => `সব ${count}টি কমেন্ট দেখুন`;
 
+// Reactions made in the main FreeZone BD app are stored as words in post.likes (true = the heart). Lite shows them, it does not make them.
+const REACTION_EMOJI = { like: "👍", haha: "😆", wow: "😮", sad: "😢", angry: "😡" };
+function reactionSummary(likes) {
+  if (!likes || typeof likes !== "object") return "";
+  const counts = {};
+  for (const v of Object.values(likes)) if (typeof v === "string" && REACTION_EMOJI[v]) counts[v] = (counts[v] || 0) + 1;
+  const top = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 3);
+  return top.length ? `<span class="like-emojis text-[13px] leading-none -ml-0.5" aria-hidden="true">${top.map((k) => REACTION_EMOJI[k]).join("")}</span>` : "";
+}
+
 const CARD_ICONS = {
   heart: `<svg class="like-svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.6 8.2 3.4 5 6.6 5c2 0 3.6 1.2 5.4 3.3C13.8 6.2 15.4 5 17.4 5c3.2 0 5 3.2 3.9 6.3-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>`,
   comment: `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 20.5l1.6-5A8.5 8.5 0 1 1 21 11.5z"/></svg>`,
@@ -1033,7 +1043,7 @@ export function createPostCard(post, options = {}) {
                 : ""
             }
           </div>
-          <div class="text-slate-muted text-[13px] leading-[18px] truncate">${post.username ? `@${escapeHtml(post.username)} · ` : ""}${timeAgo(post.createdAt)}${post.editedAt ? " · edited" : ""}${post.audience === "followers" ? ` · <span class="material-symbols-outlined text-[13px] align-[-2px]" title="Followers only">group</span>` : post.audience === "me" ? ` · <span class="material-symbols-outlined text-[13px] align-[-2px]" title="Only me">lock</span>` : ""}</div>${tagLineHtml(post, escapeHtml)}
+          <div class="text-slate-muted text-[13px] leading-[18px] truncate">${post.username ? `@${escapeHtml(post.username)} · ` : ""}${timeAgo(post.createdAt)}${post.editedAt ? " · edited" : ""}${post.audience === "followers" ? ` · <span class="material-symbols-outlined text-[13px] align-[-2px]" title="Followers only">group</span>` : post.audience === "me" ? ` · <span class="material-symbols-outlined text-[13px] align-[-2px]" title="Only me">lock</span>` : ` · <span class="material-symbols-outlined text-[13px] align-[-2px]" title="Public">public</span>`}</div>${tagLineHtml(post, escapeHtml)}
         </div>
       </div>
 
@@ -1122,7 +1132,7 @@ export function createPostCard(post, options = {}) {
 
     <div class="flex items-center px-2 pt-1">
       <button type="button" class="like-btn ${ACT_BTN} ${likedByMe ? "text-notification-rose liked" : ""}" aria-label="Like" aria-pressed="${likedByMe}">
-        ${CARD_ICONS.heart}<span class="like-count">${compactCount(likesCount)}</span>
+        ${CARD_ICONS.heart}${reactionSummary(post.likes)}<span class="like-count">${compactCount(likesCount)}</span>
       </button>
       <button type="button" class="comment-btn ${ACT_BTN}" aria-label="Comments">
         ${CARD_ICONS.comment}<span>${compactCount(commentsCount)}</span>

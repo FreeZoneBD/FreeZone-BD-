@@ -93,10 +93,10 @@ function showAds(container, placement, context = {}) {
 
 function bigAvatar(photoURL) {
   if (photoURL) {
-    return `<img class="w-24 h-24 rounded-full object-cover" src="${escapeHtml(photoURL)}" alt="avatar" />`;
+    return `<img class="w-20 h-20 min-[360px]:w-24 min-[360px]:h-24 rounded-full object-cover ring-4 ring-background" src="${escapeHtml(photoURL)}" alt="avatar" />`;
   }
-  return `<div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary-fixed to-secondary-container flex items-center justify-center">
-    <span class="material-symbols-outlined text-primary text-[48px]">person</span>
+  return `<div class="w-20 h-20 min-[360px]:w-24 min-[360px]:h-24 rounded-full ring-4 ring-background bg-gradient-to-br from-primary-fixed to-secondary-container flex items-center justify-center">
+    <span class="material-symbols-outlined text-primary text-[40px] min-[360px]:text-[48px]">person</span>
   </div>`;
 }
 
@@ -117,17 +117,11 @@ function aboutHtml(user) {
 }
 
 function statButton(label, value, cls, list) {
-  return `<button type="button" class="stat-btn text-left active:opacity-60 transition-opacity" data-list="${list}" aria-label="Show ${label.toLowerCase()}">
-    <div class="${cls} text-[22px] leading-7 font-bold text-on-surface">${value}</div>
-    <div class="text-[15px] leading-5 text-slate-muted">${label}</div>
-  </button>`;
+  return `<button type="button" class="stat-btn text-left py-1 active:opacity-60 transition-opacity" data-list="${list}" aria-label="Show ${label.toLowerCase()}"><span class="${cls} text-[15px] font-extrabold text-on-surface">${value}</span> <span class="text-[13.5px] text-slate-muted">${label}</span></button>`;
 }
 
 function stat(label, value, cls) {
-  return `<div class="text-left">
-    <div class="${cls} text-[22px] leading-7 font-bold text-on-surface">${value}</div>
-    <div class="text-[15px] leading-5 text-slate-muted">${label}</div>
-  </div>`;
+  return `<div class="text-left py-1"><span class="${cls} text-[15px] font-extrabold text-on-surface">${value}</span> <span class="text-[13.5px] text-slate-muted">${label}</span></div>`;
 }
 
 async function readCount(db, path) {
@@ -546,6 +540,8 @@ export async function mount(container, ctx = {}) {
   const locked = !isMe && !blocked && user.isPrivate === true && !followingNow;
 
   const hasPhoto = typeof user.photoURL === "string" && user.photoURL.startsWith("https://");
+  // The cover photo is only SHOWN here (FreeZone Lite): it is set in the main FreeZone BD app, never uploaded from this one
+  const hasBanner = typeof user.bannerURL === "string" && user.bannerURL.startsWith("https://");
 
   ctx.setHeader?.(false); // the profile draws its own header
   ctx.setActions?.([]);
@@ -553,33 +549,22 @@ export async function mount(container, ctx = {}) {
   const compact = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : String(n));
 
   container.innerHTML = `
-    <div class="pf-top sticky top-0 z-10 bg-background flex items-center h-11 px-2 gap-1 flex-shrink-0">
+    <style>.pf-over .pf-back,.pf-over .pf-act{background:rgba(0,0,0,.42);color:#fff}</style>
+    <div class="pf-top sticky top-0 z-10 pf-over -mb-11 flex items-center h-11 px-2 gap-1 flex-shrink-0">
       <button type="button" class="pf-back w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all" aria-label="Back"><span class="material-symbols-outlined text-[26px]">arrow_back</span></button>
       <span class="pf-top-title flex-1 min-w-0 truncate text-[17px] leading-6 font-semibold text-on-surface px-1 transition-opacity duration-150 opacity-0 pointer-events-none">${escapeHtml(name)}</span>
       <div class="pf-top-actions flex items-center gap-0.5"></div>
     </div>
+    <div class="pf-banner flex-shrink-0 w-full bg-surface-container" style="aspect-ratio:3/1;background-image:linear-gradient(135deg,var(--pf-c1,#3b5bdb),var(--pf-c2,#9c36b5));">${hasBanner ? `<img class="w-full h-full object-cover block" src="${escapeHtml(user.bannerURL)}" alt="" loading="lazy" onerror="this.remove()" />` : ""}</div>
 
-    <div class="px-5 pt-1 pb-3 bg-background flex-shrink-0">
-      <div class="flex items-start gap-4 text-left">
-        <div class="min-w-0 flex-1 pt-3">
-          ${
-            isMe
-              ? `<button type="button" class="pf-switch max-w-full flex items-center gap-0.5 text-left active:opacity-70" aria-label="Switch account"><h2 data-tick-uid="${escapeHtml(uid)}" class="text-[26px] leading-8 font-bold text-on-surface break-words min-w-0">${escapeHtml(name)}</h2><span class="material-symbols-outlined text-[28px] text-on-surface flex-shrink-0">expand_more</span></button>`
-              : `<h2 data-tick-uid="${escapeHtml(uid)}" class="text-[26px] leading-8 font-bold text-on-surface break-words">${escapeHtml(name)}</h2>`
-          }
-          ${user.username ? `<p class="text-[17px] text-slate-muted mt-0.5">@${escapeHtml(user.username)}</p>` : ""}
-          <div class="flex items-start gap-7 mt-5">
-            ${blocked ? stat("Following", following ?? "–", "following-count") : statButton("Following", following ?? "–", "following-count", "following")}
-            ${blocked ? stat("Followers", followersCount ?? "–", "followers-count") : statButton("Followers", followersCount ?? "–", "followers-count", "followers")}
-            ${stat("Likes", compact(likesTotal), "likes-total")}
-          </div>
-        </div>
+    <div class="px-4 pb-3 bg-background flex-shrink-0">
+      <div class="flex items-end justify-between gap-3 text-left" style="margin-top:-40px;">
         ${
           isMe
             ? `<div class="relative flex-shrink-0">
                  <button type="button" class="change-photo block rounded-full active:scale-95 transition-transform" aria-label="Change profile photo">${bigAvatar(user.photoURL)}</button>
-                 <span class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary-container text-white ring-2 ring-background flex items-center justify-center pointer-events-none">
-                   <span class="material-symbols-outlined text-[20px]">add</span>
+                 <span class="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-primary-container text-white ring-2 ring-background flex items-center justify-center pointer-events-none">
+                   <span class="material-symbols-outlined text-[16px]">add</span>
                  </span>
                  <div class="photo-loading absolute inset-0 rounded-full bg-black/50 text-white text-xs font-semibold flex items-center justify-center" hidden>Uploading...</div>
                  <input type="file" class="photo-input" accept="image/*" hidden />
@@ -588,6 +573,28 @@ export async function mount(container, ctx = {}) {
               ? `<button type="button" class="view-photo flex-shrink-0 block rounded-full active:scale-95 transition-transform" aria-label="View profile photo">${bigAvatar(user.photoURL)}</button>`
               : `<div class="flex-shrink-0">${bigAvatar(user.photoURL)}</div>`
         }
+        ${!isMe && !blocked ? `<div class="flex gap-2 pb-1 flex-shrink-0">
+               <button type="button" class="follow-toggle px-5 h-9 rounded-full font-label-lg text-label-lg font-semibold active:scale-95 transition-all"></button>
+               ${
+                 ctx.onOpenChat
+                   ? `<button type="button" class="message-btn px-4 h-9 rounded-full font-label-lg text-label-lg font-semibold bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">chat_bubble</span> Message
+                      </button>`
+                   : ""
+               }
+               <button type="button" class="share-profile flex-shrink-0 w-9 h-9 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center" aria-label="Share profile">
+                 <span class="material-symbols-outlined text-[18px]">share</span>
+               </button>
+             </div>` : ""}
+      </div>
+
+      <div class="mt-2 min-w-0">
+        ${
+          isMe
+            ? `<button type="button" class="pf-switch max-w-full flex items-center gap-0.5 text-left active:opacity-70" aria-label="Switch account"><h2 data-tick-uid="${escapeHtml(uid)}" class="text-[21px] leading-7 font-bold text-on-surface break-words min-w-0">${escapeHtml(name)}</h2><span class="material-symbols-outlined text-[22px] text-on-surface flex-shrink-0">expand_more</span></button>`
+            : `<h2 data-tick-uid="${escapeHtml(uid)}" class="text-[21px] leading-7 font-bold text-on-surface break-words">${escapeHtml(name)}</h2>`
+        }
+        ${user.username ? `<p class="text-[14px] text-slate-muted">@${escapeHtml(user.username)}</p>` : ""}
       </div>
 
       ${
@@ -599,6 +606,11 @@ export async function mount(container, ctx = {}) {
       }
       ${!isMe && !blocked && (ctx.followingIds || {})[uid] ? `<p class="presence-line flex items-center gap-1.5 mt-2 text-[14px] text-slate-muted" style="display:none"></p>` : ""}
       ${aboutHtml(user)}
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1 mt-2.5">
+        ${blocked ? stat("Following", following ?? "–", "following-count") : statButton("Following", following ?? "–", "following-count", "following")}
+        ${blocked ? stat("Followers", followersCount ?? "–", "followers-count") : statButton("Followers", followersCount ?? "–", "followers-count", "followers")}
+        ${stat("Likes", compact(likesTotal), "likes-total")}
+      </div>
       ${!isMe && !blocked ? `<button type="button" class="common-followers mt-3 w-full items-center gap-2.5 text-left active:opacity-70" style="display:none"></button>` : ""}
 
       ${
@@ -609,19 +621,7 @@ export async function mount(container, ctx = {}) {
                  <p class="font-body-md text-body-md text-on-surface-variant mb-2.5">You blocked ${escapeHtml(handle)}.</p>
                  <button type="button" class="unblock-btn px-6 py-2 rounded-full bg-primary-container text-white font-label-md text-label-md font-semibold active:scale-95 transition-all disabled:opacity-60">Unblock</button>
                </div>`
-            : `<div class="flex gap-2 mt-4">
-               <button type="button" class="follow-toggle flex-1 py-2.5 rounded-xl font-label-lg text-label-lg font-semibold active:scale-95 transition-all"></button>
-               ${
-                 ctx.onOpenChat
-                   ? `<button type="button" class="message-btn flex-1 py-2.5 rounded-xl font-label-lg text-label-lg font-semibold bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">chat_bubble</span> Message
-                      </button>`
-                   : ""
-               }
-               <button type="button" class="share-profile flex-shrink-0 w-11 py-2.5 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center" aria-label="Share profile">
-                 <span class="material-symbols-outlined text-[20px]">share</span>
-               </button>
-             </div>`
+            : ""
       }
     </div>
 
@@ -629,16 +629,16 @@ export async function mount(container, ctx = {}) {
       ${
         locked
           ? `<div class="fz-private-lock mt-4 text-center py-12 px-6 bg-slate-surface border border-slate-border rounded-2xl">
-               <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[30px] text-slate-muted">lock</span></div>
+               <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[26px] text-slate-muted">lock</span></div>
                <p class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-1">This account is private</p>
                <p class="font-body-md text-body-md text-slate-muted">Follow ${escapeHtml(handle)} to see their posts and photos. They need to approve your request first.</p>
              </div>`
           : !blocked
           ? `<div class="pf-tabs flex border-b border-slate-border -mx-3 sm:-mx-4 sticky z-[5] bg-background" style="top:44px;">
-               <button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="posts" aria-label="Posts"><span class="material-symbols-outlined text-[26px]">grid_view</span><span class="tab-n hidden"></span></button>
-               <button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="photos" aria-label="Photos"><span class="material-symbols-outlined text-[26px]">photo_library</span><span class="tab-n hidden"></span></button>
-               <button type="button" data-feature="profileVideos" data-feature-ready class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="videos" aria-label="Videos"><span class="material-symbols-outlined text-[26px]">videocam</span><span class="tab-n hidden"></span></button>
-               ${isMe ? `<button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="saved" aria-label="Saved"><span class="material-symbols-outlined text-[26px]">bookmark</span><span class="tab-n hidden"></span></button>` : ""}
+               <button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="posts" aria-label="Posts"><span class="material-symbols-outlined text-[22px]">grid_view</span><span class="tab-n hidden"></span></button>
+               <button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="photos" aria-label="Photos"><span class="material-symbols-outlined text-[22px]">photo_library</span><span class="tab-n hidden"></span></button>
+               <button type="button" data-feature="profileVideos" data-feature-ready class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="videos" aria-label="Videos"><span class="material-symbols-outlined text-[22px]">videocam</span><span class="tab-n hidden"></span></button>
+               ${isMe ? `<button type="button" class="tab-btn flex-1 py-2 flex items-center justify-center" data-tab="saved" aria-label="Saved"><span class="material-symbols-outlined text-[22px]">bookmark</span><span class="tab-n hidden"></span></button>` : ""}
              </div>`
           : `<h3 class="font-label-lg text-label-lg text-on-surface px-1 pt-4 pb-2">Posts</h3>`
       }
@@ -654,6 +654,14 @@ export async function mount(container, ctx = {}) {
     const nameEl = container.querySelector("h2");
     const syncTop = () => {
       if (topEl && tabsEl) tabsEl.style.top = topEl.getBoundingClientRect().height + "px";
+      // With a banner the buttons float on it; once it scrolls away the bar turns solid
+      const bannerEl = container.querySelector(".pf-banner");
+      if (topEl && !bannerEl && topEl.classList.contains("-mb-11")) { topEl.classList.remove("-mb-11", "pf-over"); topEl.classList.add("bg-background"); }
+      if (topEl && bannerEl) {
+        const over = bannerEl.getBoundingClientRect().bottom > topEl.getBoundingClientRect().bottom;
+        topEl.classList.toggle("pf-over", over);
+        topEl.classList.toggle("bg-background", !over);
+      }
       if (topEl && titleEl && nameEl) {
         const show = nameEl.getBoundingClientRect().bottom < topEl.getBoundingClientRect().bottom + 4;
         titleEl.style.opacity = show ? "1" : "0";
@@ -1158,7 +1166,7 @@ export async function mount(container, ctx = {}) {
     const requestedNow = !followingNow && isRequested(uid);
     followBtn.textContent = followingNow ? "Following" : requestedNow ? "Requested" : "Follow";
     followBtn.className =
-      "follow-toggle flex-1 py-2.5 rounded-xl font-label-lg text-label-lg font-semibold active:scale-95 transition-all " +
+      "follow-toggle px-5 h-9 rounded-full font-label-lg text-label-lg font-semibold active:scale-95 transition-all " +
       (followingNow || requestedNow
         ? "bg-surface-container text-on-surface hover:bg-surface-container-high"
         : "bg-primary-container text-white");

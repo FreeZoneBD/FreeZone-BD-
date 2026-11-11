@@ -6,7 +6,8 @@ const bar = (w, h = "h-3.5") => `<div class="skeleton ${h} ${w} rounded"></div>`
 // Profile page: photo, name, numbers, tabs and a grid of pictures
 export function profileSkeleton() {
   return `
-    <div class="px-5 pt-4 pb-3" role="status" aria-label="Loading profile">
+    <div class="skeleton w-full" style="aspect-ratio:3/1;" role="status" aria-label="Loading profile"></div>
+    <div class="px-5 pt-4 pb-3">
       <div class="flex items-start gap-4">
         <div class="min-w-0 flex-1 pt-3 space-y-3">
           ${bar("w-44", "h-7")}
@@ -15,7 +16,7 @@ export function profileSkeleton() {
             ${[0, 1, 2].map(() => `<div class="space-y-1.5">${bar("w-9", "h-5")}${bar("w-14", "h-3")}</div>`).join("")}
           </div>
         </div>
-        <div class="skeleton w-[104px] h-[104px] rounded-full flex-shrink-0"></div>
+        <div class="skeleton w-20 h-20 min-[360px]:w-24 min-[360px]:h-24 rounded-full flex-shrink-0"></div>
       </div>
       <div class="mt-4 space-y-2">${bar("w-full")}${bar("w-4/5")}</div>
       <div class="flex gap-3 mt-4">

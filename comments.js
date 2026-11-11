@@ -294,6 +294,19 @@ export function mountComments(o) {
           await remove(ref(db, `posts/${postId}/comments/${cid}`));
           await update(ref(db, `posts/${postId}`), { commentsCount: increment(-1) });
         }
+        // Also take the notification away (silent: the rules let only sender or receiver delete it)
+        const gone = [];
+        if (rid) {
+          const parent = comments.find((c) => c.id === cid);
+          [parent && parent.uid, item.replyToUid].filter(Boolean).forEach((u) => gone.push(`notifications/${u}/reply_${rid}`));
+        } else {
+          if (postOwnerUid) gone.push(`notifications/${postOwnerUid}/comment_${cid}`);
+          Object.entries(item.replies || {}).forEach(([k, r]) => {
+            if (item.uid) gone.push(`notifications/${item.uid}/reply_${k}`);
+            if (r && r.replyToUid) gone.push(`notifications/${r.replyToUid}/reply_${k}`);
+          });
+        }
+        gone.forEach((p) => remove(ref(db, p)).catch(() => {}));
         if (replyTo && replyTo.cid === cid && !rid) setReply(null);
       } catch (error) {
         console.error("Delete comment:", error);

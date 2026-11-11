@@ -101,25 +101,25 @@ async function searchPeople(db, raw, me) {
 
 /* Small html pieces */
 const followClass = (on, requested, wide) =>
-  `fz-s-follow flex-shrink-0 ${wide ? "w-full" : "min-w-[92px]"} h-9 px-4 rounded-full text-[14px] font-semibold active:scale-95 transition-all disabled:opacity-60 ${
-    on || requested ? "bg-surface-container text-on-surface" : "bg-primary-container text-white"
+  `fz-s-follow flex-shrink-0 h-8 px-2.5 text-[14px] active:opacity-60 transition-all disabled:opacity-60 ${
+    on || requested ? "text-slate-muted font-semibold" : "text-primary font-bold"
   }`;
 const followLabel = (on, requested) => (requested && !on ? "Requested" : on ? "Following" : "Follow");
 const followBtn = (on, requested, wide = false) => `<button type="button" class="${followClass(on, requested, wide)}">${followLabel(on, requested)}</button>`;
 
 const personRow = (p, following) => `
-  <div class="fz-s-person flex items-center gap-3 px-4 py-2.5 cursor-pointer active:bg-surface-container-low transition-colors" data-uid="${escapeHtml(p.uid)}">
-    ${avatarHtml(p.photoURL, "w-14 h-14")}
+  <div class="fz-s-person flex items-center gap-3 pl-4 pr-1.5 py-2.5 border-b border-slate-border/60 cursor-pointer active:bg-surface-container-low transition-colors" data-uid="${escapeHtml(p.uid)}">
+    ${avatarHtml(p.photoURL, "w-12 h-12")}
     <div class="min-w-0 flex-1">
-      <div class="text-[16px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(p.uid)}">${escapeHtml(p.name)}</div>
-      <div class="text-[14px] leading-5 text-slate-muted truncate">${p.username ? "@" + escapeHtml(p.username) : ""}${p.place ? `${p.username ? " · " : ""}${escapeHtml(p.place)}` : ""}</div>
+      <div class="text-[15px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(p.uid)}">${escapeHtml(p.name)}</div>
+      <div class="text-[13px] leading-[18px] text-slate-muted truncate">${p.username ? "@" + escapeHtml(p.username) : ""}${p.place ? `${p.username ? " · " : ""}${escapeHtml(p.place)}` : ""}</div>
       ${p.bio ? `<div class="text-[13px] leading-4 text-slate-muted truncate mt-0.5">${escapeHtml(String(p.bio).slice(0, 80))}</div>` : ""}
     </div>
     ${followBtn(!!following[p.uid], isRequested(p.uid))}
   </div>`;
 
 const sectionTitle = (text, action = "") =>
-  `<div class="flex items-center justify-between px-4 pt-4 pb-1"><h3 class="text-[18px] leading-6 font-bold text-on-surface">${text}</h3>${action}</div>`;
+  `<div class="flex items-center justify-between px-4 pt-3 pb-1"><h3 class="text-[13px] leading-5 font-semibold text-slate-muted">${text}</h3>${action}</div>`;
 const linkBtn = (cls, text) => `<button type="button" class="${cls} text-[15px] font-semibold text-primary">${text}</button>`;
 
 // remembered while the person opens a profile and comes back
@@ -137,16 +137,16 @@ export async function mount(container, ctx = {}) {
   container.innerHTML = `
     <div class="fz-s-top sticky top-0 z-10 bg-slate-surface border-b border-slate-border/60">
       <div class="flex items-center gap-1 px-2 py-2">
-        <button type="button" class="fz-s-back w-11 h-11 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:bg-surface-container flex-shrink-0" aria-label="Back"><span class="material-symbols-outlined text-[26px]">arrow_back</span></button>
-        <div class="flex-1 min-w-0 flex items-center gap-2 bg-surface-container rounded-full pl-3.5 pr-1.5 h-11">
-          <span class="material-symbols-outlined text-[22px] text-slate-muted flex-shrink-0">search</span>
-          <input class="fz-s-input flex-1 min-w-0 h-full text-[16px] text-on-surface placeholder:text-slate-muted" style="border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;-webkit-appearance:none;appearance:none;" type="text" inputmode="search" enterkeyhint="search" maxlength="60" placeholder="Search" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <button type="button" class="fz-s-back w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:bg-surface-container flex-shrink-0" aria-label="Back"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button>
+        <div class="flex-1 min-w-0 flex items-center gap-2 bg-surface-container rounded-full pl-3.5 pr-1.5 h-10">
+          <span class="material-symbols-outlined text-[20px] text-slate-muted flex-shrink-0">search</span>
+          <input class="fz-s-input flex-1 min-w-0 h-full text-[15px] text-on-surface placeholder:text-slate-muted" style="border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;-webkit-appearance:none;appearance:none;" type="text" inputmode="search" enterkeyhint="search" maxlength="60" placeholder="Search" autocomplete="off" autocapitalize="off" spellcheck="false" />
           <button type="button" class="fz-s-clear w-8 h-8 rounded-full items-center justify-center bg-slate-subtle/40 text-on-surface flex-shrink-0" aria-label="Clear" style="display:none"><span class="material-symbols-outlined text-[18px]">close</span></button>
         </div>
       </div>
       <div class="fz-s-chips flex gap-2 px-4 pb-2.5 overflow-x-auto" style="display:none;scrollbar-width:none;">
         ${[["all", "All"], ["people", "People"], ["post", "Posts"], ["photo", "Photos"], ["poll", "Polls"]]
-          .map(([id, label]) => `<button type="button" class="fz-s-chip flex-shrink-0 px-4 h-9 rounded-full text-[15px] font-semibold transition-colors" data-f="${id}">${label}</button>`).join("")}
+          .map(([id, label]) => `<button type="button" class="fz-s-chip flex-shrink-0 px-3.5 h-8 rounded-full text-[14px] font-semibold transition-colors" data-f="${id}">${label}</button>`).join("")}
       </div>
     </div>
     <div class="fz-s-body pb-12 bg-slate-surface min-h-[60vh]"></div>`;
@@ -171,7 +171,7 @@ export async function mount(container, ctx = {}) {
 
   const paintChips = () => container.querySelectorAll(".fz-s-chip").forEach((chip) => {
     const on = chip.dataset.f === filter;
-    chip.className = "fz-s-chip flex-shrink-0 px-4 h-9 rounded-full text-[15px] font-semibold transition-colors " + (on ? "bg-primary-fixed text-primary" : "bg-surface-container text-on-surface");
+    chip.className = "fz-s-chip flex-shrink-0 px-3.5 h-8 rounded-full text-[14px] font-semibold transition-colors " + (on ? "bg-primary-fixed text-primary" : "bg-surface-container text-on-surface");
   });
   const note = (html, icon = "") => {
     body.innerHTML = `<div class="text-center text-slate-muted text-[15px] py-16 px-8">${icon ? `<span class="material-symbols-outlined text-[44px] opacity-60 block mb-2">${icon}</span>` : ""}${html}</div>`;
@@ -203,13 +203,7 @@ export async function mount(container, ctx = {}) {
     suggestions.forEach((p) => peopleById.set(p.uid, p));
     if (suggestions.length) {
       html += sectionTitle("People you may know");
-      html += `<div class="fz-s-pymk flex gap-3 overflow-x-auto px-4 pb-2 pt-1" style="scrollbar-width:none;">${suggestions.map((p) => `
-        <div class="fz-s-card flex-shrink-0 w-[148px] rounded-2xl border border-slate-border bg-slate-surface p-3 text-center cursor-pointer active:bg-surface-container-low" data-uid="${escapeHtml(p.uid)}">
-          <div class="flex justify-center">${avatarHtml(p.photoURL, "w-[72px] h-[72px]")}</div>
-          <div class="mt-2 text-[15px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(p.uid)}">${escapeHtml(p.name || p.username || "FreeZone User")}</div>
-          <div class="text-[13px] leading-4 text-slate-muted truncate h-4">${p.username ? "@" + escapeHtml(p.username) : ""}</div>
-          <div class="mt-2.5">${followBtn(!!followingIds[p.uid], isRequested(p.uid), true)}</div>
-        </div>`).join("")}</div>`;
+      html += suggestions.slice(0, 6).map((p) => personRow(p, followingIds)).join("");
     }
 
     if (!html) { note(posts || loadError ? "Search for people, posts and #tags." : "Loading…", "search"); return; }

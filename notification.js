@@ -355,9 +355,13 @@ export function mount(container, ctx = {}) {
   /* ---- rendering ---- */
   const isFresh = (n) => !!(fresh && fresh.has(n.id));
 
+  // a "like" that carries a reaction (the main FreeZone BD app): show its emoji
+  const REACTION_EMOJI = { like: "👍", haha: "😆", wow: "😮", sad: "😢", angry: "😡" };
+
   const rowHtml = (n, index) => {
     const type = TYPES[n.type];
     if (!type) return "";
+    const reactEmoji = n.type === "like" ? REACTION_EMOJI[n.reaction] || "" : "";
 
     const isCreator = n.type === "creator";
     const isBoost = n.type === "boost" || isCreator; // messages from the FreeZone team look alike
@@ -367,14 +371,16 @@ export function mount(container, ctx = {}) {
       ? isCreator
         ? `<span class="font-semibold">Creator Program</span> · ${escapeHtml(n.text || "Update about the Creator Program")}`
         : `<span class="font-semibold">Boost</span> · ${escapeHtml(n.text || "Update about your boost")}`
-      : `<span class="font-semibold">${escapeHtml(who)}</span> ${type.label}`;
+      : `<span class="font-semibold">${escapeHtml(who)}</span> ${reactEmoji ? `reacted ${reactEmoji} to your post` : type.label}`;
     const quote = !isBoost && n.text ? `<p class="fz-n-quote text-[14px] leading-5 text-slate-muted mt-0.5">“${escapeHtml(n.text)}”</p>` : "";
     const picture = isBoost
       ? `<div class="w-14 h-14 rounded-full flex items-center justify-center text-white" style="background:${isCreator ? "linear-gradient(135deg,#16a34a,#0d9488)" : "linear-gradient(135deg,#f59e0b,#ef4444)"};"><span class="material-symbols-outlined text-[28px]" style="font-variation-settings:'FILL' 1;">${isCreator ? "workspace_premium" : "campaign"}</span></div>`
       : avatarHtml(n.fromPhotoURL || "", "w-14 h-14");
     const badge = isBoost
       ? ""
-      : `<span class="fz-n-badge absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-full ${type.color} text-white flex items-center justify-center"><span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1;">${type.icon}</span></span>`;
+      : reactEmoji
+        ? `<span class="fz-n-badge absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-full bg-white text-[15px] leading-none flex items-center justify-center" style="box-shadow:0 0 0 2px #fff;">${reactEmoji}</span>`
+        : `<span class="fz-n-badge absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-full ${type.color} text-white flex items-center justify-center"><span class="material-symbols-outlined text-[15px]" style="font-variation-settings:'FILL' 1;">${type.icon}</span></span>`;
 
     return `
       <div class="fz-n-row relative flex items-start gap-3 pl-4 pr-2 py-3 cursor-pointer active:bg-surface-container-low transition-colors ${isNew ? "fz-n-new" : ""}" data-id="${escapeHtml(n.id)}" style="animation-delay:${Math.min(index, 8) * 25}ms">
