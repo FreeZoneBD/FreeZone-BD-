@@ -93,9 +93,9 @@ function showAds(container, placement, context = {}) {
 
 function bigAvatar(photoURL) {
   if (photoURL) {
-    return `<img class="w-20 h-20 min-[360px]:w-24 min-[360px]:h-24 rounded-full object-cover ring-4 ring-background" src="${escapeHtml(photoURL)}" alt="avatar" />`;
+    return `<img class="w-20 h-20 min-[420px]:w-24 min-[420px]:h-24 rounded-full object-cover ring-4 ring-background" src="${escapeHtml(photoURL)}" alt="avatar" />`;
   }
-  return `<div class="w-20 h-20 min-[360px]:w-24 min-[360px]:h-24 rounded-full ring-4 ring-background bg-gradient-to-br from-primary-fixed to-secondary-container flex items-center justify-center">
+  return `<div class="w-20 h-20 min-[420px]:w-24 min-[420px]:h-24 rounded-full ring-4 ring-background bg-gradient-to-br from-primary-fixed to-secondary-container flex items-center justify-center">
     <span class="material-symbols-outlined text-primary text-[40px] min-[360px]:text-[48px]">person</span>
   </div>`;
 }
@@ -557,8 +557,8 @@ export async function mount(container, ctx = {}) {
     </div>
     <div class="pf-banner flex-shrink-0 w-full bg-surface-container" style="aspect-ratio:3/1;background-image:linear-gradient(135deg,var(--pf-c1,#3b5bdb),var(--pf-c2,#9c36b5));">${hasBanner ? `<img class="w-full h-full object-cover block" src="${escapeHtml(user.bannerURL)}" alt="" loading="lazy" onerror="this.remove()" />` : ""}</div>
 
-    <div class="px-4 pb-3 bg-background flex-shrink-0">
-      <div class="flex items-end justify-between gap-3 text-left" style="margin-top:-40px;">
+    <div class="px-4 pb-3 bg-background flex-shrink-0 overflow-x-hidden">
+      <div class="flex items-end justify-between gap-3 text-left" style="margin-top:-40px;max-width:100%;">
         ${
           isMe
             ? `<div class="relative flex-shrink-0">
@@ -573,16 +573,16 @@ export async function mount(container, ctx = {}) {
               ? `<button type="button" class="view-photo flex-shrink-0 block rounded-full active:scale-95 transition-transform" aria-label="View profile photo">${bigAvatar(user.photoURL)}</button>`
               : `<div class="flex-shrink-0">${bigAvatar(user.photoURL)}</div>`
         }
-        ${!isMe && !blocked ? `<div class="flex gap-2 pb-1 flex-shrink-0">
-               <button type="button" class="follow-toggle px-5 h-9 rounded-full font-label-lg text-label-lg font-semibold active:scale-95 transition-all"></button>
+        ${!isMe && !blocked ? `<div class="flex flex-wrap justify-end gap-1.5 pb-1 min-w-0">
+               <button type="button" class="follow-toggle px-4 h-8 rounded-full text-[13.5px] font-semibold active:scale-95 transition-all"></button>
                ${
                  ctx.onOpenChat
-                   ? `<button type="button" class="message-btn px-4 h-9 rounded-full font-label-lg text-label-lg font-semibold bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">chat_bubble</span> Message
+                   ? `<button type="button" class="message-btn px-3 h-8 rounded-full text-[13.5px] font-semibold bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">chat_bubble</span> Message
                       </button>`
                    : ""
                }
-               <button type="button" class="share-profile flex-shrink-0 w-9 h-9 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center" aria-label="Share profile">
+               <button type="button" class="share-profile flex-shrink-0 w-8 h-8 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center" aria-label="Share profile">
                  <span class="material-symbols-outlined text-[18px]">share</span>
                </button>
              </div>` : ""}
@@ -1166,7 +1166,7 @@ export async function mount(container, ctx = {}) {
     const requestedNow = !followingNow && isRequested(uid);
     followBtn.textContent = followingNow ? "Following" : requestedNow ? "Requested" : "Follow";
     followBtn.className =
-      "follow-toggle px-5 h-9 rounded-full font-label-lg text-label-lg font-semibold active:scale-95 transition-all " +
+      "follow-toggle px-4 h-8 rounded-full text-[13.5px] font-semibold active:scale-95 transition-all " +
       (followingNow || requestedNow
         ? "bg-surface-container text-on-surface hover:bg-surface-container-high"
         : "bg-primary-container text-white");

@@ -92,6 +92,13 @@
     @media (min-width: 600px) {
       #pageView, #postDetail { left: 0; right: 0; max-width: 45rem; margin: 0 auto; border-left: 1px solid rgba(128,128,128,.18); border-right: 1px solid rgba(128,128,128,.18); }
     }
+    /* a touch phone with "Desktop site" switched on sees a ~980px page: let the app (and its full pages: search, profile...) fill the whole width instead of leaving empty sides */
+    @media (pointer: coarse) and (min-width: 800px) {
+      html .max-w-lg { max-width: 100%; }
+      #pageView, #postDetail { max-width: 100%; border-left: 0; border-right: 0; }
+      .fz-ib-new { right: 1.25rem !important; }
+      .fz-fab { right: 16px !important; }
+    }
     [hidden] { display: none !important; }
         .liked .like-icon { font-variation-settings: 'FILL' 1; }
     /* feed post card: heart that pops up on a double tap, and the pop of the like button */
