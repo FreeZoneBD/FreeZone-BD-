@@ -557,8 +557,8 @@ export async function mount(container, ctx = {}) {
     </div>
     <div class="pf-banner flex-shrink-0 w-full bg-surface-container" style="aspect-ratio:3/1;background-image:linear-gradient(135deg,var(--pf-c1,#3b5bdb),var(--pf-c2,#9c36b5));">${hasBanner ? `<img class="w-full h-full object-cover block" src="${escapeHtml(user.bannerURL)}" alt="" loading="lazy" onerror="this.remove()" />` : ""}</div>
 
-    <div class="px-4 pb-3 bg-background flex-shrink-0 overflow-x-hidden">
-      <div class="flex items-end justify-between gap-3 text-left" style="margin-top:-40px;max-width:100%;">
+    <div class="px-4 pb-3 bg-background flex-shrink-0" style="overflow-x:clip;">
+      <div class="relative z-[1] flex items-end justify-between gap-3 text-left" style="margin-top:-40px;max-width:100%;">
         ${
           isMe
             ? `<div class="relative flex-shrink-0">
