@@ -117,12 +117,20 @@
   if (App && App.getLaunchUrl) App.getLaunchUrl().then(function (r) { if (r && r.url) openLink(r.url); }).catch(function () { /* none */ });
   // 7. Terms / Privacy / Guidelines (opened from Settings or Help): the app has no browser tabs, so the page replaces the app screen.
   //    Remember "Settings" as the place to come back to; the Back button of that page (and the phone's Back) then returns there.
-  var LEGAL = /(^|\/)(terms|privacy|guidelines|delete-account)\.html$/i;
+  var LEGAL = /(^|\/)(terms|privacy|guidelines|creator-terms|delete-account)\.html$/i;
   function openLegal(href) {
     try {
       var u = new URL(href, location.href);
       if (u.origin !== location.origin || !LEGAL.test(u.pathname)) return false;
       if (!/(^|\/)feed\.html$/i.test(location.pathname)) return false; // from the login screen the normal behaviour is fine
+      // remember which Settings page (and how far it was scrolled) the person leaves, so Back returns to exactly that place
+      try {
+        var pv = document.getElementById("pageView");
+        var body = document.getElementById("pageViewBody");
+        if (pv && !pv.hidden && body) {
+          sessionStorage.setItem("fzSettingsRestore", JSON.stringify({ key: window.__fzSettingsKey || "main", scroll: body.scrollTop || 0, at: Date.now() }));
+        }
+      } catch (e) { /* ignore */ }
       try { history.replaceState(null, "", "feed.html?open=settings"); } catch (e) { /* ignore */ }
       location.href = u.href;
       return true;

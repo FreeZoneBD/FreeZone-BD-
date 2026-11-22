@@ -529,10 +529,17 @@ function buildSections({ ctx, state, go }) {
   ];
 }
 
+// Each kind of row gets its own colour (the chip is tinted from it)
+const CHIP_COLORS = { edit: "#5b8cff", lock: "#ff9f43", workspace_premium: "#fbbf24", chat_bubble: "#2fc48d", notifications: "#5b8cff", call: "#22d3ee", dark_mode: "#c084fc", play_circle: "#ff6b6b", language: "#5b8cff", circle: "#2fc48d", block: "#ff6b6b", help: "#5b8cff", flag: "#ff9f43", person_add: "#2fc48d", info: "#22d3ee", description: "#5b8cff", privacy_tip: "#c084fc", diversity_3: "#2fc48d", switch_account: "#5b8cff", logout: "#ff9f43", delete_forever: "#ff6b6b" };
+function chipStyle(row) {
+  const c = CHIP_COLORS[row.icon];
+  return c ? `background:${c}22;color:${c}` : "";
+}
+
 function rowHtml(row) {
   const icon = `
-    <div class="w-11 h-11 rounded-full ${row.iconClass} flex items-center justify-center flex-shrink-0">
-      <span class="material-symbols-outlined text-[22px]">${row.icon}</span>
+    <div class="st-chip w-[38px] h-[38px] rounded-xl ${row.iconClass} flex items-center justify-center flex-shrink-0" style="${chipStyle(row)}">
+      <span class="material-symbols-outlined text-[21px]">${row.icon}</span>
     </div>`;
   const text = `
     <div class="min-w-0">
@@ -585,21 +592,27 @@ async function renderMain(root, ctx, { go }) {
   sections.forEach((section) => section.rows.forEach((row) => rowsById.set(row.id, row)));
 
   root.innerHTML = `
+    <style>
+      .st-account{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(47,196,141,.08)),rgb(var(--c-slate-surface));border-bottom:1px solid rgb(var(--c-slate-border))}
+      .st-vp{flex:none;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:999px;color:#fff;background:linear-gradient(135deg,#3b82f6,#2563eb)}
+      .st-sec{padding:20px 16px 8px!important;font-size:12px!important;letter-spacing:.9px;font-weight:800!important}
+      .st-switch[aria-checked="true"]{background:linear-gradient(135deg,#3b82f6,#2563eb)!important}
+    </style>
     <div class="max-w-lg mx-auto pb-10">
-      <button type="button" class="st-account w-full flex items-center gap-4 px-4 py-4 text-left hover:bg-surface-container-low active:bg-surface-container transition-colors" aria-label="Open my profile">
+      <button type="button" class="st-account w-full flex items-center gap-4 px-4 py-4 text-left" aria-label="Open my profile">
         ${avatarHtml(profile.photoURL, "w-14 h-14")}
         <div class="min-w-0 flex-1">
           <div class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">${escapeHtml(name)}</div>
           <div class="font-body-sm text-body-sm text-slate-muted truncate">${escapeHtml(handle)}</div>
         </div>
-        <span class="material-symbols-outlined text-slate-subtle">chevron_right</span>
+        <span class="st-vp">View profile</span>
       </button>
 
       ${sections
         .map(
           (section) => `
-        <div class="px-4 pt-5 pb-1 font-label-md text-label-md text-slate-subtle uppercase tracking-wide">${escapeHtml(section.title)}</div>
-        <div class="bg-slate-surface divide-y divide-slate-border/60 border-y border-slate-border/60">
+        <div class="st-sec px-4 pt-5 pb-1 font-label-md text-label-md text-slate-subtle uppercase tracking-wide">${escapeHtml(section.title)}</div>
+        <div class="bg-slate-surface divide-y divide-slate-border border-y border-slate-border">
           ${section.rows.map((row) => rowHtml(row)).join("")}
         </div>`
         )
@@ -687,73 +700,69 @@ async function renderEditProfile(root, ctx) {
         html: `You can change your name <b>once every ${NAME_COOLDOWN_DAYS} days</b>. After you change it, it stays locked for ${NAME_COOLDOWN_DAYS} days. Bio and photo can be changed any time.`
       });
 
+  const hasBanner = typeof user.bannerURL === "string" && user.bannerURL.startsWith("https://");
   root.innerHTML = `
-    <div class="max-w-lg mx-auto pb-10">
-      ${introHtml({
-        icon: "edit",
-        iconClass: "bg-primary-container/10 text-primary-container",
-        title: "Edit profile",
-        text: "This is how other people see you on FreeZone BD: on your posts, comments, stories and in chats."
-      })}
-
-      <div class="px-4 mt-4 space-y-5">
-        <div class="flex flex-col items-center">
-          <button type="button" class="ep-photo relative rounded-full active:scale-95 transition-transform" aria-label="Change profile photo">
-            <span class="ep-avatar block">${avatarHtml(user.photoURL, "w-24 h-24")}</span>
-            <span class="ep-photo-busy absolute inset-0 rounded-full bg-black/45 text-white font-label-lg text-label-lg flex items-center justify-center" hidden></span>
-            <span class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary-container text-white flex items-center justify-center ring-2 ring-slate-surface">
-              <span class="material-symbols-outlined text-[18px]">photo_camera</span>
-            </span>
-          </button>
-          <input type="file" accept="image/*" class="ep-photo-input" hidden />
-          <p class="${HINT} text-center">Tap the photo to change it. A new photo is saved as soon as it is uploaded (max ${PHOTO_MAX_MB} MB).</p>
-        </div>
-
-        <div>
-          <label class="${LABEL}" for="epName">Name</label>
-          <input id="epName" type="text" maxlength="${NAME_MAX}" value="${escapeHtml(user.name || "")}" class="${INPUT}" ${nameLocked ? "disabled" : ""} />
-          <p class="${HINT}">${NAME_MIN}-${NAME_MAX} characters. This is your display name; it can be your real name or any name you like.</p>
-          <div class="mt-2">${nameNote}</div>
-        </div>
-
-        <div>
-          <label class="${LABEL}" for="epUsername">Username</label>
-          <div class="flex items-center bg-surface-container rounded-xl px-3.5 opacity-80">
-            <span class="text-slate-muted text-body-md">@</span>
-            <input id="epUsername" type="text" value="${escapeHtml(user.username || "")}" class="flex-1 bg-transparent py-2.5 pl-1 text-body-md text-body-md outline-none" readonly />
-            <span class="material-symbols-outlined text-slate-muted text-[20px]">lock</span>
-          </div>
-          <p class="${HINT}">Your username cannot be changed. It is used in your profile link and for people to find you, so it stays the same.</p>
-        </div>
-
-        <div>
-          <label class="${LABEL}" for="epBio">Bio</label>
-          <textarea id="epBio" rows="4" maxlength="${BIO_MAX}" class="${INPUT} resize-none" placeholder="Tell people a little about yourself">${escapeHtml(user.bio || "")}</textarea>
-          <div class="flex items-start justify-between gap-3">
-            <p class="${HINT}">A short line shown under your name on your profile.</p>
-            <div class="ep-count font-body-sm text-body-sm text-slate-subtle mt-1 flex-shrink-0">0/${BIO_MAX}</div>
-          </div>
-        </div>
-
-        <div>
-          <label class="${LABEL}" for="epLocation">Location</label>
-          <input id="epLocation" type="text" maxlength="${PLACE_MAX}" value="${escapeHtml(user.location || "")}" class="${INPUT}" placeholder="Where you live now, e.g. Dhaka" />
-        </div>
-
-        <div>
-          <label class="${LABEL}" for="epHometown">Hometown</label>
-          <input id="epHometown" type="text" maxlength="${PLACE_MAX}" value="${escapeHtml(user.hometown || "")}" class="${INPUT}" placeholder="Where you were born / grew up" />
-        </div>
-
-        <div>
-          <label class="${LABEL}" for="epWebsite">Link</label>
-          <input id="epWebsite" type="url" inputmode="url" maxlength="${SITE_MAX}" value="${escapeHtml(user.website || "")}" class="${INPUT}" placeholder="Your website or social page" />
-          <p class="${HINT}">Shown on your profile as a tappable link.</p>
-        </div>
-
-        <p class="ep-error font-body-md text-body-md text-error" hidden></p>
-        <button type="button" class="ep-save ${BTN_PRIMARY}" disabled>Save changes</button>
+    <style>
+      .ep2{max-width:32rem;margin:0 auto;padding-bottom:40px}
+      .ep2-ban{position:relative;height:150px;background:linear-gradient(135deg,#3b5bdb,#9c36b5);overflow:hidden}
+      .ep2-ban img{width:100%;height:100%;object-fit:cover;display:block}
+      .ep2-ban::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.4),transparent 45%,rgba(0,0,0,.25));pointer-events:none}
+      .ep2-note{position:absolute;right:12px;bottom:10px;z-index:2;font-size:11.5px;color:#fff;background:rgba(10,16,30,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);padding:4px 10px;border-radius:999px}
+      .ep2 .ep-save{position:absolute;top:10px;right:12px;z-index:3;width:auto;height:38px;padding:0 20px;border-radius:999px;font-weight:800;font-size:14.5px;color:#fff;background:linear-gradient(135deg,#3b82f6,#2563eb);box-shadow:0 6px 16px rgba(37,99,235,.45);border:0}
+      .ep2 .ep-save:disabled{opacity:1;background:rgba(10,16,30,.55);color:#cbd5e1;box-shadow:none;border:1px solid rgba(255,255,255,.2)}
+      .ep2-avw{position:relative;z-index:2;margin:-48px 0 0 18px;width:96px;height:96px}
+      .ep2 .ep-photo{display:block;width:96px;height:96px;border-radius:50%;border:4px solid rgb(var(--c-background));box-shadow:0 0 0 2px #3b82f6;overflow:hidden;background:rgb(var(--c-surface-container))}
+      .ep2 .ep-avatar,.ep2 .ep-avatar>*{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover}
+      .ep2-cam{position:absolute;inset:0;border-radius:50%;background:rgba(5,10,20,.42);display:flex;align-items:center;justify-content:center;color:#fff;pointer-events:none}
+      .ep2-sub{padding:10px 18px 0;font-size:12.5px;color:rgb(var(--c-slate-muted))}
+      .ep2-f{margin:14px 16px 0;border-radius:14px;background:rgb(var(--c-surface-container));border:1px solid rgb(var(--c-slate-border));padding:9px 14px 10px}
+      .ep2-f:focus-within{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.22)}
+      .ep2-l{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:rgb(var(--c-slate-muted))}
+      .ep2-f:focus-within .ep2-l{color:#6c9bff}
+      .ep2-f input,.ep2-f textarea{display:block;width:100%;background:transparent;border:0;outline:0;box-shadow:none;padding:3px 0 0;font-size:16px;line-height:1.4;resize:none;color:inherit}
+      .ep2-f input:disabled{opacity:.7}
+      .ep2-lock{opacity:.7}
+      .ep2-lock .material-symbols-outlined{font-size:16px}
+      .ep2-h{margin:8px 18px 0;font-size:12.5px;line-height:1.45;color:rgb(var(--c-slate-muted))}
+    </style>
+    <div class="ep2">
+      <div class="ep2-ban">${hasBanner ? `<img src="${escapeHtml(user.bannerURL)}" alt="" onerror="this.remove()" />` : ""}
+        <span class="ep2-note">Cover is set in the FreeZone BD app</span>
+        <button type="button" class="ep-save" disabled>Save</button>
       </div>
+      <div class="ep2-avw">
+        <button type="button" class="ep-photo relative active:scale-95 transition-transform" aria-label="Change profile photo">
+          <span class="ep-avatar block">${avatarHtml(user.photoURL, "w-24 h-24")}</span>
+          <span class="ep-photo-busy absolute inset-0 rounded-full bg-black/45 text-white font-label-lg text-label-lg flex items-center justify-center" hidden></span>
+        </button>
+        <span class="ep2-cam"><span class="material-symbols-outlined text-[26px]">photo_camera</span></span>
+        <input type="file" accept="image/*" class="ep-photo-input" hidden />
+      </div>
+      <p class="ep2-sub">Tap the photo to change it. A new photo is saved as soon as it is uploaded (max ${PHOTO_MAX_MB} MB).</p>
+
+      <div class="ep2-f"><div class="ep2-l"><label for="epName">Name</label><span class="ep-ncount">0/${NAME_MAX}</span></div>
+        <input id="epName" type="text" maxlength="${NAME_MAX}" value="${escapeHtml(user.name || "")}" ${nameLocked ? "disabled" : ""} /></div>
+      <div class="ep2-h">${NAME_MIN}-${NAME_MAX} characters. This is your display name; it can be your real name or any name you like.</div>
+      <div class="px-4 mt-2">${nameNote}</div>
+
+      <div class="ep2-f ep2-lock"><div class="ep2-l"><label for="epUsername">Username</label><span class="material-symbols-outlined">lock</span></div>
+        <input id="epUsername" type="text" value="@${escapeHtml(user.username || "")}" readonly /></div>
+      <div class="ep2-h">Your username cannot be changed. It is used in your profile link and for people to find you, so it stays the same.</div>
+
+      <div class="ep2-f"><div class="ep2-l"><label for="epBio">Bio</label><span class="ep-count">0/${BIO_MAX}</span></div>
+        <textarea id="epBio" rows="3" maxlength="${BIO_MAX}" placeholder="Tell people a little about yourself">${escapeHtml(user.bio || "")}</textarea></div>
+
+      <div class="ep2-f"><div class="ep2-l"><label for="epLocation">Location</label></div>
+        <input id="epLocation" type="text" maxlength="${PLACE_MAX}" value="${escapeHtml(user.location || "")}" placeholder="Where you live now, e.g. Dhaka" /></div>
+
+      <div class="ep2-f"><div class="ep2-l"><label for="epHometown">Hometown</label></div>
+        <input id="epHometown" type="text" maxlength="${PLACE_MAX}" value="${escapeHtml(user.hometown || "")}" placeholder="Where you were born / grew up" /></div>
+
+      <div class="ep2-f"><div class="ep2-l"><label for="epWebsite">Website</label></div>
+        <input id="epWebsite" type="url" inputmode="url" maxlength="${SITE_MAX}" value="${escapeHtml(user.website || "")}" placeholder="Your website or social page" /></div>
+      <div class="ep2-h">Shown on your profile as a tappable link.</div>
+
+      <p class="ep-error font-body-md text-body-md text-error px-4 mt-3" hidden></p>
     </div>`;
 
   const nameEl = root.querySelector("#epName");
@@ -775,6 +784,8 @@ async function renderEditProfile(root, ctx) {
   const changed = () => (!nameLocked && cleanName() !== (user.name || "")) || bioEl.value.trim() !== (user.bio || "") || extrasChanged();
   const refresh = () => {
     countEl.textContent = `${bioEl.value.length}/${BIO_MAX}`;
+    const nc = root.querySelector(".ep-ncount");
+    if (nc) nc.textContent = `${nameEl.value.length}/${NAME_MAX}`;
     saveBtn.disabled = !changed();
   };
   refresh();
@@ -893,7 +904,7 @@ async function renderEditProfile(root, ctx) {
             : "Could not save: the database rules block it."
           : "Could not save your profile. Please try again."
       );
-      saveBtn.textContent = "Save changes";
+      saveBtn.textContent = "Save";
       saveBtn.disabled = false;
     }
   });
@@ -1044,6 +1055,8 @@ function renderChangePassword(root, ctx) {
 ---------------------------------------------------------------- */
 // Removes my data from the database step by step (every step is best effort, so one blocked step does not
 // stop the rest), then the profile, then the login itself.
+import { deleteAccountOnServer } from "./worker-call.js";
+
 async function deleteAccountData({ db, user, onStep }) {
   const uid = user.uid;
   const run = async (label, build) => {
@@ -1062,6 +1075,17 @@ async function deleteAccountData({ db, user, onStep }) {
   } catch (error) {
     // ignore
   }
+
+  // The Worker deletes everything on the server (also the photos and videos). If it cannot (an older Worker, no network, an error),
+  // the step-by-step way below is used.
+  onStep("Deleting your data...");
+  const server = await deleteAccountOnServer();
+  if (server.ok && server.data.done === true) {
+    try { forgetAccount(user.uid); } catch (e) { /* ignore */ }
+    if (server.data.authDeleted !== true) await deleteUser(user);
+    return;
+  }
+  if (server.status === 409) throw Object.assign(new Error(server.data.error || "A payout or a boost is still open."), { fzBlocked: true });
 
   await run("Removing your follows and followers...", async () => {
     const [followers, following] = await Promise.all([get(ref(db, `followers/${uid}`)), get(ref(db, `following/${uid}`))]);
@@ -1285,7 +1309,7 @@ function renderDeleteAccount(root, ctx) {
       form.querySelectorAll("input, button").forEach((el) => (el.disabled = false));
       stepEl.hidden = true;
       showError(
-        error.code === "PERMISSION_DENIED"
+        error.fzBlocked ? error.message : error.code === "PERMISSION_DENIED"
           ? "Could not delete your profile: the database rules block it. Publish the latest database.rules.json and try again."
           : authMessage(error)
       );
@@ -1453,6 +1477,7 @@ const PAGES = {
   appearance: { title: "Dark mode", render: (root, ctx) => renderAppearance(root, ctx) },
   language: { title: "Language", render: (root, ctx) => renderLanguage(root, ctx) },
   // These live in their own files and are loaded only when opened
+  "creator-dashboard": { title: "Creator Dashboard", render: async (root, ctx) => (await import("./creator-dashboard.js")).render(root, ctx) },
   creator: { title: "Creator Program", render: async (root, ctx) => (await import("./creator.js")).render(root, ctx) },
   help: { title: "Help center", render: async (root, ctx) => (await import("./help.js")).render(root, ctx) },
   "report-problem": { title: "Report a problem", render: async (root, ctx) => (await import("./feedback.js")).render(root, ctx) },
@@ -1469,11 +1494,13 @@ export async function mount(container, ctx = {}) {
   }
 
   const startPage = PAGES[ctx.startPage] ? ctx.startPage : "main";
+  const restored = !!ctx.restore; // coming back from Terms / Privacy ...: Back goes to the Settings list, not to the profile
   let stopMain = () => {};
   let token = 0; // ignores a page that finished loading after the person already went somewhere else
 
   const go = async (key) => {
     const page = PAGES[key] || PAGES.main;
+    window.__fzSettingsKey = PAGES[key] ? key : "main"; // read by native.js when a legal page is opened
     const mine = ++token;
     stopMain();
     stopMain = () => {};
@@ -1481,7 +1508,7 @@ export async function mount(container, ctx = {}) {
     ctx.setTitle?.(page.title);
     ctx.setActions?.([]);
     // Back: a sub page returns to the list (or to the profile when it was opened straight from there)
-    ctx.setBack?.(key === "main" ? () => ctx.onBack?.() : () => (startPage === key && key !== "main" ? ctx.onBack?.() : go("main")));
+    ctx.setBack?.(key === "main" ? () => ctx.onBack?.() : () => (startPage === key && key !== "main" && !restored ? ctx.onBack?.() : go("main")));
     container.scrollTop = 0;
     container.parentElement && (container.parentElement.scrollTop = 0);
 

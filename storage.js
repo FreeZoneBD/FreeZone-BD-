@@ -18,7 +18,7 @@ const abortError = () => Object.assign(new Error("Upload cancelled"), { name: "A
 const workerBase = () => String(appInfo.PUSH_WORKER_URL || "").replace(/\/+$/, "");
 
 // Asks the Worker for the ticket of ONE file
-async function getTicket(kind, type, signal) {
+async function getTicket(kind, type, signal, contentType) {
   const base = workerBase();
   const user = auth && auth.currentUser;
   if (!base) throw Object.assign(new Error("Storage is not connected"), { code: "no-storage" });
@@ -27,7 +27,7 @@ async function getTicket(kind, type, signal) {
   const res = await fetch(`${base}/sign`, {
     method: "POST",
     headers: { authorization: `Bearer ${idToken}`, "content-type": "application/json" },
-    body: JSON.stringify({ kind, type }),
+    body: JSON.stringify({ kind, type, ...(contentType ? { contentType } : {}) }),
     signal
   }).catch((error) => { throw error && error.name === "AbortError" ? abortError() : Object.assign(new Error("No internet connection"), { code: "network" }); });
   let data = null;
@@ -38,6 +38,9 @@ async function getTicket(kind, type, signal) {
 }
 
 function sendFile(blob, ticket, { signal, onProgress } = {}) {
+  // A ticket with method "put" (Firebase Storage, when the Worker is switched to it): the raw file goes to a one-time address with PUT.
+  // A ticket without a method is the Cloudinary form post below (what runs today).
+  if (ticket.method === "put") return putFile(blob, ticket, { signal, onProgress });
   return new Promise((resolve, reject) => {
     if (signal && signal.aborted) return reject(abortError());
     const form = new FormData();
@@ -71,8 +74,32 @@ function sendFile(blob, ticket, { signal, onProgress } = {}) {
   });
 }
 
+function putFile(blob, ticket, { signal, onProgress } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal && signal.aborted) return reject(abortError());
+    if (typeof ticket.uploadUrl !== "string" || typeof ticket.fileUrl !== "string" || !ticket.fileUrl.startsWith("https://")) {
+      return reject(Object.assign(new Error("Upload setup failed"), { code: "sign-failed" }));
+    }
+    const xhr = new XMLHttpRequest();
+    const onAbort = () => xhr.abort();
+    if (signal) signal.addEventListener("abort", onAbort, { once: true });
+    const done = () => { if (signal) signal.removeEventListener("abort", onAbort); };
+    xhr.open("PUT", ticket.uploadUrl);
+    Object.entries(ticket.headers || {}).forEach(([k, v]) => { try { xhr.setRequestHeader(k, String(v)); } catch (e) { /* ignore */ } });
+    xhr.upload.onprogress = (e) => { if (onProgress && e.lengthComputable && e.total) onProgress(e.loaded / e.total); };
+    xhr.onload = () => {
+      done();
+      if (xhr.status === 200 || xhr.status === 201) { if (onProgress) onProgress(1); return resolve(ticket.fileUrl); }
+      reject(Object.assign(new Error(`Upload failed (${xhr.status})`), { code: "upload-failed", status: xhr.status }));
+    };
+    xhr.onerror = () => { done(); reject(Object.assign(new Error("No internet connection"), { code: "network" })); };
+    xhr.onabort = () => { done(); reject(abortError()); };
+    xhr.send(blob);
+  });
+}
+
 async function upload(blob, kind, type, opts = {}) {
-  const ticket = await getTicket(kind, type, opts.signal);
+  const ticket = await getTicket(kind, type, opts.signal, opts.contentType);
   return sendFile(blob, ticket, opts);
 }
 
@@ -80,18 +107,18 @@ async function upload(blob, kind, type, opts = {}) {
 export const uploadVideo = async (file, { uid, kind = "posts", signal, onProgress, onPrepare } = {}) => {
   // the ticket comes FIRST: if the daily video limit (5) or the storage is full, the person hears it at once and does not
   // wait for the video to be made smaller. (A ticket is valid for an hour: much longer than making a video smaller.)
-  const ticket = await getTicket(kind, "video", signal);
+  const ticket = await getTicket(kind, "video", signal, "video/mp4");
   let toSend = file;
   try { toSend = (await compressVideo(file, { signal, onProgress: onPrepare })).file; } catch (error) { if (error && error.name === "AbortError") throw error; }
   return sendFile(toSend, ticket, { signal, onProgress });
 };
 
-export const uploadThumb = (blob, { uid, kind = "posts", signal } = {}) => upload(blob, kind, "image", { signal });
+export const uploadThumb = (blob, { uid, kind = "posts", signal } = {}) => upload(blob, kind, "image", { signal, contentType: "image/jpeg" });
 
 // Voice message: audio/webm;codecs=opus, audio/mp4 ... -> https URL
 export const uploadAudio = (blob, { uid, kind = "chat", signal, onProgress } = {}) => {
   const base = String(blob.type || "audio/webm").split(";")[0];
-  return upload(new Blob([blob], { type: base }), kind, "audio", { signal, onProgress });
+  return upload(new Blob([blob], { type: base }), kind, "audio", { signal, onProgress, contentType: base });
 };
 
 // Removes the Cloudinary files of a deleted post or story (best effort: it never throws and never blocks the delete).
@@ -99,7 +126,7 @@ export const uploadAudio = (blob, { uid, kind = "chat", signal, onProgress } = {
 export async function deleteMedia(urls) {
   try {
     const list = (Array.isArray(urls) ? urls : [urls])
-      .filter((u) => typeof u === "string" && /^https:\/\/res\.cloudinary\.com\//.test(u))
+      .filter((u) => typeof u === "string" && /^https:\/\/(res\.cloudinary\.com|firebasestorage\.googleapis\.com)\//.test(u))
       .slice(0, 4);
     const base = workerBase();
     const user = auth && auth.currentUser;

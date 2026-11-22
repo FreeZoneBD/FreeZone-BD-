@@ -26,6 +26,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
 import { escapeHtml, avatarHtml, timeAgo, showToast } from "./post.js";
+import { workerCall } from "./worker-call.js";
 import { fzConfirm } from "./dialog.js";
 
 const LIST_LIMIT = 50; // newest notifications shown
@@ -131,8 +132,20 @@ export function start(ctx = {}) {
     }
   };
 
-  document.addEventListener("fz:notify", (event) => {
-    handle(event.detail).catch((error) => console.warn("Notification not sent:", error?.code || error));
+  // The Worker saves + pushes the notification itself after checking the real like / comment / reply / follow (nothing can be faked).
+  // The old direct write is used only when there is no network or the Worker is an older one (404). Undo (removing my own note) stays direct.
+  const WORKER_TYPES = ["like", "comment", "reply", "commentLike", "follow"];
+  document.addEventListener("fz:notify", async (event) => {
+    const d = event.detail || {};
+    try {
+      if (!d.undo && WORKER_TYPES.includes(d.type)) {
+        const body = { type: d.type, postId: d.postId, toUid: d.toUid, commentId: d.commentId, replyId: d.replyId };
+        Object.keys(body).forEach((k) => body[k] === undefined && delete body[k]);
+        const r = await workerCall("/note", body);
+        if (r.status !== 0 && r.status !== 404) return; // done, or the Worker refused on purpose: no direct write
+      }
+    } catch (error) { /* fall through to the direct way */ }
+    handle(d).catch((error) => console.warn("Notification not sent:", error?.code || error));
   });
 
   /* ---- the bell badge ---- */
@@ -176,6 +189,25 @@ function injectStyles() {
     .fz-n-row.fz-n-new { background: rgb(var(--c-primary-fixed) / .28); }
     .fz-n-row { -webkit-tap-highlight-color: transparent; }
     .fz-n-menu { box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+    /* FreeZone new look */
+    .fz-n-bar { background: rgb(var(--c-slate-surface)); }
+    .fz-n-filter { color: rgb(var(--c-slate-muted, 143 160 189)); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+    .fz-n-filter.is-on { color: #3b82f6; border-bottom-color: #2563eb; }
+    .fz-n-row { border-bottom: 1px solid rgb(var(--c-slate-border)); }
+    .fz-n-row.fz-n-new { background: linear-gradient(90deg, rgba(59,130,246,.14), rgba(59,130,246,.04)); }
+    .fz-n-row.fz-n-new::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,#3b82f6,#2fc48d); }
+    .fz-n-row [aria-label="Unread"] { background: linear-gradient(135deg,#3b82f6,#2fc48d) !important; }
+    .fz-n-req-pri, .fz-req-yes { background: linear-gradient(135deg,#3b82f6,#2563eb) !important; box-shadow: 0 6px 14px rgba(37,99,235,.35); }
+    .fz-req-no { border: 1px solid rgb(var(--c-slate-border)); }
+    .fz-n-topmenu { position: fixed !important; left:0; right:0; bottom:0; top:auto !important; width:auto !important; z-index:80 !important; border-radius:0 !important; border-width:1px 0 0 0 !important; padding:0 0 calc(env(safe-area-inset-bottom,0px) + 18px) !important; background: rgb(var(--c-slate-surface)); }
+    .fz-n-topmenu[hidden] { display:none !important; }
+    .fz-n-topmenu::before { content:""; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:-1; }
+    .fz-n-topmenu .fz-n-grab { width:40px; height:4px; border-radius:4px; background:rgba(143,160,189,.35); margin:10px auto 6px; }
+    .fz-n-topmenu > button { display:flex; align-items:center; gap:14px; width:100%; padding:14px 16px; font-size:15.5px; font-weight:600; text-align:left; border-bottom:1px solid rgb(var(--c-slate-border)); }
+    .fz-n-topmenu > button > .material-symbols-outlined { width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:21px; background:rgba(59,130,246,.16); color:#6c9bff; }
+    .fz-n-topmenu > .fz-n-danger { color:#ff7a93; }
+    .fz-n-topmenu > .fz-n-danger > .material-symbols-outlined { background:rgba(255,77,109,.16); color:#ff4d6d; }
+    .fz-n-topmenu > .fz-n-cancel { justify-content:center; width:calc(100% - 32px); margin:14px 16px 0; height:48px; padding:0; border:1px solid rgb(var(--c-slate-border)); border-radius:14px; font-weight:700; background: rgb(var(--c-surface-container, 22 33 58)); }
     .fz-n-text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
     .fz-n-quote { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
     @keyframes fz-n-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
@@ -244,15 +276,16 @@ export function mount(container, ctx = {}) {
 
   container.innerHTML = `
     <div class="fz-notifs bg-slate-surface min-h-full">
-      <div class="fz-n-bar flex items-center gap-2 px-4 pt-3 pb-2">
-        <button type="button" class="fz-n-filter px-4 h-9 rounded-full text-[14px] font-semibold transition-colors" data-f="all">All</button>
-        <button type="button" class="fz-n-filter px-4 h-9 rounded-full text-[14px] font-semibold transition-colors" data-f="unread">Unread</button>
-        <div class="flex-1"></div>
-        <div class="relative">
+      <div class="fz-n-bar flex items-stretch border-b border-slate-border">
+        <button type="button" class="fz-n-filter flex-1 h-12 text-[15px] font-bold transition-colors" data-f="all">All</button>
+        <button type="button" class="fz-n-filter flex-1 h-12 text-[15px] font-bold transition-colors" data-f="unread">Unread</button>
+        <div class="relative flex items-center px-1">
           <button type="button" class="fz-n-top w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:bg-surface-container" aria-label="More options"><span class="material-symbols-outlined text-[24px]">more_horiz</span></button>
-          <div class="fz-n-topmenu fz-n-menu absolute right-0 top-11 z-20 w-56 rounded-xl bg-slate-surface border border-slate-border py-1.5" hidden>
-            <button type="button" class="fz-n-readall w-full text-left px-4 py-2.5 text-[14px] text-on-surface hover:bg-surface-container-low flex items-center gap-3"><span class="material-symbols-outlined text-[20px]">done_all</span>Mark all as read</button>
-            <button type="button" class="fz-n-clear w-full text-left px-4 py-2.5 text-[14px] text-error hover:bg-error-container/40 flex items-center gap-3"><span class="material-symbols-outlined text-[20px]">delete_sweep</span>Clear all</button>
+          <div class="fz-n-topmenu fz-n-menu" hidden>
+            <div class="fz-n-grab"></div>
+            <button type="button" class="fz-n-readall"><span class="material-symbols-outlined">done_all</span>Mark all as read</button>
+            <button type="button" class="fz-n-clear fz-n-danger"><span class="material-symbols-outlined">delete_sweep</span>Clear all</button>
+            <button type="button" class="fz-n-cancel">Cancel</button>
           </div>
         </div>
       </div>
@@ -267,7 +300,7 @@ export function mount(container, ctx = {}) {
   const paintFilters = () => {
     root.querySelectorAll(".fz-n-filter").forEach((b) => {
       const on = b.dataset.f === filter;
-      b.className = `fz-n-filter px-4 h-9 rounded-full text-[14px] font-semibold transition-colors ${on ? "bg-primary-fixed text-primary" : "bg-surface-container text-on-surface"}`;
+      b.className = `fz-n-filter flex-1 h-12 text-[15px] font-bold transition-colors ${on ? "is-on" : ""}`;
       b.setAttribute("aria-pressed", String(on));
     });
   };
@@ -278,7 +311,9 @@ export function mount(container, ctx = {}) {
   };
   const onDocClick = (event) => {
     if (!alive()) return document.removeEventListener("click", onDocClick);
-    if (!event.target.closest(".fz-n-menu") && !event.target.closest(".fz-n-more") && !event.target.closest(".fz-n-top")) closeMenus();
+    const inMenu = event.target.closest(".fz-n-menu");
+    if (event.target.closest(".fz-n-cancel") || (inMenu && event.target === inMenu && inMenu.classList.contains("fz-n-topmenu"))) { closeMenus(); return; } // Cancel / tap on the dim area
+    if (!inMenu && !event.target.closest(".fz-n-more") && !event.target.closest(".fz-n-top")) closeMenus();
   };
   document.addEventListener("click", onDocClick);
 
@@ -332,8 +367,8 @@ export function mount(container, ctx = {}) {
               <span class="min-w-0 flex-1"><span class="block text-[15px] leading-5 font-semibold text-on-surface truncate">${escapeHtml(p.name)}</span>${p.username ? `<span class="block text-[13px] text-slate-muted truncate">@${escapeHtml(p.username)}</span>` : ""}</span>
             </button>
             <div class="flex gap-2 mt-2.5 pl-[68px]">
-              <button type="button" class="fz-req-yes flex-1 h-9 rounded-lg bg-primary-container text-white text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Confirm</button>
-              <button type="button" class="fz-req-no flex-1 h-9 rounded-lg bg-surface-container text-on-surface text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Delete</button>
+              <button type="button" class="fz-req-yes flex-1 h-10 rounded-full bg-primary-container text-white text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Confirm</button>
+              <button type="button" class="fz-req-no flex-1 h-10 rounded-full bg-surface-container text-on-surface text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Delete</button>
             </div>
           </div>`).join("")}
         <div class="h-2 border-b border-slate-border/60"></div>`;

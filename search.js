@@ -101,14 +101,14 @@ async function searchPeople(db, raw, me) {
 
 /* Small html pieces */
 const followClass = (on, requested, wide) =>
-  `fz-s-follow flex-shrink-0 h-8 px-2.5 text-[14px] active:opacity-60 transition-all disabled:opacity-60 ${
-    on || requested ? "text-slate-muted font-semibold" : "text-primary font-bold"
+  `fz-s-follow flex-shrink-0 h-9 px-4 rounded-full text-[14px] active:opacity-60 transition-all disabled:opacity-60 ${
+    on || requested ? "is-on font-semibold" : "is-off font-bold"
   }`;
 const followLabel = (on, requested) => (requested && !on ? "Requested" : on ? "Following" : "Follow");
 const followBtn = (on, requested, wide = false) => `<button type="button" class="${followClass(on, requested, wide)}">${followLabel(on, requested)}</button>`;
 
 const personRow = (p, following) => `
-  <div class="fz-s-person flex items-center gap-3 pl-4 pr-1.5 py-2.5 border-b border-slate-border/60 cursor-pointer active:bg-surface-container-low transition-colors" data-uid="${escapeHtml(p.uid)}">
+  <div class="fz-s-person flex items-center gap-3 pl-4 pr-4 py-3 border-b border-slate-border cursor-pointer active:bg-surface-container-low transition-colors" data-uid="${escapeHtml(p.uid)}">
     ${avatarHtml(p.photoURL, "w-12 h-12")}
     <div class="min-w-0 flex-1">
       <div class="text-[15px] leading-5 font-semibold text-on-surface truncate" data-tick-uid="${escapeHtml(p.uid)}">${escapeHtml(p.name)}</div>
@@ -119,7 +119,7 @@ const personRow = (p, following) => `
   </div>`;
 
 const sectionTitle = (text, action = "") =>
-  `<div class="flex items-center justify-between px-4 pt-3 pb-1"><h3 class="text-[13px] leading-5 font-semibold text-slate-muted">${text}</h3>${action}</div>`;
+  `<div class="fz-s-sec flex items-center justify-between px-4 pt-4 pb-2"><h3 class="text-[17px] leading-6 font-extrabold text-on-surface">${text}</h3>${action}</div>`;
 const linkBtn = (cls, text) => `<button type="button" class="${cls} text-[15px] font-semibold text-primary">${text}</button>`;
 
 // remembered while the person opens a profile and comes back
@@ -135,10 +135,10 @@ export async function mount(container, ctx = {}) {
   const me = currentUser.uid;
 
   container.innerHTML = `
-    <div class="fz-s-top sticky top-0 z-10 bg-slate-surface border-b border-slate-border/60">
+    <div class="fz-s-top sticky top-0 z-10 bg-slate-surface border-b border-slate-border">
       <div class="flex items-center gap-1 px-2 py-2">
         <button type="button" class="fz-s-back w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:bg-surface-container flex-shrink-0" aria-label="Back"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button>
-        <div class="flex-1 min-w-0 flex items-center gap-2 bg-surface-container rounded-full pl-3.5 pr-1.5 h-10">
+        <div class="fz-s-box flex-1 min-w-0 flex items-center gap-2 pl-3.5 pr-1.5">
           <span class="material-symbols-outlined text-[20px] text-slate-muted flex-shrink-0">search</span>
           <input class="fz-s-input flex-1 min-w-0 h-full text-[15px] text-on-surface placeholder:text-slate-muted" style="border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;-webkit-appearance:none;appearance:none;" type="text" inputmode="search" enterkeyhint="search" maxlength="60" placeholder="Search" autocomplete="off" autocapitalize="off" spellcheck="false" />
           <button type="button" class="fz-s-clear w-8 h-8 rounded-full items-center justify-center bg-slate-subtle/40 text-on-surface flex-shrink-0" aria-label="Clear" style="display:none"><span class="material-symbols-outlined text-[18px]">close</span></button>
@@ -146,7 +146,7 @@ export async function mount(container, ctx = {}) {
       </div>
       <div class="fz-s-chips flex gap-2 px-4 pb-2.5 overflow-x-auto" style="display:none;scrollbar-width:none;">
         ${[["all", "All"], ["people", "People"], ["post", "Posts"], ["photo", "Photos"], ["poll", "Polls"]]
-          .map(([id, label]) => `<button type="button" class="fz-s-chip flex-shrink-0 px-3.5 h-8 rounded-full text-[14px] font-semibold transition-colors" data-f="${id}">${label}</button>`).join("")}
+          .map(([id, label]) => `<button type="button" class="fz-s-chip flex-shrink-0 px-4 h-9 rounded-full text-[14px] font-semibold transition-colors" data-f="${id}">${label}</button>`).join("")}
       </div>
     </div>
     <div class="fz-s-body pb-12 bg-slate-surface min-h-[60vh]"></div>`;
@@ -171,12 +171,46 @@ export async function mount(container, ctx = {}) {
 
   const paintChips = () => container.querySelectorAll(".fz-s-chip").forEach((chip) => {
     const on = chip.dataset.f === filter;
-    chip.className = "fz-s-chip flex-shrink-0 px-3.5 h-8 rounded-full text-[14px] font-semibold transition-colors " + (on ? "bg-primary-fixed text-primary" : "bg-surface-container text-on-surface");
+    chip.className = "fz-s-chip flex-shrink-0 px-4 h-9 rounded-full text-[14px] font-semibold transition-colors " + (on ? "on" : "bg-surface-container text-on-surface");
   });
   const note = (html, icon = "") => {
     body.innerHTML = `<div class="text-center text-slate-muted text-[15px] py-16 px-8">${icon ? `<span class="material-symbols-outlined text-[44px] opacity-60 block mb-2">${icon}</span>` : ""}${html}</div>`;
   };
   const visiblePosts = () => (posts || []).filter((post) => privacyKnown(post.uid) && !isBlocked(post.uid) && !isMuted(post.uid) && canViewPost(post, me, followingIds)); // an author whose privacy is not checked yet stays hidden
+
+  // One sponsored post per page (ads.js, placement "search"); never breaks the search
+  const showSearchAd = (host, anchorEls) => {
+    try {
+      import("./ads.js").then((m) => m && m.insertAds(host, { placement: "search", context: {
+        me, isBlocked, ...(anchorEls ? { anchorEls } : {}),
+        cardOptions: { ...postActions, currentUserUid: me, savedPostIds: ctx.savedPostIds, followingIds, isBlocked },
+        onOpen: postActions.onOpen
+      } })).catch(() => {});
+    } catch (error) { /* ads are optional */ }
+  };
+  // Soft highlight of the searched words inside the post text
+  const highlight = (list, text) => {
+    try {
+      const words = text.toLowerCase().split(/\s+/).map((w) => w.replace(/^[#@]/, "")).filter((w) => w.length > 1);
+      if (!words.length) return;
+      const re = new RegExp("(" + words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+      list.querySelectorAll(".post-text").forEach((el) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach((node) => {
+          if (!re.test(node.nodeValue)) return;
+          re.lastIndex = 0;
+          const frag = document.createDocumentFragment();
+          node.nodeValue.split(re).forEach((part, i) => {
+            if (i % 2) { const m = document.createElement("mark"); m.className = "fz-s-mark"; m.textContent = part; frag.appendChild(m); }
+            else if (part) frag.appendChild(document.createTextNode(part));
+          });
+          node.replaceWith(frag);
+        });
+      });
+    } catch (error) { /* highlight is optional */ }
+  };
 
   const renderHome = () => {
     const recent = readRecent();
@@ -186,8 +220,8 @@ export async function mount(container, ctx = {}) {
       html += sectionTitle("Recent", recent.length > RECENT_SHOWN ? linkBtn("fz-s-allrecent", showAllRecent ? "Show less" : "See all") : linkBtn("fz-s-clearrecent", "Clear all"));
       const x = `<button type="button" class="fz-s-rx w-9 h-9 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container" aria-label="Remove"><span class="material-symbols-outlined text-[20px]">close</span></button>`;
       html += list.map((r, i) => r.t === "u"
-        ? `<div class="fz-s-recent flex items-center gap-3 px-4 py-2 cursor-pointer active:bg-surface-container-low" data-i="${i}">${avatarHtml(r.photoURL, "w-11 h-11")}<div class="min-w-0 flex-1"><div class="text-[16px] leading-5 text-on-surface truncate">${escapeHtml(r.name || r.username)}</div>${r.username ? `<div class="text-[13px] text-slate-muted truncate">@${escapeHtml(r.username)}</div>` : ""}</div>${x}</div>`
-        : `<div class="fz-s-recent flex items-center gap-3 px-4 py-2 cursor-pointer active:bg-surface-container-low" data-i="${i}"><span class="w-11 h-11 rounded-full bg-surface-container flex items-center justify-center text-on-surface flex-shrink-0"><span class="material-symbols-outlined text-[22px]">history</span></span><div class="min-w-0 flex-1 text-[16px] leading-5 text-on-surface truncate">${escapeHtml(r.text)}</div>${x}</div>`).join("");
+        ? `<div class="fz-s-recent flex items-center gap-3 px-4 py-2.5 border-b border-slate-border cursor-pointer active:bg-surface-container-low" data-i="${i}">${avatarHtml(r.photoURL, "w-11 h-11")}<div class="min-w-0 flex-1"><div class="text-[16px] leading-5 text-on-surface truncate">${escapeHtml(r.name || r.username)}</div>${r.username ? `<div class="text-[13px] text-slate-muted truncate">@${escapeHtml(r.username)}</div>` : ""}</div>${x}</div>`
+        : `<div class="fz-s-recent flex items-center gap-3 px-4 py-2.5 border-b border-slate-border cursor-pointer active:bg-surface-container-low" data-i="${i}"><span class="fz-s-clock w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-[22px]">schedule</span></span><div class="min-w-0 flex-1 text-[16px] leading-5 text-on-surface truncate">${escapeHtml(r.text)}</div>${x}</div>`).join("");
       if (recent.length > RECENT_SHOWN && showAllRecent) html += `<div class="px-4 pt-1">${linkBtn("fz-s-clearrecent", "Clear all")}</div>`;
     }
 
@@ -195,8 +229,10 @@ export async function mount(container, ctx = {}) {
     const trends = trendingTags(seen, 5);
     if (trends.length) {
       html += sectionTitle(`<span class="inline-flex items-center gap-1.5"><span class="material-symbols-outlined text-[22px] text-primary">trending_up</span>Trending</span>`);
-      html += trends.map((row, i) => `<button type="button" class="fz-trend w-full text-left px-4 py-2.5 active:bg-surface-container-low transition-colors" data-tag="${escapeHtml(row.tag)}"><span class="block text-[13px] text-slate-muted">${i + 1} · Trending</span><span class="block text-[16px] leading-5 text-on-surface font-semibold break-words">#${escapeHtml(row.tag)}</span><span class="block text-[13px] text-slate-muted">${row.count} post${row.count === 1 ? "" : "s"}</span></button>`).join("");
+      html += trends.map((row, i) => `<button type="button" class="fz-trend w-full text-left px-4 py-3 border-b border-slate-border flex items-center gap-3 active:bg-surface-container-low transition-colors" data-tag="${escapeHtml(row.tag)}"><span class="fz-trend-n flex-shrink-0">${i + 1}</span><span class="min-w-0 flex-1"><span class="block text-[16px] leading-5 text-on-surface font-bold break-words">#${escapeHtml(row.tag)}</span><span class="block text-[13px] text-slate-muted">${row.count} post${row.count === 1 ? "" : "s"}</span></span><span class="material-symbols-outlined text-[22px] fz-trend-up flex-shrink-0">trending_up</span></button>`).join("");
     }
+
+    html += `<div class="fz-s-adspot" style="height:0"></div>`; // the sponsored post goes here (after Trending)
 
     let suggestions = [];
     try { suggestions = posts ? pickSuggestions(seen, me, followingIds, (uid) => isBlocked(uid) || isMuted(uid), 10) : []; } catch (error) { suggestions = []; }
@@ -208,6 +244,7 @@ export async function mount(container, ctx = {}) {
 
     if (!html) { note(posts || loadError ? "Search for people, posts and #tags." : "Loading…", "search"); return; }
     body.innerHTML = html;
+    if (posts || loadError) showSearchAd(body, [body.querySelector(".fz-s-adspot")]);
   };
 
   const postResults = (text) => visiblePosts().filter((post) =>
@@ -241,7 +278,7 @@ export async function mount(container, ctx = {}) {
       if (loadError && !posts) html += `<p class="text-center text-slate-muted text-[15px] py-14 px-8">Could not load posts. Try again.</p>`;
       else if (!posts) html += `<p class="text-center text-slate-muted text-[15px] py-10">Searching…</p>`;
       else if (results.length) {
-        html += (filter === "all" ? sectionTitle("Posts") : "") + `<p class="px-4 pt-2 pb-2 text-[13px] text-slate-muted">${results.length} result${results.length === 1 ? "" : "s"}</p><div class="fz-s-list flex flex-col gap-2 bg-background"></div>`;
+        html += (filter === "all" ? sectionTitle("Posts") : "") + `<p class="px-4 pt-2 pb-2 text-[13px] text-slate-muted">${results.length} result${results.length === 1 ? "" : "s"}</p><div class="fz-s-list flex flex-col"></div>`;
       } else if (filter !== "all" || !found.length) {
         html += `<p class="text-center text-slate-muted text-[15px] py-14 px-8">No posts found for “${escapeHtml(text)}”.<br><span class="text-[13px]">Searched the newest ${posts.length} posts.</span></p>`;
       }
@@ -260,6 +297,9 @@ export async function mount(container, ctx = {}) {
         more.addEventListener("click", () => { shown += PAGE; render(); });
         list.after(more);
       }
+      highlight(list, text);
+      const cards = list.querySelectorAll(":scope > article");
+      if (cards.length) showSearchAd(list, null); // All, Posts, Photos, Polls: one ad after the 5th post, then every 5-6 posts
     }
   };
 

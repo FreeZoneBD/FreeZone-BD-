@@ -98,6 +98,25 @@ export async function openReels(o) {
       .fz-reels .fz-rl-burst.go { animation:fzRlBurst .75s ease-out; }
       @keyframes fzRlBurst { 0%{opacity:0;transform:scale(.4)} 25%{opacity:1;transform:scale(1.15)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.05)} }
       @media (prefers-reduced-motion: reduce) { .fz-reels .fz-rl-burst.go { animation:none; opacity:1; } }
+      /* FreeZone new look */
+      .fz-reels .fz-rl-close, .fz-reels .fz-rl-mute { width:42px; height:42px; border-radius:14px; background:rgba(15,23,42,.42); border:1px solid rgba(255,255,255,.16); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+      .fz-reels .fz-rl-top > span { font-weight:800; letter-spacing:-.3px; margin-left:4px; }
+      .fz-reels .fz-rl-btn > :first-child { box-sizing:border-box; width:50px; height:50px; padding:12px; border-radius:9999px; background:rgba(15,23,42,.42); border:1px solid rgba(255,255,255,.16); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); filter:none; }
+      .fz-reels .fz-rl-btn { font-weight:700; gap:4px; }
+      .fz-reels .fz-rl-like.liked > :first-child { background:rgba(255,77,109,.22); border-color:rgba(255,77,109,.55); color:#ff4d6d; }
+      .fz-reels .fz-rl-like.liked .fz-rl-heart-p { fill:#ff4d6d; }
+      .fz-reels .fz-rl-save.saved > :first-child { color:#fff; }
+      .fz-reels .fz-rl-plus { background:linear-gradient(135deg,#3b82f6,#2563eb); border:2px solid #000; box-sizing:content-box; margin-left:-11px; }
+      .fz-reels .fz-rl-author { box-shadow:0 0 0 2px #3b82f6; border-color:#000 !important; }
+      .fz-reels .fz-rl-name { font-weight:800; font-size:17px; }
+      .fz-reels .fz-rl-bar { background:rgba(255,255,255,.22); }
+      .fz-reels .fz-rl-bar > div { background:linear-gradient(90deg,#3b82f6,#2fc48d) !important; }
+      .fz-reels .fz-rl-sheet > div { background:#111a2e; border-top:1px solid #223049; border-radius:0; padding-top:14px; }
+      .fz-reels .fz-rl-sheet button { border-bottom:1px solid #223049; font-weight:600; font-size:15.5px; padding:13px 16px; gap:14px; }
+      .fz-reels .fz-rl-sheet button > .material-symbols-outlined { width:38px; height:38px; border-radius:12px; background:rgba(59,130,246,.16); color:#6c9bff; display:flex; align-items:center; justify-content:center; font-size:21px; }
+      .fz-reels .fz-rl-sheet button[data-do="boost"] > .material-symbols-outlined, .fz-reels .fz-rl-sheet button[data-do="report"] > .material-symbols-outlined { background:rgba(47,196,141,.16); color:#2fc48d; }
+      .fz-reels .fz-rl-sheet button[data-do="cancel"] { display:flex; justify-content:center; width:calc(100% - 32px); margin:14px 16px 0; border:1px solid #223049; border-radius:14px; background:#16213a; height:48px; padding:0; font-weight:700; }
+      .fz-reels .fz-rl-sheet button[data-do="cancel"] > .material-symbols-outlined { display:none; }
     </style>
     <div class="fz-rl-list"></div>
     <div class="fz-rl-top absolute top-0 inset-x-0 z-20 flex items-center gap-1 px-2 pointer-events-none" style="padding-top:max(.5rem, var(--fz-top, env(safe-area-inset-top, 0px))); height:calc(56px + var(--fz-top, env(safe-area-inset-top, 0px)));">
@@ -220,15 +239,16 @@ export async function openReels(o) {
     const bottom = "var(--fz-bottom, env(safe-area-inset-bottom, 0px))";
     // like other apps: a small "Ad" label above a blue full-width button at the bottom
     const tag = document.createElement("span");
-    tag.className = "absolute left-3 z-20 px-2 py-0.5 rounded-md bg-black/45 text-[12px] font-semibold";
+    tag.className = "absolute left-3 z-20 px-2 py-0.5 rounded-md text-[11px] font-extrabold tracking-wide";
+    tag.style.background = "#2fc48d"; tag.style.color = "#04231a";
     tag.style.cssText += `bottom:calc(${bottom} + 70px);`;
     tag.textContent = "Ad";
     const cta = document.createElement("a");
     cta.href = ad.link;
     cta.target = "_blank";
     cta.rel = "noopener noreferrer sponsored";
-    cta.className = "fz-rl-cta absolute left-3 z-20 flex items-center justify-center gap-1 rounded-lg text-white font-bold text-[16px]";
-    cta.style.cssText += `right:80px;height:44px;bottom:calc(${bottom} + 16px);background:#0a84e8;`;
+    cta.className = "fz-rl-cta absolute left-3 z-20 flex items-center justify-center gap-1 rounded-full text-white font-extrabold text-[16px]";
+    cta.style.cssText += `right:80px;height:48px;bottom:calc(${bottom} + 16px);background:linear-gradient(135deg,#3b82f6,#2563eb);box-shadow:0 10px 26px rgba(37,99,235,.5);`;
     cta.innerHTML = `<span></span><span aria-hidden="true">\u203a</span>`;
     cta.firstChild.textContent = ad.btnText;
     cta.addEventListener("click", (event) => { event.stopPropagation(); countReelAdClick(ad.id); });

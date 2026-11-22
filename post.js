@@ -649,6 +649,7 @@ export function postVideoHtml(video, { doubleTap = false } = {}) {
     <video src="${escapeHtml(video.url)}" ${video.thumb ? `poster="${escapeHtml(video.thumb)}"` : ""} class="absolute inset-0 w-full h-full" style="object-fit:cover;" muted loop playsinline preload="${video.thumb ? "none" : "metadata"}"></video>
     <span class="pv-play absolute inset-0 items-center justify-center pointer-events-none" style="display:flex;"><span class="w-14 h-14 rounded-full bg-black/55 text-white flex items-center justify-center"><span class="material-symbols-outlined text-[34px]" style="font-variation-settings:'FILL' 1;">play_arrow</span></span></span>
     ${video.duration ? `<span class="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/60 text-white text-[12px]">${Math.floor(video.duration / 60)}:${String(Math.round(video.duration % 60)).padStart(2, "0")}</span>` : ""}
+    <span class="pv-prog" aria-hidden="true"><b></b></span>
     <span class="pv-sound absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">volume_off</span></span>
     ${burst}
   </div>`;
@@ -665,6 +666,8 @@ export function mountPostVideo(box, { onDoubleTap, onOpen } = {}) {
     if (w > 0 && h > 0) box.style.aspectRatio = String(Math.min(1.91, Math.max(0.56, w / h)).toFixed(3));
   };
   video.addEventListener("loadedmetadata", () => fitBox(video.videoWidth, video.videoHeight));
+  const progBar = box.querySelector(".pv-prog b");
+  if (progBar) video.addEventListener("timeupdate", () => { if (video.duration > 0) progBar.style.width = Math.min(100, (video.currentTime / video.duration) * 100).toFixed(1) + "%"; });
   if (video.getAttribute("poster")) { // the cover picture has the video's shape and loads before the video does
     const cover = new Image();
     cover.onload = () => { if (!video.videoWidth) fitBox(cover.naturalWidth, cover.naturalHeight); };
@@ -930,6 +933,17 @@ document.addEventListener(
   true
 );
 
+// Puts closed sheets back into their post (or drops them when the post is gone), so nothing piles up in <body>
+function restoreSheets() {
+  document.querySelectorAll("body > .menu-dropdown.fz-sheet[hidden]").forEach((el) => {
+    el.classList.remove("fz-sheet");
+    const home = el._home;
+    el._home = null;
+    if (home && home.isConnected) home.appendChild(el);
+    else el.remove();
+  });
+}
+
 let globalMenuCloserAttached = false;
 function ensureGlobalMenuCloser() {
   if (globalMenuCloserAttached) return;
@@ -987,7 +1001,7 @@ const ACT_BTN =
   "flex items-center gap-1.5 h-11 px-2 rounded-full text-on-surface font-semibold text-[14px] tabular-nums active:bg-surface-container transition-colors";
 
 export function createPostCard(post, options = {}) {
-  const { onNotInterested, currentUserUid, savedPostIds, followingIds, onOpen, onComments, onLike, onShare, onDelete, onEdit, onBoost, onAudience, onHashtag, onVote, watchVotes, onReport, onSave, onFollow, onProfile, onBlock, isBlocked: isBlockedUid, showFollowChip = true, onOpenVideo } = options;
+  const { onNotInterested, currentUserUid, savedPostIds, followingIds, onOpen, onComments, onLike, onShare, onDelete, onEdit, onBoost, onInsights, onAudience, onHashtag, onVote, watchVotes, onReport, onSave, onFollow, onProfile, onBlock, isBlocked: isBlockedUid, showFollowChip = true, onOpenVideo } = options;
 
   const likedByMe = !!(post.likes && currentUserUid && post.likes[currentUserUid]);
   const likesCount = post.likesCount || 0;
@@ -1050,6 +1064,7 @@ export function createPostCard(post, options = {}) {
       <div class="relative menu-wrap flex-shrink-0">
         <button class="menu-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container active:bg-surface-container transition-colors" aria-label="More options">${CARD_ICONS.dots}</button>
         <div class="menu-dropdown absolute right-0 top-10 z-20 w-52 bg-slate-surface border border-slate-border rounded-xl shadow-xl py-1.5 overflow-hidden" hidden>
+          <div class="fz-sheet-head">${avatarHtml(post.photoURL, "w-10 h-10")}<div class="min-w-0"><div class="fz-sheet-name">${escapeHtml(post.name || "FreeZone User")}</div><div class="fz-sheet-sub">${post.username ? `@${escapeHtml(post.username)} · ` : ""}${timeAgo(post.createdAt)}</div></div></div>
           <button class="copy-link-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
             <span class="material-symbols-outlined text-[18px]">link</span> Copy link
           </button>
@@ -1080,6 +1095,9 @@ export function createPostCard(post, options = {}) {
               ? `<button class="edit-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
                    <span class="material-symbols-outlined text-[18px]">edit</span> Edit post
                  </button>
+                 ${onInsights ? `<button class="insights-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
+                   <span class="material-symbols-outlined text-[18px]">bar_chart</span> Post insights
+                 </button>` : ""}
                  ${onBoost ? `<button class="boost-btn w-full text-left px-3.5 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2.5">
                    <span class="material-symbols-outlined text-[18px]">campaign</span> Boost post
                  </button>` : ""}
@@ -1109,6 +1127,7 @@ export function createPostCard(post, options = {}) {
                     : ""
                 }`
           }
+          <button type="button" class="fz-sheet-cancel">Cancel</button>
         </div>
       </div>
     </div>
@@ -1274,12 +1293,20 @@ export function createPostCard(post, options = {}) {
   const menuBtn = article.querySelector(".menu-btn");
   const menuDropdown = article.querySelector(".menu-dropdown");
 
+  const menuWrap = menuBtn.closest(".menu-wrap");
   menuBtn.addEventListener("click", (event) => {
     event.stopPropagation();
     document.querySelectorAll(".menu-dropdown").forEach((el) => {
       if (el !== menuDropdown) el.hidden = true;
     });
+    restoreSheets();
     menuDropdown.hidden = !menuDropdown.hidden;
+    if (!menuDropdown.hidden) {
+      // a full width sheet at the bottom of the screen: lifted to <body> so no header / nav bar can cover it
+      menuDropdown._home = menuWrap;
+      menuDropdown.classList.add("fz-sheet");
+      document.body.appendChild(menuDropdown);
+    }
   });
 
   ensureGlobalMenuCloser();
@@ -1301,6 +1328,7 @@ export function createPostCard(post, options = {}) {
   if (profileLink && onProfile && post.uid) {
     profileLink.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (post.id && post.uid !== currentUserUid) document.dispatchEvent(new CustomEvent("fz:post-action", { detail: { kind: "visit", postId: post.id, authorUid: post.uid } }));
       onProfile(post.uid);
     });
   }
@@ -1361,6 +1389,15 @@ export function createPostCard(post, options = {}) {
       menuDropdown.hidden = true;
       const result = await openReportDialog();
       if (result) onReport?.(post, result);
+    });
+  }
+
+  const insightsBtn = article.querySelector(".insights-btn");
+  if (insightsBtn) {
+    insightsBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      menuDropdown.hidden = true;
+      onInsights?.(post);
     });
   }
 

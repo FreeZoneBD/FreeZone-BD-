@@ -173,7 +173,7 @@ export async function mount(container, ctx = {}) {
      The bar
   ============================================================= */
   // Instagram look: a big round photo inside a ring. Unseen stories have a colourful ring, seen ones a thin grey ring.
-  const GRADIENT = "background:linear-gradient(45deg,#feda75 0%,#fa7e1e 25%,#d62976 55%,#962fbf 78%,#4f5bd5 100%);";
+  const GRADIENT = "background:linear-gradient(135deg,#5b8cff 0%,#2563eb 50%,#2fc48d 100%);";
   const ringed = (kind, inner) => {
     if (kind === "unseen") {
       return `<div class="rounded-full" style="padding:2px;${GRADIENT}"><div class="p-[2px] rounded-full bg-slate-surface">${inner}</div></div>`;

@@ -2,12 +2,17 @@
 import { auth, db } from "./config.js";
 import { initTheme } from "./theme.js";
 initTheme();
+// the login page is dark-first: with no saved choice it stays dark (a saved light/dark choice is respected)
+try { if (!localStorage.getItem("fz-theme")) document.documentElement.classList.add("dark"); } catch (e) {}
 
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithPopup,
+  GoogleAuthProvider,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
@@ -25,6 +30,7 @@ const USERNAME_RE = /^[a-z0-9_.]{3,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESERVED = ["admin", "administrator", "support", "help", "freezone", "freezonebd", "official", "moderator", "root", "system", "staff", "team", "null", "undefined"];
 const SIGNUP_STEPS = ["name", "username", "email", "password", "terms"];
+const GOOGLE_STEPS = ["name", "username", "terms"]; // a Google account already has an email, so no email / password pages
 
 /* ---------------------------------------------------------------
    Messages (Bangla first, English below)
@@ -41,7 +47,9 @@ const MESSAGES = {
   "auth/email-already-in-use": ["এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে। লগইন করুন।", "This email is already registered. Try logging in."],
   "auth/weak-password": ["পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।", "Password must be at least 6 characters."],
   "auth/operation-not-allowed": ["ইমেইল দিয়ে লগইন চালু করা নেই।", "Email/password sign-in is not enabled in Firebase."],
-  "auth/requires-recent-login": ["আবার লগইন করে চেষ্টা করুন।", "Please log in again and retry."]
+  "auth/requires-recent-login": ["আবার লগইন করে চেষ্টা করুন।", "Please log in again and retry."],
+  "auth/account-exists-with-different-credential": ["এই ইমেইল দিয়ে আগে অন্যভাবে অ্যাকাউন্ট খোলা হয়েছে। ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন।", "An account with this email already exists. Log in with your email and password."],
+  "auth/popup-blocked": ["পপআপ বন্ধ করা আছে। অনুমতি দিয়ে আবার চেষ্টা করুন।", "The sign-in window was blocked. Allow pop-ups and try again."]
 };
 
 const CUSTOM = {
@@ -53,6 +61,7 @@ const CUSTOM = {
   "username-reserved": ["এই ইউজারনেম ব্যবহার করা যাবে না।", "This username is reserved. Pick another one."],
   "username-check-failed": ["ইউজারনেম যাচাই করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।", "Could not check the username. Check your connection and try again."],
   "need-terms": ["চালিয়ে যেতে শর্তাবলী ও গোপনীয়তা নীতিতে সম্মতি দিন।", "Please accept the Terms and Privacy Policy to continue."],
+  "google-failed": ["Google দিয়ে লগইন করা যায়নি। আবার চেষ্টা করুন।", "Google sign-in did not work. Please try again."],
   "profile-failed": ["প্রোফাইল তৈরি করা যায়নি। আবার চেষ্টা করুন।", "Could not create your profile. Please try again."],
   "reset-sent": ["পাসওয়ার্ড রিসেটের লিংক পাঠানো হয়েছে। ইনবক্স (এবং স্প্যাম) দেখুন।", "If an account exists for this email, a reset link has been sent."],
   "unknown": ["কিছু একটা ভুল হয়েছে। আবার চেষ্টা করুন।", "Something went wrong. Please try again."]
@@ -171,13 +180,21 @@ function goBack(fallback) {
 }
 window.addEventListener("popstate", (event) => {
   const st = event.state;
+  if (googleUser && (!st || st.step === "login")) { cancelGoogle(); return; } // Back from the Google profile pages: sign out again
   if (!st) { showStep("login", { dir: "back", focus: false }); return; }
   const dir = (st.n || 0) < navCount ? "back" : "fwd";
   navCount = st.n || 0;
   showStep(st.step, { dir });
 });
 
-document.querySelectorAll("[data-back]").forEach((btn) => btn.addEventListener("click", () => goBack(btn.dataset.back)));
+document.querySelectorAll("[data-back]").forEach((btn) => btn.addEventListener("click", () => {
+  if (googleUser) {
+    // Google sign-up: the first page goes back to login (and signs out again), the last page goes back to the username
+    if (current === "name") return cancelGoogle();
+    if (current === "terms") return goBack("username");
+  }
+  goBack(btn.dataset.back);
+}));
 document.querySelectorAll("[data-go]").forEach((btn) => btn.addEventListener("click", () => goStep(btn.dataset.go)));
 $("#forgotBtn").addEventListener("click", () => { resetEmail.value = loginEmail.value.trim(); goStep("reset"); });
 
@@ -412,7 +429,7 @@ steps.username.addEventListener("submit", async (event) => {
   try { free = await isFree(value); } catch (error) { console.warn("Username check failed:", error); }
   setLoading(unNext, false, "Next");
   if (free === false) { setUnState("taken", `@${value} is already taken`, "bad"); showSuggestions(value); return fail("username", signupUsername, "username-taken"); }
-  goStep("email");
+  goStep(googleUser ? "terms" : "email");
 });
 
 steps.email.addEventListener("submit", (event) => {
@@ -441,8 +458,9 @@ function fillSummary() {
 
 // go back to an earlier page to fix something
 function backTo(stepName, input, key) {
-  const idx = SIGNUP_STEPS.indexOf(stepName);
-  const here = SIGNUP_STEPS.indexOf(current);
+  const flow = googleUser ? GOOGLE_STEPS : SIGNUP_STEPS;
+  const idx = flow.indexOf(stepName);
+  const here = flow.indexOf(current);
   const jump = here - idx;
   const finish = () => { showMsg(stepName, key); if (input) input.setAttribute("aria-invalid", "true"); };
   if (jump > 0 && history.state && history.state.n >= jump) {
@@ -463,6 +481,7 @@ steps.terms.addEventListener("submit", async (event) => {
   const email = signupEmail.value.trim();
   const password = signupPassword.value;
   if (!agreeTerms.checked) return showMsg("terms", "need-terms");
+  if (googleUser) return finishGoogle(name, username);
 
   signingUp = true;
   setLoading(signupBtn, true, "Creating account...");
@@ -531,19 +550,171 @@ steps.terms.addEventListener("submit", async (event) => {
   }
 });
 
+
+/* ---------------------------------------------------------------
+   GOOGLE SIGN-IN
+   - Browser: a Firebase popup.
+   - Android app: Google blocks sign-in inside a WebView, so the native Google account picker is used
+     (plugin @capacitor-firebase/authentication with skipNativeAuth). It only returns Google's ID token;
+     the sign-in itself is then done here with the same Firebase JS auth as email login, so the rest of the app
+     sees one normal signed-in user.
+   - A first-time Google user has no profile yet: name -> username -> confirm, written the same way as the email sign-up.
+     A profile that already exists is never overwritten.
+---------------------------------------------------------------- */
+let googleUser = null; // set while a Google user is finishing the profile
+const googleBtn = $("#googleBtn");
+const isGoogleUser = (user) => !!user && (user.providerData || []).some((p) => p.providerId === "google.com");
+
+function nativeGooglePlugin() {
+  const cap = window.Capacitor;
+  if (!cap || typeof cap.isNativePlatform !== "function" || !cap.isNativePlatform()) return null;
+  return (cap.Plugins && cap.Plugins.FirebaseAuthentication) || (typeof cap.registerPlugin === "function" ? cap.registerPlugin("FirebaseAuthentication") : null);
+}
+
+async function googleCredentialOrPopup() {
+  const plugin = nativeGooglePlugin();
+  if (plugin) {
+    const result = await plugin.signInWithGoogle(); // skipNativeAuth is set in capacitor.config.json
+    const idToken = result?.credential?.idToken;
+    if (!idToken) throw Object.assign(new Error("no-id-token"), { code: "google-failed" });
+    return signInWithCredential(auth, GoogleAuthProvider.credential(idToken, result?.credential?.accessToken || undefined));
+  }
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  return signInWithPopup(auth, provider);
+}
+
+const GOOGLE_LABEL = "Continue with Google";
+function setGoogleBusy(busy) {
+  googleBtn.disabled = busy;
+  loginBtn.disabled = busy;
+  googleBtn.querySelector("span").textContent = busy ? "Please wait..." : GOOGLE_LABEL;
+}
+
+googleBtn.addEventListener("click", async () => {
+  clearMsg("login");
+  setGoogleBusy(true);
+  signingUp = true; // hold the "already logged in" redirect until the profile has been checked
+  try {
+    await setPersistence(auth, rememberMe.checked ? browserLocalPersistence : browserSessionPersistence);
+    const credential = await googleCredentialOrPopup();
+    const user = credential.user;
+    // does this person already have a FreeZone profile? (read the real answer: an error must never look like "no profile")
+    const snap = await get(ref(db, `users/${user.uid}`));
+    if (snap.exists()) { goNext(); return; }
+    beginGoogleProfile(user);
+  } catch (error) {
+    const code = String(error?.code || error?.message || "");
+    console.error(error);
+    signingUp = false;
+    if (auth.currentUser && isGoogleUser(auth.currentUser) && !addMode) await signOut(auth).catch(() => {}); // not half signed in
+    // closing the account picker is not an error
+    if (/cancel|closed-by-user|popup-closed|user-cancel|12501|12500/i.test(code)) { /* nothing to show */ }
+    else showMsg("login", MESSAGES[error?.code] ? error.code : "google-failed");
+    setGoogleBusy(false);
+  }
+});
+
+function beginGoogleProfile(user) {
+  googleUser = user;
+  signingUp = true;
+  setGoogleBusy(false);
+  signupEmail.value = user.email || "";
+  signupName.value = (user.displayName || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  signupUsername.value = "";
+  agreeTerms.checked = false;
+  navCount = 1;
+  history.pushState({ step: "name", n: navCount }, "");
+  showStep("name", { dir: "fwd", focus: false });
+}
+
+async function cancelGoogle() {
+  googleUser = null;
+  signingUp = false;
+  await signOut(auth).catch(() => {});
+  navCount = 0;
+  history.replaceState({ step: "login", n: 0 }, "");
+  showStep("login", { dir: "back", focus: false });
+}
+
+async function finishGoogle(name, username) {
+  const user = googleUser;
+  signingUp = true;
+  setLoading(signupBtn, true, "Creating account...");
+  const reset = () => setLoading(signupBtn, false, "Create account");
+  let claimed = false;
+  try {
+    // never overwrite a profile that exists
+    const existing = await get(ref(db, `users/${user.uid}`));
+    if (existing.exists()) { goNext(); return; }
+
+    try {
+      await set(ref(db, `usernames/${username}`), user.uid);
+      claimed = true;
+    } catch (error) {
+      reset();
+      if (/permission/i.test(error?.code || "")) {
+        availCache.set(username, false);
+        backTo("username", signupUsername, "username-taken");
+        setUnState("taken", `@${username} is already taken`, "bad");
+        showSuggestions(username);
+      } else showMsg("terms", "username-check-failed");
+      return;
+    }
+
+    await updateProfile(user, { displayName: name }).catch(() => {});
+    try {
+      await set(ref(db, `users/${user.uid}`), {
+        name,
+        nameLower: name.toLowerCase(),
+        username,
+        photoURL: "",
+        bio: "",
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Profile write failed:", error);
+      if (claimed) await remove(ref(db, `usernames/${username}`)).catch(() => {}); // free the name again; the Google account stays, so Create can be tried again
+      reset();
+      return showMsg("terms", "profile-failed");
+    }
+    googleUser = null;
+    goNext();
+  } catch (error) {
+    console.error(error);
+    reset();
+    showMsg("terms", friendlyKey(error));
+  }
+}
+
 /* ---------------------------------------------------------------
    Start: already logged in? go straight to the feed
 ---------------------------------------------------------------- */
 let firstAuthCheck = true;
+function revealLogin() {
+  if (!firstAuthCheck) return;
+  firstAuthCheck = false;
+  bootEl.hidden = true;
+  pageEl.hidden = false;
+  history.replaceState({ step: "login", n: 0 }, "");
+  showStep("login", { focus: false }); // no keyboard pop-up on load
+}
 
-onAuthStateChanged(auth, (user) => {
-  if (user && !signingUp && !addMode) { goNext(); return; }
+onAuthStateChanged(auth, async (user) => {
+  if (user && !signingUp && !addMode) {
+    // A Google account whose profile was never finished (app closed half way): finish it here instead of opening an empty feed
+    if (isGoogleUser(user)) {
+      try {
+        const snap = await get(ref(db, `users/${user.uid}`));
+        if (!snap.exists()) { revealLogin(); beginGoogleProfile(user); return; }
+      } catch (error) { console.warn("Profile check failed:", error); }
+    }
+    goNext();
+    return;
+  }
   if (firstAuthCheck) {
-    firstAuthCheck = false;
-    bootEl.hidden = true;
-    pageEl.hidden = false;
-    history.replaceState({ step: "login", n: 0 }, "");
-    showStep("login", { focus: false }); // no keyboard pop-up on load
+    revealLogin();
+    if (googleUser) return;
     const startParams = new URLSearchParams(window.location.search);
     if (startParams.get("tab") === "signup") goStep("name");
     else if (addMode && startParams.get("email")) {

@@ -7,7 +7,7 @@ const VERSION = "fz-offline-v1";
 const CODE = VERSION + "-code";
 const PICS = VERSION + "-pics";
 const CODE_HOSTS = ["www.gstatic.com", "cdn.tailwindcss.com", "fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com", "cdn.jsdelivr.net"];
-const PIC_HOSTS = ["i.ibb.co", "res.cloudinary.com"];
+const PIC_HOSTS = ["i.ibb.co", "res.cloudinary.com", "firebasestorage.googleapis.com"];
 const MAX_PICS = 200;
 
 self.addEventListener("install", () => self.skipWaiting());

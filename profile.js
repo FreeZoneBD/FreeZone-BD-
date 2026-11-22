@@ -549,19 +549,45 @@ export async function mount(container, ctx = {}) {
   const compact = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e4 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : String(n));
 
   container.innerHTML = `
-    <style>.pf-over .pf-back,.pf-over .pf-act{background:rgba(0,0,0,.42);color:#fff}</style>
+    <style>.pf-over .pf-back,.pf-over .pf-act{background:rgba(0,0,0,.42);color:#fff}
+      /* FreeZone new look: a full-width card over the banner */
+      .fz-pf{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center;position:relative;isolation:isolate;margin-top:-92px;padding-top:18px;padding-left:18px;padding-right:18px}
+      .fz-pf::before{background:linear-gradient(180deg,rgb(var(--c-surface-container-low,22 33 58)),rgb(var(--c-slate-surface)));border-top:1px solid rgb(var(--c-slate-border));content:"";grid-column:1/-1;grid-row:1/4;position:absolute;left:-18px;right:-18px;top:-18px;bottom:0;z-index:-1}
+      .fz-pf-r1{display:contents}
+      .fz-pf-av{order:1;grid-column:1;position:relative}
+      .fz-pf-id{order:2;grid-column:2;min-width:0}
+      .fz-pf-id h2{font-size:21px;line-height:26px;font-weight:800;letter-spacing:-.3px}
+      .fz-pf-stats{order:3;grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);margin:16px -18px 0;border-top:1px solid rgb(var(--c-slate-border));border-bottom:1px solid rgb(var(--c-slate-border))}
+      .fz-pf-stats>*{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 0 10px;border-right:1px solid rgb(var(--c-slate-border));text-align:center}
+      .fz-pf-stats>*:last-child{border-right:0}
+      .fz-pf-stats>* span:first-child{font-size:19px;line-height:24px;font-weight:800}
+      .fz-pf-stats>* span:last-child{font-size:12.5px}
+      .fz-pf-acts{order:4;grid-column:1/-1;display:flex!important;flex-wrap:nowrap!important;justify-content:stretch!important;gap:10px!important;padding:16px 0 18px!important;margin:0!important;width:100%}
+      .fz-pf-acts>*{height:44px!important;border-radius:999px!important;font-size:15px!important;font-weight:700!important;display:flex;align-items:center;justify-content:center;gap:7px}
+      .fz-pf-acts .follow-toggle{flex:1.2;border:1px solid transparent}
+      .fz-pf-acts .follow-toggle.bg-primary-container{background:linear-gradient(135deg,#3b82f6,#2563eb)!important;color:#fff!important;box-shadow:0 6px 16px rgba(37,99,235,.4)}
+      .fz-pf-acts .follow-toggle.bg-surface-container{border-color:rgb(var(--c-slate-border))}
+      .fz-pf-acts .message-btn{flex:1;border:1px solid rgb(var(--c-slate-border))}
+      .fz-pf-acts .share-profile{flex:0 0 44px;width:44px!important;border-radius:14px!important;border:1px solid rgb(var(--c-slate-border))}
+      .fz-pf-edit{flex:1;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.4)}
+      .fz-pf-av img,.fz-pf-av>div,.fz-pf-av .change-photo>img,.fz-pf-av .change-photo>div,.fz-pf-av.view-photo>img,.fz-pf-av.view-photo>div{width:84px!important;height:84px!important;box-shadow:0 0 0 3px #3b82f6!important}
+      .fz-pf>*:not(.fz-pf-av):not(.fz-pf-id):not(.fz-pf-stats):not(.fz-pf-acts):not(.fz-pf-r1){order:5;grid-column:1/-1}
+      .fz-pf>.fz-pf-stats~*:not(.fz-pf-acts){margin-top:10px}
+      .fz-private-lock{background:transparent!important;border:0!important;border-radius:0!important;padding-top:44px!important}
+      .fz-private-lock>div:first-child{width:76px!important;height:76px!important;border-radius:26px!important;background:rgba(59,130,246,.14)!important;border:1px solid rgba(59,130,246,.3)}
+      .fz-private-lock .material-symbols-outlined{color:#6c9bff!important;font-size:36px!important}</style>
     <div class="pf-top sticky top-0 z-10 pf-over -mb-11 flex items-center h-11 px-2 gap-1 flex-shrink-0">
       <button type="button" class="pf-back w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all" aria-label="Back"><span class="material-symbols-outlined text-[26px]">arrow_back</span></button>
       <span class="pf-top-title flex-1 min-w-0 truncate text-[17px] leading-6 font-semibold text-on-surface px-1 transition-opacity duration-150 opacity-0 pointer-events-none">${escapeHtml(name)}</span>
       <div class="pf-top-actions flex items-center gap-0.5"></div>
     </div>
-    <div class="pf-banner flex-shrink-0 w-full bg-surface-container" style="aspect-ratio:3/1;background-image:linear-gradient(135deg,var(--pf-c1,#3b5bdb),var(--pf-c2,#9c36b5));">${hasBanner ? `<img class="w-full h-full object-cover block" src="${escapeHtml(user.bannerURL)}" alt="" loading="lazy" onerror="this.remove()" />` : ""}</div>
+    <div class="pf-banner flex-shrink-0 w-full bg-surface-container" style="aspect-ratio:2/1;background-image:linear-gradient(135deg,var(--pf-c1,#3b5bdb),var(--pf-c2,#9c36b5));">${hasBanner ? `<img class="w-full h-full object-cover block" src="${escapeHtml(user.bannerURL)}" alt="" loading="lazy" onerror="this.remove()" />` : ""}</div>
 
-    <div class="px-4 pb-3 bg-background flex-shrink-0" style="overflow-x:clip;">
-      <div class="relative z-[1] flex items-end justify-between gap-3 text-left" style="margin-top:-40px;max-width:100%;">
+    <div class="fz-pf px-4 pb-3 bg-background flex-shrink-0" style="overflow-x:clip;">
+      <div class="fz-pf-r1 text-left">
         ${
           isMe
-            ? `<div class="relative flex-shrink-0">
+            ? `<div class="fz-pf-av relative flex-shrink-0">
                  <button type="button" class="change-photo block rounded-full active:scale-95 transition-transform" aria-label="Change profile photo">${bigAvatar(user.photoURL)}</button>
                  <span class="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-primary-container text-white ring-2 ring-background flex items-center justify-center pointer-events-none">
                    <span class="material-symbols-outlined text-[16px]">add</span>
@@ -570,10 +596,10 @@ export async function mount(container, ctx = {}) {
                  <input type="file" class="photo-input" accept="image/*" hidden />
                </div>`
             : hasPhoto
-              ? `<button type="button" class="view-photo flex-shrink-0 block rounded-full active:scale-95 transition-transform" aria-label="View profile photo">${bigAvatar(user.photoURL)}</button>`
-              : `<div class="flex-shrink-0">${bigAvatar(user.photoURL)}</div>`
+              ? `<button type="button" class="fz-pf-av view-photo flex-shrink-0 block rounded-full active:scale-95 transition-transform" aria-label="View profile photo">${bigAvatar(user.photoURL)}</button>`
+              : `<div class="fz-pf-av flex-shrink-0">${bigAvatar(user.photoURL)}</div>`
         }
-        ${!isMe && !blocked ? `<div class="flex flex-wrap justify-end gap-1.5 pb-1 min-w-0">
+        ${!isMe && !blocked ? `<div class="fz-pf-acts flex flex-wrap justify-end gap-1.5 pb-1 min-w-0">
                <button type="button" class="follow-toggle px-4 h-8 rounded-full text-[13.5px] font-semibold active:scale-95 transition-all"></button>
                ${
                  ctx.onOpenChat
@@ -586,9 +612,13 @@ export async function mount(container, ctx = {}) {
                  <span class="material-symbols-outlined text-[18px]">share</span>
                </button>
              </div>` : ""}
+        ${isMe ? `<div class="fz-pf-acts flex gap-1.5">
+               <button type="button" class="fz-pf-edit" aria-label="Edit profile"><span class="material-symbols-outlined text-[18px]">edit</span> Edit profile</button>
+               <button type="button" class="share-profile flex-shrink-0 w-8 h-8 rounded-full bg-surface-container text-on-surface flex items-center justify-center" aria-label="Share profile"><span class="material-symbols-outlined text-[18px]">share</span></button>
+             </div>` : ""}
       </div>
 
-      <div class="mt-2 min-w-0">
+      <div class="fz-pf-id min-w-0">
         ${
           isMe
             ? `<button type="button" class="pf-switch max-w-full flex items-center gap-0.5 text-left active:opacity-70" aria-label="Switch account"><h2 data-tick-uid="${escapeHtml(uid)}" class="text-[21px] leading-7 font-bold text-on-surface break-words min-w-0">${escapeHtml(name)}</h2><span class="material-symbols-outlined text-[22px] text-on-surface flex-shrink-0">expand_more</span></button>`
@@ -606,7 +636,7 @@ export async function mount(container, ctx = {}) {
       }
       ${!isMe && !blocked && (ctx.followingIds || {})[uid] ? `<p class="presence-line flex items-center gap-1.5 mt-2 text-[14px] text-slate-muted" style="display:none"></p>` : ""}
       ${aboutHtml(user)}
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-1 mt-2.5">
+      <div class="fz-pf-stats">
         ${blocked ? stat("Following", following ?? "–", "following-count") : statButton("Following", following ?? "–", "following-count", "following")}
         ${blocked ? stat("Followers", followersCount ?? "–", "followers-count") : statButton("Followers", followersCount ?? "–", "followers-count", "followers")}
         ${stat("Likes", compact(likesTotal), "likes-total")}
@@ -995,7 +1025,6 @@ export async function mount(container, ctx = {}) {
   // Mine: pencil (edit) and the menu (Settings, Share, QR). Another person: the ⋮ menu (Block, Mute, Share, Report)
   if (isMe) {
     setTopActions([
-      { icon: "edit", label: "Edit profile", onClick: () => ctx.onOpenEditProfile?.() },
       {
         icon: "menu",
         label: "Menu",
@@ -1058,6 +1087,7 @@ export async function mount(container, ctx = {}) {
   const qrBtn = container.querySelector(".qr-profile");
   if (qrBtn) qrBtn.addEventListener("click", () => openProfileQr({ uid, name, username: user.username || "" }));
 
+  container.querySelector(".fz-pf-edit")?.addEventListener("click", () => ctx.onOpenEditProfile?.());
   const shareBtn = container.querySelector(".share-profile");
   if (shareBtn) shareBtn.addEventListener("click", () => shareProfile({ uid, name, username: user.username || "" }));
 
