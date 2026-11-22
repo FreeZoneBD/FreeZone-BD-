@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FreeZone BD - file check</title>
+<style>body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#0b1220;color:#e6edf7;padding:16px}h1{font-size:20px;margin:0 0 4px}.s{color:#8fa0bd;margin-bottom:14px}
+.b{padding:12px 14px;border-radius:12px;margin:8px 0;font-weight:700}.ok{background:#12301f;color:#2fc48d}.bad{background:#3a1520;color:#ff7a93}.warn{background:#3a2d12;color:#f5b94a}
+.l{font:13px/1.7 ui-monospace,monospace;word-break:break-all;margin:4px 0 14px}.l div{padding:2px 0;border-bottom:1px solid #223049}h2{font-size:16px;margin:18px 0 4px}</style></head><body>
+<h1>File check</h1><div class="s" id="st">Checking…</div><div id="out"></div>
+<script>
+(async()=>{
+const st=document.getElementById("st"),out=document.getElementById("out");
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+const bust="?chk="+Date.now();
+let man;
+try{man=await (await fetch("manifest.json"+bust,{cache:"no-store"})).json();}catch(e){st.textContent="manifest.json is missing or broken: upload manifest.json next to this page.";return;}
+const names=Object.keys(man.files);
+const missing=[],diff=[],ok=[],texts={};
+let done=0;
+async function one(n){
+  try{
+    const r=await fetch(n+bust,{cache:"no-store"});
+    if(!r.ok){missing.push(n+" (HTTP "+r.status+")");return;}
+    const buf=await r.arrayBuffer();
+    const h=hex(await crypto.subtle.digest("SHA-256",buf));
+    if(h===man.files[n]) ok.push(n); else diff.push(n);
+    if(/\.(js|mjs)$/.test(n)) texts[n]=new TextDecoder().decode(buf);
+  }catch(e){missing.push(n+" (cannot load)");}
+  st.textContent="Checking… "+(++done)+" / "+names.length;
+}
+for(let i=0;i<names.length;i+=8) await Promise.all(names.slice(i,i+8).map(one));
+// every "import ... from './x.js'" must exist
+const broken=[];const have=new Set(ok.concat(diff));
+for(const [n,t] of Object.entries(texts)){
+  for(const m of t.matchAll(/(?:from|import\()\s*["']\.\/([^"']+)["']/g)){ if(!have.has(m[1])&&!man.files[m[1]]===false) broken.push(n+" needs "+m[1]); else if(!have.has(m[1])&&m[1]!=="config.js") broken.push(n+" needs "+m[1]); }
+}
+const list=(a)=>"<div class='l'>"+a.sort().map(x=>"<div>"+x.replace(/</g,"&lt;")+"</div>").join("")+"</div>";
+let h="";
+if(!missing.length&&!diff.length&&!broken.length) h+="<div class='b ok'>All "+ok.length+" files are the right version.</div>";
+if(missing.length) h+="<div class='b bad'>MISSING ("+missing.length+") - upload these:</div>"+list(missing);
+if(diff.length) h+="<div class='b warn'>OLD or DIFFERENT version ("+diff.length+") - upload these again:</div>"+list(diff);
+if(broken.length) h+="<div class='b bad'>Broken imports ("+broken.length+"):</div>"+list(broken);
+h+="<h2>OK ("+ok.length+")</h2><div class='s'>"+ok.length+" files match.</div>";
+h+="<div class='s'>If a file shows OLD right after uploading, wait 10 minutes (GitHub Pages cache) and open this page again. config.js is not checked.</div>";
+out.innerHTML=h; st.textContent="Done. Checked "+names.length+" files.";
+})();
+</script></body></html>
