@@ -37,7 +37,7 @@ if(missing.length) h+="<div class='b bad'>MISSING ("+missing.length+") - upload 
 if(diff.length) h+="<div class='b warn'>OLD or DIFFERENT version ("+diff.length+") - upload these again:</div>"+list(diff);
 if(broken.length) h+="<div class='b bad'>Broken imports ("+broken.length+"):</div>"+list(broken);
 h+="<h2>OK ("+ok.length+")</h2><div class='s'>"+ok.length+" files match.</div>";
-h+="<div class='s'>If a file shows OLD right after uploading, wait 10 minutes (GitHub Pages cache) and open this page again. config.js is not checked.</div>";
+h+="<div class='s'>If a file shows OLD right after uploading, wait 10 minutes (GitHub Pages cache) and open this page again. config.js and logo.png (your own) are not checked.</div>";
 out.innerHTML=h; st.textContent="Done. Checked "+names.length+" files.";
 })();
 </script></body></html>
