@@ -18,6 +18,7 @@
     (function () {
       try {
         var m = localStorage.getItem("fz-theme");
+        if (!m && !localStorage.getItem("fz-theme-seeded")) { m = "dark"; localStorage.setItem("fz-theme", "dark"); localStorage.setItem("fz-theme-seeded", "1"); } /* new look: dark on first start */
         if (m === "dark" || (m !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
           document.documentElement.classList.add("dark");
         }
@@ -182,6 +183,21 @@
       box-shadow: 0 0 0 2px rgb(var(--c-slate-surface)) !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important;
     }
     @media (prefers-reduced-motion: reduce) { .fz-nav-item, .fz-fab, .fz-avatar-btn, .fz-create-btn { transition: none; } }
+
+    /* ===== FreeZone new look (dark-first): same layout, brand blue + green BD, softer lines ===== */
+    .fz-topbar, .fz-bottomnav { --fz-brand: #2563eb; }
+    html.dark .fz-topbar, html.dark .fz-bottomnav { --fz-brand: #5b8cff; }
+    .fz-brand-bd { background: none; -webkit-text-fill-color: rgb(var(--c-online-emerald)); color: rgb(var(--c-online-emerald)); }
+    .fz-avatar { box-shadow: 0 0 0 2px rgb(var(--c-slate-surface)), 0 0 0 3.5px #5b8cff; }
+    .fz-create-btn { background: rgb(var(--c-surface-container-low)); border: 1px solid rgb(var(--c-slate-border)); }
+    .fz-feed-tab[aria-selected="true"] { color: rgb(var(--c-primary)) !important; }
+    .fz-fab { border-radius: 20px; background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 10px 26px rgba(37,99,235,.5), inset 0 1px 0 rgba(255,255,255,.3); }
+    .fz-nav-item.fz-active { color: var(--fz-brand); }
+    .fz-nav-item.fz-active .fz-svg.on { fill-opacity: .2; }
+    .fz-nav-item.fz-active::after { top: 0; bottom: auto; width: 26px; height: 3px; margin-left: -13px; border-radius: 0 0 4px 4px; }
+    #postsContainer, html.dark #postsContainer { --fz-sep: rgb(var(--c-slate-border)); }
+    #postsContainer .like-btn.liked { background: rgba(255,90,122,.12); border-radius: 9999px; }
     .skeleton {
       background-size: 200% 100%;
       animation: shimmer 1.4s infinite linear;
@@ -198,6 +214,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
   </style>
+<script src="analytics.js" defer></script>
 </head>
 <body class="bg-background text-on-surface antialiased min-h-screen flex flex-col justify-between selection:bg-primary-fixed selection:text-on-primary-fixed">
 
@@ -337,8 +354,11 @@
     <button id="pageViewBack" aria-label="Back" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all">
       <span class="material-symbols-outlined text-[22px]">arrow_back</span>
     </button>
-    <span id="pageViewTitle" class="font-headline-sm text-headline-sm font-semibold"></span>
-    <div id="pageViewActions" class="ml-auto flex items-center gap-1"></div>
+    <div class="min-w-0 flex flex-col justify-center" style="line-height:1.15;">
+      <span id="pageViewTitle" class="font-headline-sm text-headline-sm font-semibold truncate"></span>
+      <span id="pageViewSub" class="text-[12px] text-slate-muted truncate" hidden></span>
+    </div>
+    <div id="pageViewActions" class="ml-auto flex items-center gap-2 pr-1"></div>
   </header>
   <div id="pageViewBody" class="flex-1 overflow-y-auto flex flex-col"></div>
 </div>

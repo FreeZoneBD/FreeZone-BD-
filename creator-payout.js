@@ -9,6 +9,7 @@
 import { ref, get, push, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 import { escapeHtml, showToast } from "./post.js";
 import { monthKey } from "./creatorViews.js";
+import { workerCall } from "./worker-call.js";
 
 const METHODS = { bkash: "bKash", nagad: "Nagad" };
 const NUMBER_RE = /^01[3-9][0-9]{8}$/;
@@ -116,14 +117,21 @@ export function bindPayout(root, { db, uid, payout, reload }) {
     button.disabled = true;
     button.textContent = "Sending...";
     try {
-      const data = { amount: payout.available, method, number, status: "pending", requestedAt: serverTimestamp() };
-      if (name) data.name = name;
-      await set(push(ref(db, `creatorPayouts/${uid}`)), data);
+      // The Worker works out the amount itself (all closed months minus payouts already asked or paid); the old direct write only for an older Worker
+      const r = await workerCall("/payout", { method, number, ...(name ? { name } : {}) }, false, 20000);
+      if (r.status === 404 || r.status === 0) {
+        if (r.status === 0) throw Object.assign(new Error("offline"), { code: "OFFLINE" });
+        const data = { amount: payout.available, method, number, status: "pending", requestedAt: serverTimestamp() };
+        if (name) data.name = name;
+        await set(push(ref(db, `creatorPayouts/${uid}`)), data);
+      } else if (!r.ok) {
+        throw Object.assign(new Error(r.data.error || "refused"), { code: "WORKER_" + r.status, workerMessage: r.data.error });
+      }
       showToast("Request sent");
       await reload();
     } catch (error) {
       console.error("Payout request:", error);
-      showToast(error.code === "PERMISSION_DENIED" ? "Could not send: payouts are not open or the rules block it" : "Could not send. Try again");
+      showToast(error.code === "PERMISSION_DENIED" ? "Could not send: payouts are not open or the rules block it" : error.workerMessage ? error.workerMessage : error.code === "OFFLINE" ? "No internet. Try again" : "Could not send. Try again");
       button.disabled = false;
       button.textContent = "Send request";
     }

@@ -31,7 +31,8 @@ import { pickAdsForSlots } from "./feed-algorithm.js";
 const POSITIONS = {
   feed: { firstAfter: 5, gaps: [6, 5] },
   feedFollowing: { firstAfter: 5, gaps: [6, 5] },
-  profile: { firstAfter: 5, gaps: [6, 5] }
+  profile: { firstAfter: 5, gaps: [6, 5] },
+  search: { firstAfter: 5, gaps: [6, 5] } // Search results: same rhythm as the feed
 };
 
 const MAX_READ = 60; // boosts whose post is read in one load (others get their turn on the next load)
@@ -317,7 +318,7 @@ function buildAdCard(ad, media, imageSize, onOpen) {
         ${avatarHtml(post.photoURL, "w-10 h-10")}
         <div class="min-w-0">
           <div class="font-label-lg text-label-lg text-on-surface truncate">${escapeHtml(who)}</div>
-          <div class="font-body-sm text-body-sm text-slate-muted flex items-center gap-1"><span>Ad</span><span aria-hidden="true">·</span><span class="material-symbols-outlined text-[14px]" aria-label="Public">public</span></div>
+          <div class="font-body-sm text-body-sm text-slate-muted flex items-center gap-1"><span class="fz-ad-tag">Ad</span><span class="material-symbols-outlined text-[14px]" aria-label="Public">public</span><span>Public</span></div>
         </div>
       </div>
       <button type="button" class="fz-ad-hide w-8 h-8 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container active:scale-95 transition-all flex-shrink-0" aria-label="Hide this ad">
@@ -558,6 +559,11 @@ export async function insertAds(container, { placement = "feed", context = {} } 
       if (position < posts.length) anchors.push(post); // never after the very last post (the next page brings the next spot)
       nextSpot += gaps[gapIndex++ % gaps.length];
     });
+    // Search passes its own spot(s): after the 2nd result, or after Trending on the empty page (never more than one ad)
+    if (placement === "search" && Array.isArray(context.anchorEls)) {
+      anchors.length = 0;
+      anchors.push(...context.anchorEls.filter((el) => el && el.isConnected).slice(0, 1));
+    }
     // A short feed (e.g. "Following" with only a few posts) has no spot yet: the ad goes after the last post instead of nowhere
     if (!anchors.length && placement === "feed" && posts.length >= 1) anchors.push(posts[posts.length - 1]);
 

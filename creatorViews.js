@@ -7,10 +7,11 @@
 // Kinds:  "v" a video was watched   "p" a post was seen   "f" a profile was opened
 import { ref, update, increment } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 import { isMonetized } from "./monetize.js";
+import { workerCall } from "./worker-call.js";
 
 const KINDS = ["v", "p", "f"];
 const DAY_KEY = "fz_cv";
-const FLUSH_MS = 8000;
+const FLUSH_MS = 45000; // the Worker takes the numbers (max 8 creators per call), so a longer wait means far fewer requests
 
 // The month in Bangladesh time (UTC+6), the same in the app and in the admin panel
 export const monthKey = (now = Date.now()) => new Date(now + 6 * 3600 * 1000).toISOString().slice(0, 7);
@@ -38,14 +39,20 @@ async function flush() {
   const batch = [...pending.entries()];
   pending.clear();
   const month = monthKey();
-  const byCreator = new Map();
-  batch.forEach(([k, n]) => {
-    const [creator, kind] = k.split("|");
-    if (!byCreator.has(creator)) byCreator.set(creator, {});
-    byCreator.get(creator)[kind] = increment(n);
-  });
-  // one write per creator: a refused one (cap reached, rules not published yet) never stops the others
-  await Promise.allSettled([...byCreator.entries()].map(([creator, fields]) => update(ref(ctx.db, `creatorViews/${month}/${creator}/${ctx.me}`), fields)));
+  const views = batch.map(([k, n]) => { const [creator, kind] = k.split("|"); return { creator, kind, n }; });
+  // 1) the Worker (checks the creator, the account age and the caps, and stamps the network)
+  for (let i = 0; i < views.length; i += 8) {
+    const part = views.slice(i, i + 8);
+    const r = await workerCall("/views", { views: part });
+    if (r.ok) continue;
+    if (r.status === 0) { part.forEach((v) => { const k = `${v.creator}|${v.kind}`; pending.set(k, (pending.get(k) || 0) + v.n); }); continue; } // no network: try again later
+    if (r.status !== 404) continue; // refused on purpose (suspended, rate limit ...): drop
+    // 2) an older Worker: the old direct write (one per creator; a refused one never stops the others)
+    const byCreator = new Map();
+    part.forEach((v) => { if (!byCreator.has(v.creator)) byCreator.set(v.creator, {}); byCreator.get(v.creator)[v.kind] = increment(v.n); });
+    await Promise.allSettled([...byCreator.entries()].map(([creator, fields]) => update(ref(ctx.db, `creatorViews/${month}/${creator}/${ctx.me}`), fields)));
+  }
+  if (pending.size && !timer) timer = setTimeout(flush, FLUSH_MS);
 }
 
 const flushNow = () => { if (timer) { clearTimeout(timer); timer = null; } flush(); };

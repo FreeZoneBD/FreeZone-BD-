@@ -5,7 +5,8 @@ import { initTheme } from "./theme.js";
 initTheme();
 
 import {
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 
 import {
@@ -39,6 +40,7 @@ import { rankPosts, likedAuthorsFrom, tagsOf } from "./feed-algorithm.js";
 import { emptyKind, renderEmpty } from "./empty-state.js";
 import { startMonetized } from "./monetize.js";
 import { recordView } from "./creatorViews.js";
+import { recordViews as recordPostStats, start as startPostStats } from "./post-stats.js";
 import { ensurePrivacy, privacyKnown, isPrivateUid, isRequested, setRequested, startRequests, onPrivacyChange } from "./privacy.js";
 import { createOfflineBar } from "./offline-bar.js";
 import { createScrollMemory } from "./scroll-memory.js";
@@ -140,8 +142,18 @@ onAuthStateChanged(auth, async (user) => {
   if (currentProfile.suspended === true) {
     const bar = document.createElement("div");
     bar.className = "bg-error-container text-on-error-container text-center text-[13px] font-semibold px-4 py-2";
-    bar.textContent = `Your account is suspended${currentProfile.suspendReason ? ": " + currentProfile.suspendReason : ""}. You can read, but you cannot post, comment or send messages.`;
+    bar.style.cursor = "pointer";
+    bar.textContent = `Your account is suspended${currentProfile.suspendReason ? ": " + currentProfile.suspendReason : ""}. You can read, but you cannot post, comment or send messages. Tap for details.`;
     document.body.insertBefore(bar, document.body.firstChild);
+    const openSusp = () => import("./suspended.js").then((m) => m.showSuspended(currentProfile, {
+      onAppeal: () => openSettings("report-problem"),
+      onGuidelines: () => { window.open("guidelines.html", "_blank"); },
+      onLogout: async () => { try { await signOut(auth); } catch (e) { /* the sign-out listener handles the rest */ } }
+    })).catch(() => {});
+    bar.addEventListener("click", openSusp);
+    let seen = false;
+    try { seen = sessionStorage.getItem("fzSuspSeen") === "1"; sessionStorage.setItem("fzSuspSeen", "1"); } catch (e) { /* ignore */ }
+    if (!seen) openSusp();
   }
 
   navAvatar.innerHTML = currentProfile.photoURL
@@ -248,7 +260,13 @@ onAuthStateChanged(auth, async (user) => {
   // Coming back from Terms / Privacy / Guidelines (opened from Settings): show Settings again
   const openWhat = linkParams.get("open");
   if (openWhat) { try { history.replaceState(null, "", "feed.html"); } catch (error) { /* ignore */ } }
-  if (openWhat === "settings" && !sharedChatUid && !sharedPostId && !sharedProfileUid && !sharedUsername) openSettings();
+  if (openWhat === "settings" && !sharedChatUid && !sharedPostId && !sharedProfileUid && !sharedUsername) {
+    // back from Terms / Privacy / Guidelines / Creator terms: the same Settings page, at the same place
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem("fzSettingsRestore") || "null"); sessionStorage.removeItem("fzSettingsRestore"); } catch (error) { saved = null; }
+    if (saved && typeof saved.key === "string" && Date.now() - (saved.at || 0) < 30 * 60 * 1000) openSettings(saved.key === "main" ? null : saved.key, { restore: true, scroll: Number(saved.scroll) || 0 });
+    else openSettings();
+  }
   else if (sharedChatUid) openChatWith(sharedChatUid);
   else if (sharedPostId) openPostDetail(sharedPostId);
   else if (sharedProfileUid) openUserProfile(sharedProfileUid);
@@ -291,6 +309,10 @@ function boostPost(post) {
   import("./boost.js").then((m) => m.openBoost({ post })).catch(() => showToast("Could not open Boost. Try again."));
 }
 
+function insightsPost(post) {
+  import("./post-insights.js").then((m) => m.openPostInsights(post, { db, me: currentUser && currentUser.uid })).catch(() => showToast("Could not open insights. Try again."));
+}
+
 function postActions() {
   return {
     onOpen: openPostDetail,
@@ -302,6 +324,7 @@ function postActions() {
     onDelete: deletePost,
     onEdit: editPost,
     onBoost: boostPost,
+    onInsights: insightsPost,
     onOpenReels: (startPostId, posts) => openReelsAt(startPostId, { posts }), // a profile's Videos tab: Reels with only that person's videos
     onAudience: setAudience,
     onHashtag: openHashtag,
@@ -318,10 +341,16 @@ function postActions() {
 function setPageActions(actions = []) {
   if (!pageViewActions) return;
   pageViewActions.innerHTML = "";
+  if (!actions.length) { // a page without actions also has no sub line under its title (the Friends page sets one)
+    const sub = document.getElementById("pageViewSub");
+    if (sub) { sub.hidden = true; sub.textContent = ""; }
+  }
   actions.forEach((action) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all";
+    button.className = action.kind === "primary" || action.kind === "boxed"
+      ? `fz-act ${action.kind === "primary" ? "fz-act-pri" : ""} w-10 h-10 flex items-center justify-center active:scale-95 transition-all`
+      : "w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all";
     button.setAttribute("aria-label", action.label || "");
     button.innerHTML = `<span class="material-symbols-outlined text-[24px]">${action.icon}</span>`;
     button.addEventListener("click", action.onClick);
@@ -370,7 +399,7 @@ async function openPageView(pageKey, title) {
 }
 
 // Settings (the menu icon at the top right of my own Profile). Back returns to my Profile.
-async function openSettings(startPage = null) {
+async function openSettings(startPage = null, opts = {}) {
   if (!currentUser) return;
 
   const backToProfile = () => openPageView("profile", "Profile");
@@ -390,11 +419,17 @@ async function openSettings(startPage = null) {
       currentUser,
       currentProfile,
       startPage,
+      restore: !!opts.restore,
       setTitle: (text) => (pageViewTitle.textContent = text),
       setBack: (handler) => (pageBackTarget = handler),
       setActions: setPageActions,
+      onOpenPost: (id) => openPostDetail(id),
       onBack: backToProfile
     });
+    if (opts.scroll > 0) {
+      pageViewBody.scrollTop = opts.scroll;
+      requestAnimationFrame(() => { pageViewBody.scrollTop = opts.scroll; });
+    }
   } catch (error) {
     console.error(error);
     pageViewBody.innerHTML = `<p class="text-center text-slate-muted text-sm py-10">Could not load settings.</p>`;
@@ -648,9 +683,12 @@ function listenPosts() {
         const post = (latestPosts || []).find((p) => p.id === id);
         if (post && post.uid) recordView(db, currentUser.uid, post.uid, postVideoOf(post) ? "v" : "p", id);
       });
+      // Post insights: anonymous hourly counters (post-stats.js); a separate write, so a refusal never stops the views counter above
+      recordPostStats(db, currentUser.uid, ids.map((id) => (latestPosts || []).find((p) => p.id === id)).filter(Boolean), followingIds);
       return update(ref(db), updates);
     }
   });
+  startPostStats(db, currentUser.uid);
   const interests = createInterestStore({ db, uid: currentUser.uid });
   learnHook = (what, action) => {
     const post = typeof what === "string" ? (latestPosts || []).find((p) => p.id === what) : what;
@@ -861,6 +899,7 @@ function listenPosts() {
           onDelete: deletePost,
           onEdit: editPost,
           onBoost: boostPost,
+    onInsights: insightsPost,
           onAudience: setAudience,
           onHashtag: openHashtag,
           onVote: votePoll,
@@ -998,6 +1037,7 @@ async function toggleFollow(post, wasFollowing, { redraw = true } = {}) {
     else followingIds[target] = Date.now();
 
     updateFollowButtons(target, !wasFollowing);
+    if (!wasFollowing && post.id) document.dispatchEvent(new CustomEvent("fz:post-action", { detail: { kind: "follow", postId: post.id, authorUid: target } }));
     if (redraw) feedApply?.(); // the Following tab changes at once (the suggestion card keeps its place instead)
     emitNotify({ type: "follow", toUid: target, undo: wasFollowing });
     if (!wasFollowing) learnHook?.(post, "follow");
@@ -1110,6 +1150,7 @@ async function deletePost(postId) {
       oldText = old.text || "";
       files = [old.videoURL, old.videoThumb].filter((u) => typeof u === "string");
     } catch (error) { /* index and file clean-up are best effort */ }
+    try { await remove(ref(db, `postStats/${postId}`)); } catch (error) { /* only posts that were viewed have statistics */ }
     try { await remove(ref(db, `pollVotes/${postId}`)); } catch (error) { /* only posts with a poll have votes */ }
     await remove(ref(db, `posts/${postId}`));
     if (files.length) import("./storage.js").then((m) => m.deleteMedia(files)).catch(() => {});
@@ -1144,13 +1185,16 @@ async function toggleLike(postId) {
   }
 }
 
+let postDetailShown = false; // false until the first draw of the opened post (a video post is sent to Reels instead)
 function openPostDetail(postId) {
+  postDetailShown = false;
   currentDetailPostId = postId;
   postDetail.hidden = false;
   document.body.style.overflow = "hidden";
 
   const postRef = ref(db, `posts/${postId}`);
   unsubscribePostDetail = onValue(postRef, (snapshot) => {
+    if (currentDetailPostId !== postId) return; // this post page was closed (or sent to Reels): ignore late updates
     if (!snapshot.exists()) {
       closePostDetail();
       return;
@@ -1160,6 +1204,13 @@ function openPostDetail(postId) {
       showToast("This post is not available");
       return;
     }
+    // A video post is not shown as a post card: it opens in Reels, on that video (Reels has its own like / comment / share)
+    if (!postDetailShown && postVideoOf(snapshot.val())) {
+      closePostDetail();
+      openReelsAt(postId);
+      return;
+    }
+    postDetailShown = true;
     renderPostDetail(postId, snapshot.val());
   });
 }
@@ -1182,7 +1233,8 @@ function renderPostDetail(postId, post) {
   // A like or a comment redraws the card: the video of the post keeps its place instead of starting again
   const oldVideo = postDetailBody.querySelector(".post-video video");
   const keepVideo = oldVideo && oldVideo.getAttribute("src") === post.videoURL ? { time: oldVideo.currentTime, playing: !oldVideo.paused } : null;
-  postDetailBody.innerHTML = `<div id="postDetailCard" class="-mx-3 sm:-mx-4 -mt-4"></div><div id="postDetailComments" class="space-y-4 px-1 pb-4"></div>`;
+  postDetail.classList.toggle("fz-hero", postImageUrls(post).length > 0); // photos first, full width, with the back / menu buttons on top of them
+  postDetailBody.innerHTML = `<div id="postDetailCard" class="-mx-3 sm:-mx-4 -mt-4"></div><div class="fz-cm-head">Comments${post.commentsCount ? ` · ${Number(post.commentsCount)}` : ""}</div><div id="postDetailComments" class="space-y-4 px-1 pb-4"></div>`;
   $("#postDetailCard").appendChild(
     createPostCard(
       { ...post, id: postId },
@@ -1281,9 +1333,14 @@ function openReelsAt(startPostId, extra = {}) {
     savedPostIds,
     onSave: toggleSavePost,
     onBoost: boostPost,
+    onInsights: insightsPost,
     onMyBoosts: () => import("./boost.js").then((m) => m.openMyBoosts()).catch(() => showToast("Could not open the boost report")),
     learn: (post, action) => learnHook?.(post, action),
     isCovered: () => !pageView.hidden || !postDetail.hidden,
     onClose: () => { if (pageBack && pageView.hidden && pageViewBody.firstElementChild === pageBack) pageView.hidden = false; }
   })).catch((error) => { console.error(error); if (pageBack && pageView.hidden) pageView.hidden = false; showToast("Could not open Reels"); });
 }
+
+
+// "Sending post…" bar: a post keeps uploading after the Create page closes
+import("./send-bar.js").then((m) => m.initSendBar({ onView: (id) => openPostDetail(id) })).catch(() => {});

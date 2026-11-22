@@ -90,6 +90,149 @@ async function clearDraft(uid) {
   try { localStorage.removeItem(draftKey(uid)); } catch (error) { /* ignore */ }
 }
 
+/* ---------------------------------------------------------------
+   Background posting: once Post is pressed the page closes and the upload goes on here.
+   The feed shows a "Sending post…" bar (feed.js) that listens to postQueue.
+   One post at a time. A failed post stays here (in memory) so the bar can offer Retry / Discard;
+   the draft in IndexedDB is only removed once the post is really saved.
+---------------------------------------------------------------- */
+const queueListeners = new Set();
+let queueState = { status: "idle" };
+let queueJob = null;
+let queueTimer = null;
+const queueEmit = (patch) => {
+  queueState = { ...queueState, ...patch };
+  queueListeners.forEach((fn) => { try { fn(queueState); } catch (error) { /* a broken listener must not stop the upload */ } });
+  try { window.dispatchEvent(new CustomEvent("fz-postq", { detail: queueState })); } catch (error) { /* ignore */ }
+};
+const queueRelease = () => {
+  if (queueJob && queueJob.thumbUrl) { try { URL.revokeObjectURL(queueJob.thumbUrl); } catch (error) { /* ignore */ } }
+  queueJob = null;
+};
+
+async function runPostJob(job) {
+  const { db, currentUser, text, pollList, audience, feeling, place } = job;
+  const uid = currentUser.uid;
+  const controller = new AbortController();
+  job.controller = controller;
+  queueEmit({ status: "sending", fraction: 0, title: "Sending post…", sub: "", postId: "", message: "", canCancel: true, thumb: job.thumbUrl || "" });
+  const progress = (fraction, sub) => queueEmit({ status: "sending", fraction: Math.min(Math.max(fraction, 0), 1), title: "Sending post…", sub: sub || "" });
+  try {
+    /* 0. Video and its cover picture */
+    let videoURL = "", thumbURL = "";
+    if (job.video) {
+      const { uploadVideo, uploadThumb } = await import("./storage.js");
+      progress(0, "Preparing the video");
+      videoURL = await uploadVideo(job.video.file, {
+        uid, kind: "posts", signal: controller.signal,
+        onPrepare: (f) => progress(f * 0.3, `Making the video smaller · ${Math.round(f * 100)}%`),
+        onProgress: (f) => progress(0.3 + f * 0.65, `Uploading video · ${Math.round(f * 100)}%`)
+      });
+      if (job.video.cover) { try { thumbURL = await uploadThumb(job.video.cover, { uid, kind: "posts", signal: controller.signal }); } catch (error) { if (error && error.name === "AbortError") throw error; } }
+    }
+
+    /* 1. Photos, all at the same time, order kept */
+    let urls = [];
+    if (job.images.length) {
+      const total = job.images.length;
+      const part = job.images.map(() => 0);
+      const overall = () => part.reduce((a, b) => a + b, 0) / total;
+      const finished = () => part.filter((v) => v >= 1).length;
+      progress(0, `Photo 0 of ${total}`);
+      const results = await Promise.allSettled(job.images.map((image, index) =>
+        uploadToImgbb(image.blob, `photo-${index + 1}.jpg`, {
+          signal: controller.signal,
+          onProgress: (fraction) => { part[index] = fraction; progress(overall() * 0.97, `Photo ${Math.min(finished() + 1, total)} of ${total} · ${Math.round(overall() * 97)}%`); }
+        })
+      ));
+      if (results.some((r) => r.status === "rejected" && r.reason && r.reason.name === "AbortError")) throw Object.assign(new Error("cancelled"), { name: "AbortError" });
+      urls = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+      const failed = total - urls.length;
+      if (failed > 0) {
+        console.error("Photo upload failed:", results.filter((r) => r.status === "rejected"));
+        const message = urls.length
+          ? `${failed}টি ছবি আপলোড হয়নি। বাকি ${urls.length}টি ছবি নিয়ে পোস্ট করবেন?\n\n${failed} photo(s) failed to upload. Post with the other ${urls.length}?`
+          : "ছবি আপলোড হয়নি। ছবি ছাড়া শুধু লেখা পোস্ট করবেন?\n\nImage upload failed. Post the text without the photos?";
+        if ((!text && !urls.length) || !(await fzConfirm(message, { confirmLabel: "Post" }))) {
+          queueEmit({ status: "failed", message: "Photos did not upload" });
+          return;
+        }
+      }
+    }
+
+    /* 2. Save the post */
+    job.controller = null;
+    queueEmit({ status: "sending", fraction: 1, title: "Sending post…", sub: "Almost done…", canCancel: false });
+    let author = job.profile || job.fallbackProfile;
+    if (!job.profile) {
+      try {
+        const mine = await get(ref(db, `users/${uid}`));
+        if (mine.exists()) author = { ...job.fallbackProfile, ...mine.val() };
+      } catch (error) { /* keep what we have */ }
+    }
+    const postRef = push(ref(db, "posts"));
+    await set(postRef, {
+      uid,
+      name: author.name || currentUser.displayName || "FreeZone User",
+      username: author.username || "",
+      photoURL: author.photoURL || "",
+      text,
+      imageURL: urls[0] || "",
+      ...(urls.length ? { imageURLs: urls } : {}),
+      ...(videoURL ? { videoURL, videoDuration: Math.round(job.video.duration), ...(thumbURL ? { videoThumb: thumbURL } : {}) } : {}),
+      ...(audience !== "public" ? { audience } : {}),
+      ...(feeling ? { feeling } : {}),
+      ...(place ? { place } : {}),
+      ...(pollList.length >= 2 ? { poll: { options: pollList } } : {}),
+      createdAt: serverTimestamp(),
+      likesCount: 0,
+      commentsCount: 0
+    });
+    try {
+      const index = tagIndexUpdates(postRef.key, "", text);
+      if (Object.keys(index).length) await update(ref(db), index);
+    } catch (error) {
+      console.warn("Could not save the #tag index:", error);
+    }
+    await clearDraft(uid);
+    const thumb = queueState.thumb;
+    queueEmit({ status: "done", fraction: 1, title: "Your post was sent", sub: audience === "public" ? "Everyone can see it now" : "Saved", postId: postRef.key, thumb });
+    clearTimeout(queueTimer);
+    queueTimer = setTimeout(() => { if (queueState.status === "done") { queueRelease(); queueEmit({ status: "idle", postId: "" }); } }, 7000);
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      queueRelease();
+      queueEmit({ status: "idle" });
+      showToast("Upload cancelled");
+      return;
+    }
+    console.error(error);
+    const message = error && error.code === "PERMISSION_DENIED" ? "Database rules block this post"
+      : error && ["storage-full", "sign-failed", "upload-failed", "network", "no-login", "no-storage"].includes(error.code) ? String(error.message || "Upload failed")
+      : "Could not post right now";
+    queueEmit({ status: "failed", message });
+  }
+}
+
+export const postQueue = {
+  subscribe(fn) { queueListeners.add(fn); try { fn(queueState); } catch (error) { /* ignore */ } return () => queueListeners.delete(fn); },
+  getState: () => queueState,
+  isBusy: () => queueState.status === "sending",
+  start(job) {
+    if (queueState.status === "sending") return false;
+    clearTimeout(queueTimer);
+    queueRelease();
+    const first = job.images[0] && job.images[0].blob || (job.video && job.video.cover);
+    try { job.thumbUrl = first ? URL.createObjectURL(first) : ""; } catch (error) { job.thumbUrl = ""; }
+    queueJob = job;
+    runPostJob(job);
+    return true;
+  },
+  cancel() { if (queueJob && queueJob.controller) queueJob.controller.abort(); },
+  retry() { if (queueJob && queueState.status === "failed") runPostJob(queueJob); },
+  discard() { clearTimeout(queueTimer); queueRelease(); queueEmit({ status: "idle", message: "" }); }
+};
+
 /**
  * @param {HTMLElement} container
  * @param {object} ctx  { db, currentUser, currentProfile, closePage? }
@@ -103,15 +246,48 @@ export function mount(container, ctx = {}) {
     return;
   }
 
+  // The previous post is still uploading: wait for it (the bar on the Feed shows how far it is)
+  if (postQueue.isBusy()) {
+    showToast("Your previous post is still sending");
+    setTimeout(() => { if (ctx.closePage) ctx.closePage(); else container.innerHTML = ""; }, 0);
+    return;
+  }
+
   let images = []; // [{ blob, url }]  url is only for the preview on this page
   let video = null; // { file, url, duration, cover, coverUrl }  one video per post, never together with photos
   let posting = false;
   let controller = null; // lets the Cancel button stop the uploads
 
   container.innerHTML = `
+    <style>
+      /* FreeZone new look: Create post */
+      .fz-create .fz-c-head{border-bottom:1px solid rgb(var(--c-slate-border))}
+      .fz-create .fz-close{width:40px;height:40px;border-radius:13px;background:rgb(var(--c-surface-container));border:1px solid rgb(var(--c-slate-border))}
+      .fz-create .fz-c-title{font-size:19px;font-weight:800;letter-spacing:-.3px;padding-left:2px}
+      .fz-create .fz-saved{color:#2fc48d;font-weight:600}
+      .fz-create .fz-post{height:40px;padding:0 22px;background:linear-gradient(135deg,#3b82f6,#2563eb);box-shadow:0 6px 16px rgba(37,99,235,.4)}
+      .fz-create .fz-post:disabled{background:rgb(var(--c-surface-container));color:rgb(var(--c-slate-muted,143 160 189));box-shadow:none;border:1px solid rgb(var(--c-slate-border));opacity:1}
+      .fz-create .fz-c-user{padding:14px 0 4px}
+      .fz-create .fz-c-av img,.fz-create .fz-c-av>div{box-shadow:0 0 0 2px #3b82f6}
+      .fz-create .fz-c-name{font-size:16px;font-weight:700}
+      .fz-create .fz-c-aud{display:inline-flex;align-items:center;gap:5px;margin-top:4px;height:26px;padding:0 6px 0 10px;border-radius:999px;background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.3);color:#6c9bff;font-size:12.5px;font-weight:700}
+      .fz-create .fz-c-tools>div{gap:8px!important;padding:10px 12px!important;border-top:0!important}
+      .fz-create .fz-c-tools button[class*="fz-add-"],.fz-create .fz-c-tools .fz-emoji,.fz-create .fz-c-tools .fz-feeling,.fz-create .fz-c-tools .fz-poll-btn,.fz-create .fz-c-tools .fz-place{width:44px!important;height:44px!important;border-radius:14px!important}
+      .fz-create .fz-add-photo{background:rgba(47,196,141,.16);color:#2fc48d!important}
+      .fz-create .fz-add-video{background:rgba(255,159,67,.16);color:#ff9f43!important}
+      .fz-create .fz-emoji{background:rgba(250,204,21,.16);color:#facc15!important}
+      .fz-create .fz-feeling{background:rgba(236,72,153,.16);color:#f472b6!important}
+      .fz-create .fz-poll-btn{background:rgba(59,130,246,.16);color:#6c9bff!important}
+      .fz-create .fz-place{background:rgba(139,92,246,.16);color:#a78bfa!important}
+      .fz-create .fz-poll{background:rgb(var(--c-surface-container-low,17 26 46));border-radius:18px;padding:14px}
+      .fz-create .fz-chip{background:rgb(var(--c-surface-container))!important;border:1px solid rgb(var(--c-slate-border));height:30px;font-size:13px}
+      .fz-create .fz-progress{border-radius:18px}
+      .fz-create .fz-p-bar{background:linear-gradient(90deg,#3b82f6,#2fc48d)!important}
+    </style>
     <div class="fz-create fixed inset-0 z-[60] flex flex-col bg-background text-on-surface">
-      <div class="flex items-center justify-between gap-3 px-3 h-14 flex-shrink-0">
+      <div class="fz-c-head flex items-center gap-3 px-3 h-14 flex-shrink-0">
         <button type="button" class="fz-close w-10 h-10 -ml-1 rounded-full flex items-center justify-center active:bg-surface-container transition-colors" aria-label="Close"><span class="material-symbols-outlined text-[26px]">close</span></button>
+        <span class="fz-c-title">Create post</span>
         <span class="fz-saved opacity-0 transition-opacity flex items-center gap-0.5 text-slate-subtle font-body-sm text-body-sm ml-auto"><span class="material-symbols-outlined text-[14px]">cloud_done</span>Draft saved</span>
         <button type="button" class="fz-post px-5 h-9 rounded-full bg-primary-container text-white font-label-lg text-label-lg font-bold active:scale-95 transition-all disabled:opacity-50" disabled>Post</button>
       </div>
@@ -122,16 +298,20 @@ export function mount(container, ctx = {}) {
           <button type="button" class="fz-draft-discard flex-shrink-0 font-label-md text-label-md font-semibold text-error">Discard</button>
         </div>
 
-        <div class="flex items-start gap-3">
-          <div class="flex-shrink-0">${avatarHtml(profile.photoURL, "w-10 h-10")}</div>
-          <div class="flex-1 min-w-0 space-y-3">
-            <textarea class="fz-text w-full resize-none bg-transparent text-[20px] leading-snug text-on-surface placeholder:text-slate-subtle outline-none min-h-[120px] pt-1.5 disabled:opacity-60" maxlength="${TEXT_MAX}" placeholder="What's happening?"></textarea>
+        <div class="fz-c-user flex items-center gap-3">
+          <div class="fz-c-av flex-shrink-0">${avatarHtml(profile.photoURL, "w-12 h-12")}</div>
+          <div class="min-w-0"><div class="fz-c-name truncate">${escapeHtml(profile.name || "You")}</div>
+        <button type="button" class="fz-audience fz-c-aud disabled:opacity-50" aria-label="Who can see this post">
+          <span class="fz-aud-icon material-symbols-outlined text-[15px]">public</span><span class="fz-aud-label">Public</span><span class="material-symbols-outlined text-[15px]">arrow_drop_down</span>
+        </button></div>
+        </div>
+        <div class="space-y-3 mt-2">
+            <textarea class="fz-text w-full resize-none bg-transparent text-[20px] leading-snug text-on-surface placeholder:text-slate-subtle outline-none min-h-[140px] pt-1.5 disabled:opacity-60" maxlength="${TEXT_MAX}" placeholder="What's happening?"></textarea>
             <div class="fz-chips flex flex-wrap gap-2 hidden"></div>
             <div class="fz-poll hidden rounded-2xl border border-slate-border p-3 space-y-2"></div>
             <div class="fz-previews grid grid-cols-2 gap-2 hidden"></div>
             <div class="fz-video-box hidden"></div>
           </div>
-        </div>
 
         <!-- Shown while posting -->
         <div class="fz-progress hidden mt-4 bg-slate-surface border border-slate-border rounded-2xl p-4 space-y-3" role="status" aria-live="polite">
@@ -149,10 +329,7 @@ export function mount(container, ctx = {}) {
         </div>
       </div>
 
-      <div class="flex-shrink-0 border-t border-slate-border/70">
-        <button type="button" class="fz-audience w-full flex items-center gap-2 px-4 py-3 text-primary font-label-md text-label-md font-semibold disabled:opacity-50" aria-label="Who can see this post">
-          <span class="fz-aud-icon material-symbols-outlined text-[18px]">public</span><span class="fz-aud-label">Public</span><span class="material-symbols-outlined text-[18px]">arrow_drop_down</span>
-        </button>
+      <div class="fz-c-tools flex-shrink-0 border-t border-slate-border">
         <div class="flex items-center gap-1 px-3 py-1.5 border-t border-slate-border/70" style="padding-bottom:max(.375rem, var(--fz-bottom,env(safe-area-inset-bottom,0px)))">
           <button type="button" class="fz-add-photo flex items-center justify-center w-10 h-10 rounded-full text-primary active:bg-primary-fixed/40 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none" aria-label="Photo"><span class="material-symbols-outlined text-[24px]">image</span><span class="fz-photo-label hidden"></span></button>
           <button type="button" data-feature="postVideo" data-feature-ready class="fz-add-video flex items-center justify-center w-10 h-10 rounded-full text-primary active:bg-primary-fixed/40 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none" aria-label="Video"><span class="material-symbols-outlined text-[24px]">videocam</span></button>
@@ -292,12 +469,14 @@ export function mount(container, ctx = {}) {
   /* ---- draft ---- */
   const uid = currentUser.uid;
   let draftTimer = null;
+  let handedOff = false; // the post went to the background queue: this page must not save or clear the draft any more
   let draftOff = false; // set once the post is published, so a late save cannot bring the draft back
   let savedFade = null;
 
   const saveNow = async () => {
-    if (draftOff) return;
+    if (draftOff || handedOff) return;
     await saveDraft(uid, textEl.value, images.map((image) => image.blob), audience, { feeling, place }, pollOn ? pollOptions : null);
+    if (handedOff) return;
     if (draftOff) return clearDraft(uid);
     if (textEl.value.trim() || images.length) {
       savedEl.style.opacity = "1";
@@ -306,7 +485,7 @@ export function mount(container, ctx = {}) {
     }
   };
   const scheduleSave = () => {
-    if (draftOff) return;
+    if (draftOff || handedOff) return;
     clearTimeout(draftTimer);
     draftTimer = setTimeout(saveNow, 600);
   };
@@ -640,128 +819,22 @@ export function mount(container, ctx = {}) {
     // Firebase Storage is not connected yet: show how it will look, but do not post
     if (video && !storageReady()) { showToast("Preview only. Videos can be posted when Firebase Storage is connected."); return; }
 
-    setPosting(true);
-    controller = new AbortController();
-
-    try {
-      /* 0. Upload the video and its cover picture */
-      let videoURL = "", thumbURL = "";
-      if (video) {
-        const { uploadVideo, uploadThumb } = await import("./storage.js");
-        setProgress(0, "Uploading video", "Please keep this page open");
-        videoURL = await uploadVideo(video.file, { uid: currentUser.uid, kind: "posts", signal: controller.signal, onPrepare: (f) => setProgress(f * 0.3, "Making the video smaller", `${Math.round(f * 100)}%  (faster upload, less data)`), onProgress: (f) => setProgress(0.3 + f * 0.65, "Uploading video", `${Math.round(f * 100)}%`) });
-        if (video.cover) { try { thumbURL = await uploadThumb(video.cover, { uid: currentUser.uid, kind: "posts", signal: controller.signal }); } catch (error) { if (error && error.name === "AbortError") throw error; } }
-      }
-
-      /* 1. Upload every photo at the same time, keeping their order */
-      let urls = [];
-      if (images.length) {
-        const progress = images.map(() => 0);
-        const total = images.length;
-        const overall = () => progress.reduce((sum, value) => sum + value, 0) / total;
-        const finished = () => progress.filter((value) => value >= 1).length;
-
-        setProgress(0, "Uploading photos", `0 of ${total} photos done`);
-        images.forEach((image, index) => showTile(index, "uploading", 0));
-
-        const results = await Promise.allSettled(
-          images.map((image, index) =>
-            uploadToImgbb(image.blob, `photo-${index + 1}.jpg`, {
-              signal: controller.signal,
-              onProgress: (fraction) => {
-                progress[index] = fraction;
-                // The bytes are sent, now imgbb is saving the photo
-                showTile(index, fraction >= 1 ? "processing" : "uploading", fraction);
-                setProgress(overall() * 0.97, "Uploading photos", `${finished()} of ${total} photos done`);
-              }
-            }).then(
-              (url) => {
-                showTile(index, "done");
-                return url;
-              },
-              (error) => {
-                showTile(index, error && error.name === "AbortError" ? "uploading" : "failed", progress[index]);
-                throw error;
-              }
-            )
-          )
-        );
-
-        const cancelled = results.some((result) => result.status === "rejected" && result.reason && result.reason.name === "AbortError");
-        if (cancelled) {
-          showToast("Upload cancelled");
-          setPosting(false);
-          return;
-        }
-
-        urls = results.filter((result) => result.status === "fulfilled").map((result) => result.value);
-        const failed = total - urls.length;
-
-        if (failed > 0) {
-          console.error("Photo upload failed:", results.filter((result) => result.status === "rejected"));
-          const message = urls.length
-            ? `${failed}টি ছবি আপলোড হয়নি। বাকি ${urls.length}টি ছবি নিয়ে পোস্ট করবেন?\n\n${failed} photo(s) failed to upload. Post with the other ${urls.length}?`
-            : "ছবি আপলোড হয়নি। ছবি ছাড়া শুধু লেখা পোস্ট করবেন?\n\nImage upload failed. Post the text without the photos?";
-          if ((!text && !urls.length) || !(await fzConfirm(message, { confirmLabel: "Post" }))) {
-            setPosting(false);
-            return;
-          }
-        }
-      }
-
-      /* 2. Save the post */
-      controller = null;
-      container.querySelector(".fz-p-cancel").classList.add("hidden"); // too late to cancel now
-      setProgress(1, "Publishing your post", "Almost done...");
-
-      // Who is posting: if the profile was not loaded when this page opened, read it now (so a post is never saved as "You")
-      let author = profile;
-      if (!ctx.currentProfile || !ctx.currentProfile.name) {
-        try {
-          const mine = await get(ref(db, `users/${currentUser.uid}`));
-          if (mine.exists()) author = { ...profile, ...mine.val() };
-        } catch (error) { /* keep what we have */ }
-      }
-      const postRef = push(ref(db, "posts"));
-      await set(postRef, {
-        uid: currentUser.uid,
-        name: author.name || currentUser.displayName || "FreeZone User",
-        username: author.username || "",
-        photoURL: author.photoURL || "",
-        text,
-        imageURL: urls[0] || "", // the first photo, for older parts of the app
-        ...(urls.length ? { imageURLs: urls } : {}),
-        ...(videoURL ? { videoURL, videoDuration: Math.round(video.duration), ...(thumbURL ? { videoThumb: thumbURL } : {}) } : {}),
-        ...(audience !== "public" ? { audience } : {}),
-        ...(feeling ? { feeling } : {}),
-        ...(place ? { place } : {}),
-        ...(pollList.length >= 2 ? { poll: { options: pollList } } : {}),
-        createdAt: serverTimestamp(),
-        likesCount: 0,
-        commentsCount: 0
-      });
-      // #tag index: best effort, so a missing rule can never stop the post itself
-      try {
-        const index = tagIndexUpdates(postRef.key, "", text);
-        if (Object.keys(index).length) await update(ref(db), index);
-      } catch (error) {
-        console.warn("Could not save the #tag index:", error);
-      }
-
-      draftOff = true; // published: the draft is no longer needed
-      clearTimeout(draftTimer);
-      await clearDraft(uid);
-      images.forEach((image) => URL.revokeObjectURL(image.url));
-      dropVideo();
-      showToast("Posted");
-      if (ctx.closePage) ctx.closePage();
-      else container.innerHTML = "";
-    } catch (error) {
-      if (error && error.name === "AbortError") { showToast("Upload cancelled"); setPosting(false); return; }
-      console.error(error);
-      showToast(error.code === "PERMISSION_DENIED" ? "Could not post: database rules block it" : ["storage-full", "sign-failed", "upload-failed", "network", "no-login", "no-storage"].includes(error.code) ? "Could not post. " + error.message : "Could not post right now. Try again.");
-      container.querySelector(".fz-p-cancel")?.classList.remove("hidden");
-      setPosting(false);
-    }
+    // Hand the upload to the background queue and close this page: the feed shows "Sending post…"
+    if (postQueue.isBusy()) { showToast("Your previous post is still sending"); return; }
+    postQueue.start({
+      db, currentUser,
+      profile: ctx.currentProfile && ctx.currentProfile.name ? ctx.currentProfile : null,
+      fallbackProfile: profile,
+      text, pollList,
+      images: images.map((image) => ({ blob: image.blob })),
+      video: video ? { file: video.file, duration: video.duration, cover: video.cover } : null,
+      audience, feeling, place
+    });
+    handedOff = true; // the draft stays on the phone until the post is really saved; this page must not touch it any more
+    clearTimeout(draftTimer);
+    images.forEach((image) => URL.revokeObjectURL(image.url));
+    dropVideo();
+    if (ctx.closePage) ctx.closePage();
+    else container.innerHTML = "";
   });
 }

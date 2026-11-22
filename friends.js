@@ -436,7 +436,7 @@ export async function mount(container, context = {}) {
 
   container.innerHTML = `
     <div class="fz-friends flex flex-col min-h-full">
-      <div class="sticky top-0 z-10 bg-background px-4 pt-2 pb-2 space-y-2">
+      <div class="sticky top-0 z-10 bg-background px-4 pt-2 pb-0 space-y-2">
         <div class="fz-searchwrap relative">
           <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-muted pointer-events-none">search</span>
           <input type="search" class="fz-search w-full bg-surface-container border-0 focus:ring-2 focus:ring-primary-container/20 rounded-full py-2 pl-11 pr-4 text-[15px] outline-none" placeholder="Filter this list by name or @username" autocomplete="off" autocapitalize="none" spellcheck="false" />
@@ -445,7 +445,7 @@ export async function mount(container, context = {}) {
           </button>
           <input type="file" accept="image/*" class="fz-qr-file" style="display:none" />
         </div>
-        <div class="fz-tabs flex gap-2 overflow-x-auto -mx-4 px-4 pb-1" style="scrollbar-width:none;">
+        <div class="fz-tabs flex overflow-x-auto -mx-4 border-b border-slate-border" style="scrollbar-width:none;">
           <button type="button" class="fz-tab" data-tab="suggestions">Suggested</button>
           <button type="button" class="fz-tab" data-tab="followers">Followers <span class="fz-count opacity-80" data-count="followers"></span></button>
           <button type="button" class="fz-tab" data-tab="following">Following <span class="fz-count opacity-80" data-count="following"></span></button>
@@ -469,17 +469,23 @@ export async function mount(container, context = {}) {
     container.querySelectorAll(".fz-tab").forEach((btn) => {
       const on = btn.dataset.tab === activeTab;
       btn.className =
-        "fz-tab flex-shrink-0 px-3.5 h-8 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all " +
-        (on ? "bg-primary-container text-white" : "bg-surface-container text-on-surface");
+        "fz-tab flex-1 min-w-fit px-2 h-11 text-[14px] font-semibold whitespace-nowrap transition-all border-b-[3px] " +
+        (on ? "text-primary border-primary-container" : "text-slate-muted border-transparent");
     });
     Object.values(tabs).forEach((tab) => {
       const el = container.querySelector(`.fz-count[data-count="${tab.key}"]`);
       el.textContent = tab.loadedIds ? tab.ids.length : "";
     });
     searchWrap.hidden = activeTab === "suggestions";
+    // the QR button now sits in the page header (always available); the one inside the search box stays hidden and is triggered from there
     const qrBtn = container.querySelector(".fz-qr");
-    if (qrBtn) qrBtn.style.display = activeTab === "find" ? "flex" : "none";
-    searchEl.style.paddingRight = activeTab === "find" ? "3rem" : "";
+    if (qrBtn) qrBtn.style.display = "none";
+    searchEl.style.paddingRight = "";
+    const sub = document.getElementById("pageViewSub");
+    if (sub && tabs.followers.loadedIds && tabs.following.loadedIds) {
+      sub.textContent = `${tabs.followers.ids.length} followers · ${tabs.following.ids.length} following`;
+      sub.hidden = false;
+    }
     searchEl.placeholder = activeTab === "find" ? "Search everyone by name or @username" : "Filter this list by name or @username";
   };
 
@@ -727,6 +733,13 @@ export async function mount(container, context = {}) {
       }
     });
   });
+
+  // Header buttons: scan a QR code / find people (both open the Find tab)
+  const goFind = () => container.querySelector('.fz-tab[data-tab="find"]')?.click();
+  context.setActions?.([
+    { icon: "qr_code_scanner", label: "Find by QR code", kind: "boxed", onClick: () => { goFind(); container.querySelector(".fz-qr")?.click(); } },
+    { icon: "person_add", label: "Find people", kind: "primary", onClick: goFind }
+  ]);
 
   // Find by QR code: pick a picture of someone's profile QR (saved image, screenshot or photo); their profile comes up first
   const qrBtn = container.querySelector(".fz-qr");

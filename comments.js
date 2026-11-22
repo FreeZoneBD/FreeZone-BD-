@@ -73,12 +73,14 @@ function itemHtml(item, { isReply, cid, canDelete, meUid, replyCount = 0 }) {
     <div class="cm-item flex items-start gap-3 ${isReply ? "pt-3" : "px-4 py-3 border-b border-slate-border/50"}" data-cid="${escapeHtml(cid)}" ${isReply ? `data-rid="${escapeHtml(item.id)}"` : ""} data-uid="${escapeHtml(item.uid || "")}">
       <button type="button" class="cm-avatar flex-shrink-0 ${item.uid ? "" : "pointer-events-none"}" ${profileAttr} data-act="profile" aria-label="Open profile">${avatarHtml(item.photoURL || "", isReply ? "w-8 h-8" : "w-10 h-10")}</button>
       <div class="min-w-0 flex-1">
+        <div class="cm-bubble">
         <div class="flex items-baseline gap-1.5 min-w-0 whitespace-nowrap">
           <button type="button" class="cm-author font-bold text-[15px] leading-5 text-on-surface truncate text-left min-w-0 flex-shrink ${item.uid ? "" : "pointer-events-none"}" ${profileAttr} data-act="profile">${escapeHtml(display)}</button>
           <span class="cm-handle text-slate-muted text-[14px] truncate min-w-0 flex-shrink-[2]">${item.username ? escapeHtml(handle) : ""}</span>
           <span class="text-slate-muted text-[14px] flex-shrink-0">· ${timeAgo(item.createdAt)}</span>
         </div>
         <p class="text-[15px] leading-[21px] text-on-surface whitespace-pre-wrap break-words mt-0.5">${mention}${linkifyText(item.text, escapeHtml)}</p>
+        </div>
         <div class="flex items-center gap-7 mt-1.5 text-[13px] text-slate-muted">
           <button type="button" data-act="reply" class="${act}" aria-label="Reply"><span class="material-symbols-outlined text-[19px]">chat_bubble</span>${replyCount ? `<span class="tabular-nums">${replyCount}</span>` : ""}</button>
           <button type="button" data-act="like" class="${act} ${liked ? "text-notification-rose" : ""}" aria-pressed="${liked}" aria-label="${liked ? "Unlike" : "Like"} this ${isReply ? "reply" : "comment"}">${heartSvg(liked)}${likeCount ? `<span class="tabular-nums">${likeCount}</span>` : ""}</button>
