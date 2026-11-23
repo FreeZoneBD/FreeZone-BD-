@@ -108,12 +108,13 @@ const linkify = (text) => linkifyText(text, escapeHtml);
 function aboutHtml(user) {
   const row = (icon, inner) => `<p class="flex items-center gap-1.5 mt-1.5 font-body-md text-body-md text-slate-muted min-w-0"><span class="material-symbols-outlined text-[18px] flex-shrink-0">${icon}</span><span class="truncate">${inner}</span></p>`;
   const site = typeof user.website === "string" && /^https?:\/\//i.test(user.website) ? user.website : "";
-  return [
+  const rows = [
     user.location ? row("location_on", `Lives in <b class="font-semibold text-on-surface">${escapeHtml(user.location)}</b>`) : "",
     user.hometown ? row("home", `From <b class="font-semibold text-on-surface">${escapeHtml(user.hometown)}</b>`) : "",
     Number.isFinite(user.createdAt) && user.createdAt > 0 ? row("calendar_month", `Joined ${new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`) : "",
     site ? row("link", `<a href="${escapeHtml(site)}" target="_blank" rel="noopener noreferrer nofollow" class="text-primary">${escapeHtml(site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a>`) : ""
   ].join("");
+  return rows ? `<div class="fz-pf-about">${rows}</div>` : "";
 }
 
 function statButton(label, value, cls, list) {
@@ -258,7 +259,8 @@ function openFollowList({ db, ctx, uid, handle, isMe, startTab = "followers", co
         <h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">${escapeHtml(handle)}</h2>
         <button type="button" class="fl-close w-9 h-9 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container" aria-label="Close"><span class="material-symbols-outlined text-[22px]">close</span></button>
       </div>
-      <div class="flex gap-1 p-1 mx-4 mt-1 bg-surface-container rounded-xl">
+      <style>.fl-on{background:linear-gradient(135deg,#3b82f6,#2563eb)}.fl-seg{border:1px solid rgb(var(--c-slate-border));border-radius:999px!important}.fl-seg .fl-tab{border-radius:999px!important}.fl-follow.bg-primary-container{background:linear-gradient(135deg,#3b82f6,#2563eb)!important}.fl-follow.bg-surface-container{border:1px solid rgb(var(--c-slate-border))}</style>
+      <div class="fl-seg flex gap-1 p-1 mx-4 mt-1 bg-surface-container rounded-xl">
         <button type="button" class="fl-tab flex-1 py-2 rounded-lg font-label-lg text-label-lg font-semibold transition-all" data-tab="followers"></button>
         <button type="button" class="fl-tab flex-1 py-2 rounded-lg font-label-lg text-label-lg font-semibold transition-all" data-tab="following"></button>
       </div>
@@ -292,7 +294,7 @@ function openFollowList({ db, ctx, uid, handle, isMe, startTab = "followers", co
       btn.textContent = `${name === "followers" ? "Followers" : "Following"}${typeof n === "number" ? " " + n : ""}`;
       btn.className =
         "fl-tab flex-1 py-2 rounded-lg font-label-lg text-label-lg font-semibold transition-all " +
-        (name === tab ? "bg-slate-surface text-primary shadow-sm" : "text-slate-muted");
+        (name === tab ? "fl-on text-white" : "text-slate-muted");
     });
   };
 
@@ -550,29 +552,36 @@ export async function mount(container, ctx = {}) {
 
   container.innerHTML = `
     <style>.pf-over .pf-back,.pf-over .pf-act{background:rgba(0,0,0,.42);color:#fff}
-      /* FreeZone new look: a full-width card over the banner */
-      .fz-pf{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center;position:relative;isolation:isolate;margin-top:-92px;padding-top:18px;padding-left:18px;padding-right:18px}
-      .fz-pf::before{background:linear-gradient(180deg,rgb(var(--c-surface-container-low,22 33 58)),rgb(var(--c-slate-surface)));border-top:1px solid rgb(var(--c-slate-border));content:"";grid-column:1/-1;grid-row:1/4;position:absolute;left:-18px;right:-18px;top:-18px;bottom:0;z-index:-1}
+      /* FreeZone new look (v2): avatar over the cover, chips, stats card */
+      .pf-over .pf-back,.pf-over .pf-act{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.12);background:rgba(10,16,30,.55)}
+      .pf-banner{position:relative;aspect-ratio:2.2/1!important}
+      .pf-banner::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(11,18,32,.4),transparent 40%,rgba(11,18,32,.85))}
+      .fz-pf{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:end;position:relative;isolation:isolate;margin-top:-46px;padding-top:0;padding-left:16px;padding-right:16px;background:linear-gradient(180deg,transparent 46px,rgb(var(--c-background)) 46px)!important}
       .fz-pf-r1{display:contents}
-      .fz-pf-av{order:1;grid-column:1;position:relative}
-      .fz-pf-id{order:2;grid-column:2;min-width:0}
-      .fz-pf-id h2{font-size:21px;line-height:26px;font-weight:800;letter-spacing:-.3px}
-      .fz-pf-stats{order:3;grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);margin:16px -18px 0;border-top:1px solid rgb(var(--c-slate-border));border-bottom:1px solid rgb(var(--c-slate-border))}
+      .fz-pf-av{order:1;grid-column:1;position:relative;width:96px;height:96px;padding:3px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2fc48d);display:block}
+      .fz-pf-av img,.fz-pf-av>div:not(.photo-loading),.fz-pf-av .change-photo>img,.fz-pf-av .change-photo>div,.fz-pf-av.view-photo>img,.fz-pf-av.view-photo>div{width:90px!important;height:90px!important;border-radius:50%;box-shadow:0 0 0 3px rgb(var(--c-background))!important;object-fit:cover}
+      .fz-pf-av>span.absolute{background:linear-gradient(135deg,#3b82f6,#2563eb)!important}
+      .fz-pf-id{order:3;grid-column:1/-1;min-width:0;margin-top:12px}
+      .fz-pf-id h2{font-size:22px;line-height:28px;font-weight:800;letter-spacing:-.3px}
+      .fz-pf-acts{order:2;grid-column:2;display:flex!important;flex-wrap:nowrap!important;justify-content:flex-end!important;gap:6px!important;padding:0 0 4px!important;margin:0!important;min-width:0}
+      .fz-pf-acts>*{height:40px!important;border-radius:999px!important;font-size:13.5px!important;font-weight:700!important;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 14px!important;flex:none}
+      .fz-pf-acts .follow-toggle{border:1px solid transparent}
+      .fz-pf-acts .follow-toggle.bg-primary-container{background:linear-gradient(135deg,#3b82f6,#2563eb)!important;color:#fff!important;box-shadow:0 6px 16px rgba(37,99,235,.4)}
+      .fz-pf-acts .follow-toggle.bg-surface-container{border-color:rgb(var(--c-slate-border))}
+      .fz-pf-acts .message-btn{border:1px solid rgb(var(--c-slate-border))}
+      .fz-pf-acts .share-profile{width:40px!important;padding:0!important;border-radius:14px!important;border:1px solid rgb(var(--c-slate-border))}
+      .fz-pf-edit{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.4)}
+      .fz-pf>*:not(.fz-pf-av):not(.fz-pf-id):not(.fz-pf-stats):not(.fz-pf-acts):not(.fz-pf-r1){order:5;grid-column:1/-1}
+      .fz-pf-about{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+      .fz-pf-about>p{margin:0!important;padding:6px 12px;border-radius:999px;background:rgb(var(--c-surface-container,17 26 46));border:1px solid rgb(var(--c-slate-border));font-size:12.5px!important;max-width:100%}
+      .fz-pf-about>p .material-symbols-outlined{font-size:15px!important}
+      .fz-pf-stats{order:6;grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);margin:16px 0 0;border:1px solid rgb(var(--c-slate-border));border-radius:18px;background:rgb(var(--c-surface-container,17 26 46));overflow:hidden}
       .fz-pf-stats>*{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 0 10px;border-right:1px solid rgb(var(--c-slate-border));text-align:center}
       .fz-pf-stats>*:last-child{border-right:0}
       .fz-pf-stats>* span:first-child{font-size:19px;line-height:24px;font-weight:800}
       .fz-pf-stats>* span:last-child{font-size:12.5px}
-      .fz-pf-acts{order:4;grid-column:1/-1;display:flex!important;flex-wrap:nowrap!important;justify-content:stretch!important;gap:10px!important;padding:16px 0 18px!important;margin:0!important;width:100%}
-      .fz-pf-acts>*{height:44px!important;border-radius:999px!important;font-size:15px!important;font-weight:700!important;display:flex;align-items:center;justify-content:center;gap:7px}
-      .fz-pf-acts .follow-toggle{flex:1.2;border:1px solid transparent}
-      .fz-pf-acts .follow-toggle.bg-primary-container{background:linear-gradient(135deg,#3b82f6,#2563eb)!important;color:#fff!important;box-shadow:0 6px 16px rgba(37,99,235,.4)}
-      .fz-pf-acts .follow-toggle.bg-surface-container{border-color:rgb(var(--c-slate-border))}
-      .fz-pf-acts .message-btn{flex:1;border:1px solid rgb(var(--c-slate-border))}
-      .fz-pf-acts .share-profile{flex:0 0 44px;width:44px!important;border-radius:14px!important;border:1px solid rgb(var(--c-slate-border))}
-      .fz-pf-edit{flex:1;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 6px 16px rgba(37,99,235,.4)}
-      .fz-pf-av img,.fz-pf-av>div,.fz-pf-av .change-photo>img,.fz-pf-av .change-photo>div,.fz-pf-av.view-photo>img,.fz-pf-av.view-photo>div{width:84px!important;height:84px!important;box-shadow:0 0 0 3px #3b82f6!important}
-      .fz-pf>*:not(.fz-pf-av):not(.fz-pf-id):not(.fz-pf-stats):not(.fz-pf-acts):not(.fz-pf-r1){order:5;grid-column:1/-1}
-      .fz-pf>.fz-pf-stats~*:not(.fz-pf-acts){margin-top:10px}
+      .pf-tabs .tab-btn.border-on-surface{border-color:#2563eb!important;color:#fff}
+      .tab-content>.grid.grid-cols-3{padding-left:0!important;padding-right:0!important}
       .fz-private-lock{background:transparent!important;border:0!important;border-radius:0!important;padding-top:44px!important}
       .fz-private-lock>div:first-child{width:76px!important;height:76px!important;border-radius:26px!important;background:rgba(59,130,246,.14)!important;border:1px solid rgba(59,130,246,.3)}
       .fz-private-lock .material-symbols-outlined{color:#6c9bff!important;font-size:36px!important}</style>

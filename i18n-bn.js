@@ -658,6 +658,7 @@ window.FZ_BN = {
 "Making the video smaller": "ভিডিও ছোট করা হচ্ছে",
 "Making the video smaller...": "ভিডিও ছোট করা হচ্ছে...",
 "Mark all as read": "সব পড়া হয়েছে চিহ্নিত করুন",
+"Notification settings": "নোটিফিকেশন সেটিংস",
 "Menu": "মেনু",
 "Message": "বার্তা",
 "Message alerts": "বার্তার অ্যালার্ট",

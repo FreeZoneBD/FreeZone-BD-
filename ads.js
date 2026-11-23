@@ -344,7 +344,7 @@ function buildAdCard(ad, media, imageSize, onOpen) {
     </a>
   `;
   const videoBox = card.querySelector(".post-video");
-  if (videoBox) mountPostVideo(videoBox, { onOpen: () => { if (onOpen) onOpen(post); } });
+  if (videoBox) mountPostVideo(videoBox, { onOpen: () => { if (onOpen) onOpen(post && post.id); } });
   const more = card.querySelector(".fz-ad-more");
   if (more) {
     more.addEventListener("click", (event) => {
@@ -410,7 +410,7 @@ function createSlot(ad, media, imageSize, placement, context) {
   });
 
   // Tapping the post itself opens it, like any other post
-  if (ad.canOpen) card.querySelector(".fz-ad-open").addEventListener("click", () => context.onOpen(ad.post));
+  if (ad.canOpen) card.querySelector(".fz-ad-open").addEventListener("click", () => context.onOpen(ad.post && ad.post.id));
 
   watchImpression(slot, ad.id, placement);
   return slot;

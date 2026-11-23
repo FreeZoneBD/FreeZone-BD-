@@ -191,12 +191,21 @@ function injectStyles() {
     .fz-n-menu { box-shadow: 0 8px 28px rgba(0,0,0,.18); }
     /* FreeZone new look */
     .fz-n-bar { background: rgb(var(--c-slate-surface)); }
-    .fz-n-filter { color: rgb(var(--c-slate-muted, 143 160 189)); border-bottom: 3px solid transparent; margin-bottom: -1px; }
-    .fz-n-filter.is-on { color: #3b82f6; border-bottom-color: #2563eb; }
+    .fz-n-bar { padding: 8px 12px 12px; }
+    .fz-n-filter { display:inline-flex; align-items:center; height:38px; padding:0 18px; border-radius:999px; border:1px solid rgb(var(--c-slate-border)); font-size:14px; font-weight:700; color: rgb(var(--c-on-surface)); }
+    .fz-n-filter.is-on { color:#fff; border-color:transparent; background: linear-gradient(135deg,#3b82f6,#2563eb); }
+    .fz-n-count { margin-left:7px; min-width:20px; height:18px; padding:0 6px; border-radius:99px; background:#ff4d6d; color:#fff; font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; }
+    .fz-n-count[hidden] { display:none; }
+    .fz-n-top { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; background: rgb(var(--c-surface-container, 22 33 58)); color: rgb(var(--c-on-surface)); }
+    .fz-n-sec { padding:16px 16px 8px; font-size:12px; letter-spacing:.8px; font-weight:800; text-transform:uppercase; color: rgb(var(--c-slate-muted, 143 160 189)); }
+    .fz-n-view { display:inline-block; margin-top:8px; padding:7px 16px; border-radius:999px; background: linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; font-size:13px; font-weight:700; }
+    .fz-n-timenew { color:#6c9bff; }
+    .fz-req-card { margin:12px 16px 4px; padding:14px; border-radius:18px; background: rgb(var(--c-surface-container, 17 26 46)); border:1px solid rgb(var(--c-slate-border)); }
     .fz-n-row { border-bottom: 1px solid rgb(var(--c-slate-border)); }
-    .fz-n-row.fz-n-new { background: linear-gradient(90deg, rgba(59,130,246,.14), rgba(59,130,246,.04)); }
-    .fz-n-row.fz-n-new::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,#3b82f6,#2fc48d); }
-    .fz-n-row [aria-label="Unread"] { background: linear-gradient(135deg,#3b82f6,#2fc48d) !important; }
+    .fz-n-row.fz-n-new { background: rgba(59,130,246,.09); }
+    .fz-n-row.fz-n-new::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,#3b82f6,#2563eb); }
+    .fz-n-row [aria-label="Unread"] { background: linear-gradient(135deg,#3b82f6,#2563eb) !important; }
+    .fz-n-row:first-child { border-top: 0; }
     .fz-n-req-pri, .fz-req-yes { background: linear-gradient(135deg,#3b82f6,#2563eb) !important; box-shadow: 0 6px 14px rgba(37,99,235,.35); }
     .fz-req-no { border: 1px solid rgb(var(--c-slate-border)); }
     .fz-n-topmenu { position: fixed !important; left:0; right:0; bottom:0; top:auto !important; width:auto !important; z-index:80 !important; border-radius:0 !important; border-width:1px 0 0 0 !important; padding:0 0 calc(env(safe-area-inset-bottom,0px) + 18px) !important; background: rgb(var(--c-slate-surface)); }
@@ -220,7 +229,7 @@ function injectStyles() {
 function emptyState(unreadOnly) {
   return `
     <div class="text-center py-20 px-8">
-      <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style="background:linear-gradient(135deg,rgb(var(--c-primary-fixed)),rgb(var(--c-surface-container)));">
+      <div class="w-[92px] h-[92px] mx-auto mb-5 flex items-center justify-center" style="border-radius:30px;background:rgba(59,130,246,.15);">
         <span class="material-symbols-outlined text-[38px] text-primary-container" style="font-variation-settings:'FILL' 1;">${unreadOnly ? "done_all" : "notifications"}</span>
       </div>
       <p class="text-[18px] leading-6 font-bold text-on-surface mb-1">${unreadOnly ? "You're all caught up" : "No notifications yet"}</p>
@@ -235,7 +244,7 @@ function skeleton() {
     .map(
       () => `
     <div class="flex items-start gap-3 px-4 py-3">
-      <div class="skeleton w-14 h-14 rounded-full flex-shrink-0"></div>
+      <div class="skeleton w-12 h-12 rounded-full flex-shrink-0"></div>
       <div class="flex-1 space-y-2.5 pt-1.5">
         <div class="skeleton h-3.5 w-11/12 rounded"></div>
         <div class="skeleton h-3.5 w-2/3 rounded"></div>
@@ -276,11 +285,11 @@ export function mount(container, ctx = {}) {
 
   container.innerHTML = `
     <div class="fz-notifs bg-slate-surface min-h-full">
-      <div class="fz-n-bar flex items-stretch border-b border-slate-border">
-        <button type="button" class="fz-n-filter flex-1 h-12 text-[15px] font-bold transition-colors" data-f="all">All</button>
-        <button type="button" class="fz-n-filter flex-1 h-12 text-[15px] font-bold transition-colors" data-f="unread">Unread</button>
-        <div class="relative flex items-center px-1">
-          <button type="button" class="fz-n-top w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:bg-surface-container" aria-label="More options"><span class="material-symbols-outlined text-[24px]">more_horiz</span></button>
+      <div class="fz-n-bar flex items-center gap-2 border-b border-slate-border">
+        <button type="button" class="fz-n-filter" data-f="all">All</button>
+        <button type="button" class="fz-n-filter" data-f="unread">Unread<span class="fz-n-count" hidden></span></button>
+        <div class="relative flex items-center ml-auto">
+          <button type="button" class="fz-n-top" aria-label="Notification settings"><span class="material-symbols-outlined text-[21px]">settings</span></button>
           <div class="fz-n-topmenu fz-n-menu" hidden>
             <div class="fz-n-grab"></div>
             <button type="button" class="fz-n-readall"><span class="material-symbols-outlined">done_all</span>Mark all as read</button>
@@ -300,7 +309,7 @@ export function mount(container, ctx = {}) {
   const paintFilters = () => {
     root.querySelectorAll(".fz-n-filter").forEach((b) => {
       const on = b.dataset.f === filter;
-      b.className = `fz-n-filter flex-1 h-12 text-[15px] font-bold transition-colors ${on ? "is-on" : ""}`;
+      b.className = `fz-n-filter ${on ? "is-on" : ""}`;
       b.setAttribute("aria-pressed", String(on));
     });
   };
@@ -357,21 +366,21 @@ export function mount(container, ctx = {}) {
       }
       reqEl.style.display = "";
       reqEl.innerHTML = `
-        <div class="flex items-center justify-between px-4 pt-3 pb-1">
-          <h3 class="text-[17px] font-bold text-on-surface">Follow requests <span class="text-primary">${people.length}</span></h3>
+        <div class="fz-req-card"><div class="flex items-center justify-between pb-1">
+          <h3 class="text-[16px] font-extrabold text-on-surface">Follow requests <span style="color:#6c9bff">${people.length}</span></h3>
         </div>
         ${people.map((p) => `
-          <div class="fz-req px-4 py-2.5" data-uid="${escapeHtml(p.uid)}">
+          <div class="fz-req py-2.5" data-uid="${escapeHtml(p.uid)}">
             <button type="button" class="fz-req-open flex items-center gap-3 w-full text-left">
-              ${avatarHtml(p.photoURL, "w-14 h-14")}
+              ${avatarHtml(p.photoURL, "w-12 h-12")}
               <span class="min-w-0 flex-1"><span class="block text-[15px] leading-5 font-semibold text-on-surface truncate">${escapeHtml(p.name)}</span>${p.username ? `<span class="block text-[13px] text-slate-muted truncate">@${escapeHtml(p.username)}</span>` : ""}</span>
             </button>
-            <div class="flex gap-2 mt-2.5 pl-[68px]">
+            <div class="flex gap-2 mt-2.5 pl-[60px]">
               <button type="button" class="fz-req-yes flex-1 h-10 rounded-full bg-primary-container text-white text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Confirm</button>
               <button type="button" class="fz-req-no flex-1 h-10 rounded-full bg-surface-container text-on-surface text-[14px] font-semibold active:scale-[0.98] transition-all disabled:opacity-60">Delete</button>
             </div>
           </div>`).join("")}
-        <div class="h-2 border-b border-slate-border/60"></div>`;
+        </div>`;
     },
     () => { reqEl.style.display = "none"; }
   );
@@ -409,8 +418,8 @@ export function mount(container, ctx = {}) {
       : `<span class="font-semibold">${escapeHtml(who)}</span> ${reactEmoji ? `reacted ${reactEmoji} to your post` : type.label}`;
     const quote = !isBoost && n.text ? `<p class="fz-n-quote text-[14px] leading-5 text-slate-muted mt-0.5">“${escapeHtml(n.text)}”</p>` : "";
     const picture = isBoost
-      ? `<div class="w-14 h-14 rounded-full flex items-center justify-center text-white" style="background:${isCreator ? "linear-gradient(135deg,#16a34a,#0d9488)" : "linear-gradient(135deg,#f59e0b,#ef4444)"};"><span class="material-symbols-outlined text-[28px]" style="font-variation-settings:'FILL' 1;">${isCreator ? "workspace_premium" : "campaign"}</span></div>`
-      : avatarHtml(n.fromPhotoURL || "", "w-14 h-14");
+      ? `<div class="w-12 h-12 rounded-full flex items-center justify-center text-white" style="background:${isCreator ? "linear-gradient(135deg,#16a34a,#0d9488)" : "linear-gradient(135deg,#f59e0b,#ef4444)"};"><span class="material-symbols-outlined text-[26px]" style="font-variation-settings:'FILL' 1;">${isCreator ? "workspace_premium" : "campaign"}</span></div>`
+      : avatarHtml(n.fromPhotoURL || "", "w-12 h-12");
     const badge = isBoost
       ? ""
       : reactEmoji
@@ -423,7 +432,8 @@ export function mount(container, ctx = {}) {
         <div class="min-w-0 flex-1 pt-0.5">
           <p class="fz-n-text text-[15px] leading-5 text-on-surface">${sentence}</p>
           ${quote}
-          <p class="text-[13px] leading-4 mt-1 ${isNew ? "text-primary font-semibold" : "text-slate-muted"}">${timeAgo(Number(n.createdAt))}</p>
+          ${n.type === "follow" ? `<button type="button" class="fz-n-view">View profile</button>` : ""}
+          <p class="text-[12.5px] leading-4 mt-1 ${isNew ? "fz-n-timenew font-bold" : "text-slate-muted"}">${timeAgo(Number(n.createdAt))}</p>
         </div>
         <div class="flex flex-col items-center flex-shrink-0 w-9">
           <button type="button" class="fz-n-more w-9 h-9 rounded-full flex items-center justify-center text-slate-muted hover:bg-surface-container active:bg-surface-container" aria-label="More options"><span class="material-symbols-outlined text-[22px]">more_horiz</span></button>
@@ -437,6 +447,12 @@ export function mount(container, ctx = {}) {
 
   const render = () => {
     if (!alive()) return;
+    const cnt = root.querySelector(".fz-n-count");
+    if (cnt) {
+      const unreadNow = items.filter((n) => TYPES[n.type] && isFresh(n)).length;
+      cnt.textContent = unreadNow > 99 ? "99+" : String(unreadNow);
+      cnt.hidden = !unreadNow;
+    }
     const shown = items.filter((n) => TYPES[n.type]).filter((n) => filter === "all" || isFresh(n));
 
     if (!shown.length) {
@@ -453,7 +469,7 @@ export function mount(container, ctx = {}) {
 
     let index = 0;
     listEl.innerHTML = groups
-      .map(([name, list]) => `<h3 class="px-4 pt-3 pb-1 text-[17px] leading-6 font-bold text-on-surface">${name}</h3>${list.map((n) => rowHtml(n, index++)).join("")}`)
+      .map(([name, list]) => `<h3 class="fz-n-sec">${name}</h3>${list.map((n) => rowHtml(n, index++)).join("")}`)
       .join("");
   };
 
@@ -563,6 +579,7 @@ export function mount(container, ctx = {}) {
       return;
     }
     if (event.target.closest(".fz-n-menu")) return;
+    if (event.target.closest(".fz-n-view")) { ctx.onOpenProfile?.(n.from); return; }
 
     if (["like", "comment", "reply", "commentLike"].includes(n.type) && n.postId) ctx.openPost?.(n.postId);
     else if (n.type === "follow") ctx.onOpenProfile?.(n.from);

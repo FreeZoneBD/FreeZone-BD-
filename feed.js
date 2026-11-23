@@ -1187,6 +1187,8 @@ async function toggleLike(postId) {
 
 let postDetailShown = false; // false until the first draw of the opened post (a video post is sent to Reels instead)
 function openPostDetail(postId) {
+  if (postId && typeof postId === "object") postId = postId.id; // safety: a whole post object is accepted too
+  if (typeof postId !== "string" || !postId) return;
   postDetailShown = false;
   currentDetailPostId = postId;
   postDetail.hidden = false;
